@@ -1,0 +1,52 @@
+# traceable-reqs manifest for spt-claude-code — SEED.
+#
+# Authoritative requirement registry: every requirement and every KNOWN-HAZARDS
+# invariant lives here as a REQ-* id (see docs/TRACEABILITY.md for the full contract).
+#
+# SEED YOUR REQs FROM SCOPE.md "Parity-trim" — the DROP / TRANSFORM / KEEP / ADD buckets are
+# the parity reference. Mint a REQ-* per surface you port/transform/add as you START each
+# milestone (NOT up front). The registry below is intentionally EMPTY (commented shapes only).
+#
+# ACQUIRE the CLI (it is a released binary, not a crate dependency):
+#   gh release download --repo BigscreenVR/traceable-reqs \
+#     --pattern '*<your-platform>' --output traceable-reqs   # then chmod +x
+# (see INSTANTIATE.md for per-platform patterns + CI wiring.) Validate this seed against
+# the installed CLI before relying on it: `traceable-reqs check`.
+#
+# THE FOUR-STAGE CONTRACT: every requirement is traced from
+#   doc  (prose/design)  ->  impl (production code)  ->  unit (unit test)  ->  int (cross-process/node)
+# Tag evidence in the SAME commit, on/above the real evidence:
+#   // [impl->REQ-FOO]   // [unit->REQ-FOO]   <!-- [doc->REQ-FOO] -->
+#
+# ACTIVATION MODEL: every requirement starts inactive (`required_stages = []`) so `check`
+# stays green pre-code. A milestone ACTIVATES its requirements by setting their real
+# `required_stages` when work on them begins. Deferred items stay [] until promoted.
+# Never declare the full end-state stage list up front — activate incrementally as evidence
+# lands (add "int" at the final integrating wave).
+
+[scan]
+# Every evidence location. A missing root makes evidence SILENTLY vanish from the trace —
+# audit this whenever a new evidence dir appears. Fill with this project's real layout.
+roots = ["skills", "hooks", "plugin", "tests", "docs", "CONTEXT.md", "SCOPE.md"]
+
+[policy]
+# Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
+# reqs add "int". Until a req is activated, its per-req `required_stages = []` keeps it out
+# of the coverage gate.
+required_stages = []
+
+# ───────────────────────────── Requirements ─────────────────────────────────
+# Add requirements as you scope milestones, seeded from SCOPE.md "Parity-trim". Shape:
+#
+# [[requirements]]
+# id = "REQ-EXAMPLE-1"
+# title = "One-line statement of the requirement"
+# required_stages = []  # activate (e.g. ["doc","impl","unit"]) when the milestone starts
+#
+# KNOWN-HAZARDS invariants are first-class requirements — one REQ-HAZARD-* per invariant,
+# each requiring at least "unit" (add "int" where cross-process/cross-node):
+#
+# [[requirements]]
+# id = "REQ-HAZARD-EXAMPLE"
+# title = "The invariant, stated so a test can prove it"
+# required_stages = []
