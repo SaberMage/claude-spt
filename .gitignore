@@ -1,0 +1,10 @@
+# spt runtime perch state (not source)
+.claude/LIVE_AGENT_IDS.json
+.claude/*-commune.md
+.claude/*-signoff.md
+
+# generated launchers (capsule-style cc / cc-<id>)
+/cc
+/cc.bat
+/cc.sh
+/cc-*
