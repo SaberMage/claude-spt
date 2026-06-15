@@ -143,12 +143,15 @@ spt-core**. The `<EVENT>` envelope is **self-delimiting**, so multi-message drai
 - **Our parser** now targets `<EVENT>` (the `from` attr → `<sptc_messages from="…">`, `<br>` →
   newline, entity unescape with `&amp;` last) — exactly the live-agent body-parsing rule. See
   `render_frames` in `plugin/sptc/hooks/_common.sh` + `tests/hooks-parse.sh` (multi-message covered).
-- **Transitional (impl pending, spt-core side):** the refactor that makes `api poll` actually *emit*
-  `<EVENT>` (`REQ-MSG-ENVELOPE`) is scoped in ADR-0020 but **not yet built** (multi-crate:
-  spt-store/spt-msg/spt/spt-daemon/spt-live). The current 0.6.0 binary still emits the `__REPLY_TO__`
-  relic at the poll surface. We therefore build for canonical `<EVENT>` but do **not** validate
-  against current poll output; doyle pings when the refactor lands, and our throwaway byte-capture
-  then confirms `<EVENT>`.
+- **Transitional (MERGED, not yet PUBLISHED):** the refactor making `api poll` (and worker-poll)
+  emit `<EVENT>` (`REQ-MSG-ENVELOPE`, ADR-0020) is **merged to spt-core main** (`25ffd7a`,
+  2026-06-15) — `__REPLY_TO__` relic deleted, `<EVENT>` is the sole arriving format at every surface.
+  **But the published binary (v0.7.0) still carries the relic** at the poll surface. Our byte-capture
+  tests the **shipped** surface, so the `REQ-MSG-ENVELOPE` int flip waits for the next **RELEASE**
+  that carries ADR-0020 (operator-gated publish, bundling the update-apply fix) — **not** the merge.
+  Until then we keep parsing the v0.7.0 surface as-is (relic present) and build for canonical
+  `<EVENT>` without validating against current poll output. doyle pings with the hash on **publish**;
+  the throwaway byte-capture then confirms `<EVENT>` and flips HOOKS-API / UPS-INJECTION `int`.
 
 ---
 
