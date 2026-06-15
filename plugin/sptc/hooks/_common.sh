@@ -5,6 +5,11 @@
 
 ADAPTER=claude-spt
 
+# CC spills additionalContext over ~10,000 chars to a file (dropping it from the inline context the
+# agent sees). We pre-empt below this with margin for the marker + CC's own framing. Override-able
+# for tests. (ADR-0002 Open #2.)
+SPTC_CTX_CAP="${SPTC_CTX_CAP:-9000}"
+
 # Resolve the spt binary: PATH first (post-bootstrap), then known install locations.
 spt_bin() {
   if command -v spt >/dev/null 2>&1; then printf 'spt'; return 0; fi
@@ -102,4 +107,23 @@ sptc_inject_skill() {
   _body=$("$_spt" adapter get-string "$ADAPTER" "skills.$_skill" 2>/dev/null) || return 0
   [ -z "$_body" ] && return 0
   printf '<sptc_skill name="%s">\n%s\n</sptc_skill>\n' "$_skill" "$_body"
+}
+
+# Emit additionalContext under CC's ~10k spill threshold ($1=text, $2=cap, $3=spill_path). Under the
+# cap -> emit as-is. Over -> spill the FULL text to a file the agent can Read and emit ONLY a concise
+# pointer marker (never a partial inline — a head-cut would split a <sptc_messages>/<EVENT> block and
+# lose a message silently). The agent reads the spill file to see everything; nothing is dropped. CC
+# would otherwise spill oversized additionalContext itself, evicting it from the inline context.
+# [impl->REQ-UPS-INJECTION]
+sptc_cap_output() {
+  _text="$1"; _cap="$2"; _spill="$3"
+  [ -z "$_text" ] && return 0
+  _len=$(printf '%s' "$_text" | wc -c | tr -d ' ')
+  if [ "$_len" -le "$_cap" ]; then
+    printf '%s' "$_text"
+    return 0
+  fi
+  printf '%s' "$_text" > "$_spill" 2>/dev/null || _spill="(spill failed; content too large to inline)"
+  printf '<sptc_overflow bytes="%s" cap="%s" spilled_to="%s">\nDelivery exceeded CC'\''s additionalContext cap. The full content (skill instructions and/or %s message bytes) was written to the file above — read it now to see everything; it is NOT inlined here to avoid silently dropping a message.\n</sptc_overflow>\n' \
+    "$_len" "$_cap" "$_spill" "$_len"
 }

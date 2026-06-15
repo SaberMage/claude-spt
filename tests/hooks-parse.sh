@@ -69,4 +69,19 @@ check "verb spt-hosted startup -> bind" "bind"     "$(sptc_register_verb startup
 check "verb spt-hosted clear -> boundary" "boundary" "$(sptc_register_verb clear)"
 unset SPT_ENDPOINT_ID
 
+# --- sptc_cap_output: additionalContext spill guard (ADR-0002 Open #2) --- [unit->REQ-UPS-INJECTION]
+spill="${TMPDIR:-/tmp}/sptc-cap-$$.txt"
+rm -f "$spill"
+check "cap under -> passthrough verbatim" "small body" "$(sptc_cap_output 'small body' 9000 "$spill")"
+check "cap under -> no spill written"     "absent"     "$([ -f "$spill" ] && echo present || echo absent)"
+
+over=$(sptc_cap_output 'abcdefghij' 5 "$spill")   # 10 bytes > cap 5
+case "$over" in *'<sptc_overflow'*) m=ok ;; *) m=no ;; esac
+check "cap over -> emits overflow marker"  "ok"         "$m"
+check "cap over -> full body spilled"      "abcdefghij" "$(cat "$spill" 2>/dev/null)"
+case "$over" in *abcdefghij*) leak=leaked ;; *) leak=clean ;; esac
+check "cap over -> body not inlined"       "clean"      "$leak"
+check "cap empty -> no output"             ""           "$(sptc_cap_output '' 5 "$spill")"
+rm -f "$spill"
+
 [ "$fail" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "FAILURES"; exit 1; }

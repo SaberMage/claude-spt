@@ -132,8 +132,14 @@ skill) on the real CC 2.1.177 binary:
    `<EVENT-PART>` on normal drains, multi-drain splits on `</EVENT>`), and `render_frames` confirm-
    matched it. Locked by `ci/hooks/poll-int.sh` (5/5); `REQ-DIST-HOOKS-API` + `REQ-UPS-INJECTION`
    `int` flipped green. See `docs/SPT-CORE-FINDINGS.md` F-002.
-2. **Large-drain injection size** — CC `additionalContext` caps at ~10k chars; add truncate/spill in
-   the UPS wrapper (adapter-side; still open, lower priority — normal drains are well under the cap).
+2. **Large-drain injection size — RESOLVED (2026-06-15).** CC spills `additionalContext` over ~10k
+   chars to a file (evicting it from the inline context the agent sees), silently losing messages.
+   The UPS wrapper now pre-empts: `sptc_cap_output` (`_common.sh`) buffers the combined skill-body +
+   drain, and over `SPTC_CTX_CAP` (9000, margin under 10k) spills the FULL text to an agent-readable
+   file (`~/.claude/sptc-drain-<sid>.txt`) and emits only a concise `<sptc_overflow>` pointer — never
+   a head-cut that would split a `<sptc_messages>`/`<EVENT>` block and drop a message. Under the cap
+   it is verbatim passthrough (no behaviour change for normal drains). Unit: `tests/hooks-parse.sh`
+   `sptc_cap_output` cases (passthrough, no-spill, overflow marker, full-body spill, no-inline-leak).
 
 ## Consequences
 
