@@ -83,6 +83,31 @@ format for CC) and the **substitution-key catalog** (currently code-only). doyle
 format so the publish can confirm-match. Until published we may rely on observed behavior of the
 public binary (observable behavior = public surface).
 
+### Validation note (2026-06-15, against live v0.7.0 `spt adapter add` + the shipped mock-adapter)
+
+Authored + registered `adapter/claude-spt.toml` against the real v0.7.0 binary
+(`REQ-DIST-MANIFEST-SCHEMA` int — `ci/manifest/registration-int.sh`, 6/6 green). Confirms the
+residual: the **published docs still omit** two things a manifest author needs, both learnable only
+from the **shipped mock-adapter source** (which IS public surface) + live `adapter add` errors:
+
+1. **Substitution-key catalog.** `{parent_pid}` and `{adapter_name}` are spt-filled SessionStart
+   keys (mock `api seed --pid {parent_pid} … --adapter {adapter_name}`); the docs-site lists only a
+   partial set. The full catalog is still code-only.
+2. **`[digest]` cross-field rule.** The JSON schema accepts `[digest]` with just `extractor`, but
+   `spt adapter add` **rejects** it: `[digest] needs source (own-source) or a [history]
+   locate_template`. Not documented prose-side; surfaced only at registration. (Worked around with
+   `source = "{home}/.claude/projects"` — CC's cwd-slug subdir is not expressible as a flat
+   `locate_template`, so `source` names the per-project root and the extractor finds
+   `{session_id}.jsonl` within. A CC-shaped extractor is the right design vs the mock's log-less
+   `[history] native`.) **Non-blocking** (resolved by reading the shipped mock + the error text);
+   logged so doyle can publish the key catalog + the digest source-requirement to the docs-site.
+
+Also observed (not a gap, a roadmap fact): `spt endpoint run` notes the **interactive picker that
+emits the `<basename>-<id>` shortcut "lands in a later wave"** — so the `sptc-<id>` *emission* int
+(`REQ-DIST-SHORTCUT-BASENAME`) stays held on that wave (and on authoring `[session.self]`, which
+`endpoint run` spawns). `shortcut_basename = "sptc"` is confirmed to round-trip into the stored
+resolved manifest, so the declaration side is proven.
+
 ---
 
 ## F-002 — `api poll` (agent path) has no inter-frame delimiter — multi-message drains unsplittable

@@ -43,10 +43,11 @@ shortcut_basename = "sptc"
 # fields we map; `can_inject` = whether the event can surface additionalContext back to the agent.
 
 [hooks.SessionStart]
-# Seed the endpoint. pid is sourced from the hook PROCESS tree, not stdin (F-001); session_id is
-# a CC stdin field. NOT the blocking poll/listen loop — that is /sptc:ready|live, never SessionStart.
-fires = "api seed --session-id {session_id} --pid {parent_pid}"
-reads = ["session_id"]
+# Seed the endpoint. {parent_pid} + {adapter_name} are spt-filled keys (confirmed against the
+# published mock-adapter manifest); session_id is a CC stdin field. NOT the blocking poll/listen
+# loop — that is /sptc:ready|live, never SessionStart.
+fires = "api seed --session-id {session_id} --pid {parent_pid} --adapter {adapter_name}"
+reads = ["session_id", "parent_pid"]
 can_inject = true
 
 [hooks.UserPromptSubmit]
@@ -93,23 +94,34 @@ idle = ["hook"]
 # ── [digest] ───────────────────────────────────────────────────────────────────────────────
 # Session-digest extractor seam (ADR-0019). CC's transcript is JSONL (one event per line); the
 # extractor maps that native log → the published {role,text,tool,ts} digest-record contract,
-# one JSON record per output line. The extractor binary self-locates CC's transcript from the
-# session id (no [history] locate_template declared this slice), so no {source} placeholder.
-# The extractor binary ships in the spt-core-conducted layer (built in a later parity slice);
-# this is its declaration.
+# one JSON record per output line. (CC has a rich log, so the extractor seam fits — a defensible
+# divergence from the deliberately log-less mock adapter, which declares no [digest].)
+#
+# spt-core's registration cross-field rule requires [digest] to name where it reads from (`source`
+# or a [history] `locate_template`) — verified against the live v0.7.0 `spt adapter add`. CC stores
+# transcripts at `{home}/.claude/projects/<cwd-slug>/<session_id>.jsonl`; the cwd-slug subdir is a
+# CC-internal encoding NOT expressible as a flat template with the published key catalog, so
+# `source` names the per-project ROOT dir and the extractor finds `{session_id}.jsonl` within it
+# (the `source` field documents accepting "log file(s)" — a dir is valid). The extractor binary
+# ships in the spt-core-conducted layer (built in a later parity slice); this is its declaration.
 [digest]
-extractor = "claude-spt-digest --session {session_id}"
+extractor = "claude-spt-digest --session {session_id} --in {source}"
+source = "{home}/.claude/projects"
 window_turns = 6
 arg_truncation = 240
 sprint_collapse = true
 
 # ── [profiles.<name>] ────────────────────────────────────────────────────────────────────────
 # Shipped profile overlays (sparse leaf-replace; selected as the composite `claude-spt:<name>`).
-# `deep` widens the digest window for long-context review sessions without forking the base.
-# (Node-local user profiles are created with `spt adapter create-profile` and live in the
-# registry, never in this manifest.)
+# `deep` widens the digest window for long-context review sessions without forking the base, and
+# overrides a [strings] leaf so the overlay is observable via `spt adapter get-string` (base vs
+# `:deep` differ). (Node-local user profiles are created with `spt adapter create-profile` and
+# live in the registry, never in this manifest.)
 [profiles.deep.digest]
 window_turns = 20
+
+[profiles.deep.strings]
+adapter_label = "Claude Code (spt, deep)"
 
 # ── [strings] ──────────────────────────────────────────────────────────────────────────────
 # Opaque adapter data (spt-core never executes it), dot-path-readable via `spt adapter get-string`.
