@@ -71,7 +71,7 @@ required_stages = ["doc", "impl"]  # doc: ADR-0001. impl: plugin/sptc/bootstrap.
 [[requirements]]
 id = "REQ-DIST-HOOKS-API"
 title = "hooks.json delegates to `spt api` rather than carrying adapter logic"
-required_stages = ["doc", "impl", "unit"]  # doc: ADR-0001/0002. impl: hooks.json + wrappers. unit: tests/hooks-parse.sh. int (real-CC e2e) held for throwaway validation.
+required_stages = ["doc", "impl", "unit", "int"]  # doc: ADR-0001/0002. impl: hooks.json + wrappers. unit: tests/hooks-parse.sh. int: ci/hooks/poll-int.sh — `spt api poll` on live v0.7.1 emits the canonical <EVENT> envelope (ADR-0020), confirm-matched through render_frames; __REPLY_TO__ relic gone, multi-drain splits on </EVENT>. 5/5 green 2026-06-15 (throwaway perch, torn down).
 
 [[requirements]]
 id = "REQ-DIST-MANIFEST-SCHEMA"
@@ -86,7 +86,7 @@ required_stages = ["doc", "unit"]  # doc: ADR-0001 (cc launcher brand, decoupled
 [[requirements]]
 id = "REQ-UPS-INJECTION"
 title = "UserPromptSubmit hook detects /sptc:X and injects X's real instructions as additionalContext (SKILL.md files stay skeletons); must be empirically confirmed UPS fires on slash-commands"
-required_stages = ["doc", "impl", "unit"]  # doc: ADR-0002. impl: user-prompt-submit.sh. unit: render_frames test. int (UPS-fires + multi-frame post-F-002) held for throwaway validation.
+required_stages = ["doc", "impl", "unit", "int"]  # doc: ADR-0002. impl: user-prompt-submit.sh (skill-injection + drain) + _common.sh. unit: render_frames + sptc_skill_key tests. int: ci/hooks/poll-int.sh — the poll->additionalContext drain round-trip vs live v0.7.1 (<EVENT> envelope, render_frames confirm-match, multi-message). UPS-fires-on-slash empirical = ADR-0002 validation (CC 2.1.177); skill-injection resolve = registration-int 4c.
 
 # ── Milestone: CI (autonomous fleet) — minted on-start. Deterministic gates + git push-trigger +
 # spt reporting bus. Seeded from SCOPE.md "CI model" + docs/CI.md. Real-claude acceptance is a

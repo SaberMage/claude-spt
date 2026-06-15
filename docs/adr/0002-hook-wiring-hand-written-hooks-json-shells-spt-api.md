@@ -124,12 +124,16 @@ skill) on the real CC 2.1.177 binary:
   `C:/Program Files/Git/send`. Test artifact (wrappers read stdin, not argv) but a real Windows
   hazard → `docs/KNOWN-HAZARDS.md` 1.1 + `REQ-HAZARD-MSYS-PATHCONV` (test: `tests/msys-hazard.sh`).
 
-## Open (remaining `int` — gated on the spt-core poll refactor)
+## Open / resolved `int`
 
-1. **`api poll` → `additionalContext` round-trip** against a real spt perch, once `REQ-MSG-ENVELOPE`
-   lands (poll emits `<EVENT>`): capture actual stdout bytes, confirm-match to doyle, flip `int`.
-2. **Large-drain injection size** — CC `additionalContext` caps at 10k chars; add truncate/spill in
-   the UPS wrapper (adapter-side; `int`).
+1. **`api poll` → `additionalContext` round-trip — RESOLVED (v0.7.1, 2026-06-15).** ADR-0020 shipped
+   in v0.7.1; a throwaway byte-capture against the live `spt api poll` drain (`od`-verified) confirmed
+   the canonical `<EVENT type="msg" from=…>body</EVENT>\n` envelope (no `__REPLY_TO__`, no
+   `<EVENT-PART>` on normal drains, multi-drain splits on `</EVENT>`), and `render_frames` confirm-
+   matched it. Locked by `ci/hooks/poll-int.sh` (5/5); `REQ-DIST-HOOKS-API` + `REQ-UPS-INJECTION`
+   `int` flipped green. See `docs/SPT-CORE-FINDINGS.md` F-002.
+2. **Large-drain injection size** — CC `additionalContext` caps at ~10k chars; add truncate/spill in
+   the UPS wrapper (adapter-side; still open, lower priority — normal drains are well under the cap).
 
 ## Consequences
 

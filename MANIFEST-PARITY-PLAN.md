@@ -90,11 +90,10 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
 
 ### Still held on spt-core (non-blocking)
 - `sptc-<id>` shortcut EMISSION — spt-core picker wave (not in 0.7.0) + needs `[session.self]`.
-- REQ-MSG-ENVELOPE poll→additionalContext bus-delivery int — ADR-0020 MERGED to spt-core main
-  (`25ffd7a`) but NOT yet PUBLISHED; v0.7.0 still carries the `__REPLY_TO__` relic. Byte-capture tests
-  the SHIPPED binary, so the int flip waits for the next RELEASE carrying ADR-0020 (doyle pings with
-  the hash on publish), NOT the merge. Parse v0.7.0 as-is until then; then confirm-match + flip
-  HOOKS-API/UPS-INJECTION int.
+- REQ-MSG-ENVELOPE poll→additionalContext bus-delivery int — **DONE (v0.7.1, 2026-06-15).** ADR-0020
+  published in v0.7.1; byte-capture confirmed `<EVENT>` on the live `api poll` drain (no `__REPLY_TO__`,
+  F-002 dissolved), `render_frames` confirm-match. Locked by `ci/hooks/poll-int.sh` (5/5);
+  REQ-DIST-HOOKS-API + REQ-UPS-INJECTION `int` flipped green.
 
 ### Note: claude-spt is now a REGISTERED adapter artifact on this node (the v1 acceptance proof).
 The int test soft-removes it each run; re-add with `spt adapter add adapter/claude-spt.toml`.
@@ -102,10 +101,10 @@ Local `spt` is **0.7.0** (operator-upgraded 2026-06-15).
 
 ## Still gated on spt-core (non-blocking)
 
-poll→additionalContext bus-delivery `int` — REQ-MSG-ENVELOPE. ADR-0020 MERGED to spt-core main
-(`25ffd7a`) but NOT PUBLISHED; v0.7.0 still emits the `__REPLY_TO__` relic. Byte-capture tests the
-SHIPPED binary → int flip waits for the next RELEASE carrying ADR-0020 (doyle pings with the hash on
-publish), not the merge. Then confirm-match + flip HOOKS-API/UPS-INJECTION `int`.
+poll→additionalContext bus-delivery `int` — **DONE (v0.7.1).** ADR-0020 published; byte-capture
+confirmed the `<EVENT>` envelope on the live `api poll` drain + `render_frames` confirm-match;
+`ci/hooks/poll-int.sh` (5/5) locks it; HOOKS-API + UPS-INJECTION `int` green. (Remaining open: the
+~10k additionalContext large-drain truncate/spill — lower priority, ADR-0002 Open #2.)
 
 ## Gate (every slice)
 

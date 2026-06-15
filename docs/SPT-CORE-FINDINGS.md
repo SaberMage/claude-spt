@@ -9,8 +9,8 @@
 | # | Date | Status | Summary |
 |---|------|--------|---------|
 | F-001 | 2026-06-14 | **re-scoped 2026-06-15** — most = adapter-authoring (closed); 1 residual spt-core docs item open | Hook-wiring for a CC adapter — boundary clarified |
-| F-002 | 2026-06-15 | **resolved-by-design** (ADR-0020) — envelope self-delimits; impl refactor pending | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
-| F-003 | 2026-06-15 | **resolved (capability shipped); residual = docs-visibility (doyle publishing)** | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
+| F-002 | 2026-06-15 | **RESOLVED-SHIPPED (v0.7.1)** — `<EVENT>` verified on the published `api poll` surface; F-002 dissolved; int flipped | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
+| F-003 | 2026-06-15 | **RESOLVED + docs CLOSED (v0.7.1)** — capability shipped; the file-pointer syntax is now on the published surface | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
 
 ---
 
@@ -143,15 +143,20 @@ spt-core**. The `<EVENT>` envelope is **self-delimiting**, so multi-message drai
 - **Our parser** now targets `<EVENT>` (the `from` attr → `<sptc_messages from="…">`, `<br>` →
   newline, entity unescape with `&amp;` last) — exactly the live-agent body-parsing rule. See
   `render_frames` in `plugin/sptc/hooks/_common.sh` + `tests/hooks-parse.sh` (multi-message covered).
-- **Transitional (MERGED, not yet PUBLISHED):** the refactor making `api poll` (and worker-poll)
-  emit `<EVENT>` (`REQ-MSG-ENVELOPE`, ADR-0020) is **merged to spt-core main** (`25ffd7a`,
-  2026-06-15) — `__REPLY_TO__` relic deleted, `<EVENT>` is the sole arriving format at every surface.
-  **But the published binary (v0.7.0) still carries the relic** at the poll surface. Our byte-capture
-  tests the **shipped** surface, so the `REQ-MSG-ENVELOPE` int flip waits for the next **RELEASE**
-  that carries ADR-0020 (operator-gated publish, bundling the update-apply fix) — **not** the merge.
-  Until then we keep parsing the v0.7.0 surface as-is (relic present) and build for canonical
-  `<EVENT>` without validating against current poll output. doyle pings with the hash on **publish**;
-  the throwaway byte-capture then confirms `<EVENT>` and flips HOOKS-API / UPS-INJECTION `int`.
+- **VERIFIED ON THE PUBLISHED SURFACE (v0.7.1, 2026-06-15).** ADR-0020 shipped in **v0.7.1**
+  (counter 13); `__REPLY_TO__` relic gone. A throwaway byte-capture against the live 0.7.1 `spt api
+  poll` drain (`od`-verified) confirms the canonical envelope end-to-end:
+  - single msg: `<EVENT type="msg" from="probe-sender">hello from probe<br>second &lt;line&gt;
+    &amp; &quot;stuff&quot;</EVENT>\n` — body escaping (`<br>` + `&lt;/&gt;/&quot;` + `&amp;` last)
+    is the **exact** `render_frames` decode rule.
+  - whole envelopes, self-delimiting **and** `\n`-framed; **no `<EVENT-PART>`** on a normal hook
+    drain; **no `__REPLY_TO__`**. Multi-drain splits cleanly on `</EVENT>` → **F-002 dissolved on the
+    published binary**.
+  - raw drain piped through our `render_frames` → correct `<sptc_messages from=…>` (parser
+    confirm-match PASS). `notify` events ride the same envelope.
+  Locked in by `ci/hooks/poll-int.sh` (SPTC_ACCEPTANCE-gated, ≥0.7.1, 5/5): bind→send→`api
+  poll`→`render_frames` assert. **`REQ-DIST-HOOKS-API` + `REQ-UPS-INJECTION` `int` flipped GREEN.**
+  ADR-0020 loop closed: design→impl→gate→ship→real-surface-verify.
 
 ---
 
@@ -238,5 +243,7 @@ no spt-core build change. We author UPS-injection skill bodies as `[strings.skil
 "skills/<x>.md" }` over `adapter/strings/skills/<x>.md`. **Residual = published-docs visibility only:**
 the pointer syntax was undocumented on the GH-Pages surface (it lived in spt-core-internal
 `CONTEXT.md §adapter strings`) — same class as the `{key}` catalog + `[digest]` cross-field rule.
-**doyle owns it** and is folding the exact byte behavior above into the docs-site manifest reference +
-`MANIFEST.md` in the same docs batch. F-003 stays logged as a **DOCS finding** until that publishes.
+**CLOSED in v0.7.1 (2026-06-15):** doyle published the `[strings]` file-pointer syntax (plus the
+`{key}` substitution catalog and the `[digest]` register rule) to the docs-site manifest reference +
+`MANIFEST.md`. The next adapter author discovers the pointer form from the published surface alone —
+F-003 fully resolved.
