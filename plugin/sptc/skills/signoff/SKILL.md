@@ -11,7 +11,8 @@ allowed-tools: [Bash]
 > `sptc` adapter at invocation time (UserPromptSubmit injection from the adapter `[strings]`;
 > see `docs/adr/0001-distribution-splits-by-volatility.md`). This SKILL.md stays a stub.
 >
-> **Not yet operative.** Wiring is held pending spt-core finding **F-001** (the injection
-> contract — `docs/SPT-CORE-FINDINGS.md`) and the M12 file-backed `[strings]` dependency.
+> **Operative.** The UPS hook detects `/sptc:signoff` and injects the body from
+> `adapter/strings/skills/signoff.md` (UPS-fires-on-slash confirmed, ADR-0002; file-backed `[strings]`
+> shipped, F-003). If injection ever no-ops (spt absent / adapter unregistered), this stub is the floor.
 
 Cleanly ends a live session, writing a final summary consumed at teardown.

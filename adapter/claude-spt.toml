@@ -146,12 +146,15 @@ setup = { file = "skills/setup.md" }
 ready = { file = "skills/ready.md" }
 send = { file = "skills/send.md" }
 version = { file = "skills/version.md" }
-# --- inline summaries, pending file-backed bodies. live/commune/signoff touch the live-agent +
-# Psyche layer; their core-`spt`-surface mapping is not yet confirmed (likely gated on the
-# endpoint-run/live wave or a finding) — author once verified, don't invent commands. ---
+signoff = { file = "skills/signoff.md" }       # -> spt endpoint shutdown (graceful + final save)
+list-agents = { file = "skills/list-agents.md" } # -> spt endpoint list (the roster)
+# --- inline summaries, pending file-backed bodies. NOT cleanly mappable to the core `spt` v0.7.1
+# surface yet (don't invent): `live` -> `spt endpoint run` but needs manifest [session.self] (deferred
+# slice); `commune` + `new-alarm` have NO core-spt command (live-agent/Psyche layer, owl/$LIVE);
+# `force-stop` has only soft `endpoint stop`/`shutdown`, no force-kill-Psyche equivalent. Verify or
+# file a finding before authoring. ---
 commune = "Send a communal context update to your Psyche."
 live = "Run or resume a live agent session."
-signoff = "Graceful live-agent shutdown with a final context summary."
 
 # ── [[hints]] ──────────────────────────────────────────────────────────────────────────────
 # Once-per-session keyword hints (order significant, first match wins; case-insensitive substrings).

@@ -58,13 +58,19 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
      - **DONE (this session)** — ready, send, version authored as file-backed bodies + pointers; stubs
        refreshed. ready/send **delegate to `spt how-to ready|send`** (stay current vs published surface);
        version reports the version-of-truth via `spt --version` + `spt adapter list` (ADR-0001).
-     - **TODO (needs live-layer mapping verification first — don't invent)** — commune, live, signoff
-       (+ the un-listed force-stop, list-agents, new-alarm). These touch the live-agent/Psyche layer;
-       core-`spt`-surface mapping is partial/unconfirmed: list-agents≈`spt endpoint list`,
-       force-stop≈`spt endpoint stop`/`shutdown`, live≈`spt endpoint run` (the deferred picker wave),
-       signoff≈`spt endpoint shutdown`+commune; commune/new-alarm have no obvious core-`spt` command
-       (likely live-layer, not core v0.7.0). Verify each against the public surface (or file a finding)
-       before authoring.
+     - **DONE (this session, triaged vs the v0.7.1 surface)** — signoff (`spt endpoint shutdown` —
+       graceful + final context save, exact match) + list-agents (`spt endpoint list` — the roster).
+       7/11 skills now operative. (force-stop/list-agents/new-alarm had no `[strings.skills]` entry;
+       list-agents now added.)
+     - **TODO — remaining 4, classified (don't invent):**
+       - **live** — `spt endpoint run` EXISTS but spawns the manifest `[session.self]` command, which
+         is unauthored (deferred slice). GATED on `[session.self]` authoring + the run bringup.
+       - **force-stop** — core spt has only soft `spt endpoint stop` (perch, spool kept) + graceful
+         `endpoint shutdown`; NO force-kill / Psyche-teardown equivalent (the legacy `$LIVE stop`
+         3-step). SEMANTICS MISMATCH → defer; candidate finding if force-kill is required.
+       - **commune / new-alarm** — ABSENT from the core `spt` v0.7.1 surface (live-agent/Psyche layer,
+         the owl/`$LIVE` binary, not core). Not authorable as core-spt skills → defer; likely a
+         scope/finding question (does claude-spt reach the Psyche layer, or are these owl-only?).
    - **DONE (this session) — UPS skill-injection branch BUILT.** UPS-fires-on-slash was already
      proven (ADR-0002 validation 2026-06-15: `/sptc:X` fires with token intact on CC 2.1.177) — my
      earlier "still-open" framing was stale. Built: `_common.sh` `sptc_skill_key` (pure, detect
