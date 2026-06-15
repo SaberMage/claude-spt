@@ -10,7 +10,7 @@
 |---|------|--------|---------|
 | F-001 | 2026-06-14 | **re-scoped 2026-06-15** — most = adapter-authoring (closed); 1 residual spt-core docs item open | Hook-wiring for a CC adapter — boundary clarified |
 | F-002 | 2026-06-15 | **resolved-by-design** (ADR-0020) — envelope self-delimits; impl refactor pending | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
-| F-003 | 2026-06-15 | **open** — M12/v0.7.0 published, but the file-backed `[strings]` capability ADR-0001 depends on is **absent** from the public surface | No mechanism to externalize large `[strings]` values to files — `[strings]` is inline-only |
+| F-003 | 2026-06-15 | **resolved (capability shipped); residual = docs-visibility (doyle publishing)** | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
 
 ---
 
@@ -154,8 +154,9 @@ spt-core**. The `<EVENT>` envelope is **self-delimiting**, so multi-message drai
 
 ## F-003 — No file-backed `[strings]` mechanism on the M12/v0.7.0 public surface (ADR-0001 dependency unmet)
 
-**Reported:** 2026-06-15 to doyle + todlando. **Status:** open — spt-core capability gap (M12 shipped
-without the dependency ADR-0001 names).
+**Reported:** 2026-06-15 to doyle + todlando. **Status:** **RESOLVED 2026-06-15** — the capability
+is **shipped** in v0.7.0; the residual is a **docs-visibility** gap (doyle is publishing the syntax).
+The text below records the original (wrong) "absent" framing for provenance; see **Resolution**.
 
 **The dependency (ours, ADR-0001):** UPS-injection delivers `/sptc:X` skill bodies from the adapter
 `[strings]` tree, explicitly **"file-backed, so the manifest doesn't bloat"** (`REQ-UPS-INJECTION`).
@@ -192,3 +193,47 @@ carry interim inline instructions."* So:
 **Ask for doyle/todlando:** does M12 intend file-backed `[strings]` and it is unpublished/unshipped,
 or has the design moved (e.g. bodies belong in a file-pull-shipped layer, not `[strings]`)? Either a
 docs+binary capability or an ADR-0001 amendment closes this.
+
+### Resolution (2026-06-15 — capability-confirmed-shipped; residual is docs-only)
+
+The "absent" framing was **wrong**: the avenue search probed CLI verbs (`set-string --from-file`,
+`create-profile --from`) and value-prefix syntax (`@file`/include), but the shipped mechanism is a
+**value-position inline-table FILE POINTER** authored directly in `[strings]` — a shape an open
+`additionalProperties` schema accepts and a verb-search cannot surface. doyle + todlando both ruled it
+shipped (spt-core `REQ-MANIFEST-5`, M12-W3 @ `e08cea0`: `profile.rs::as_file_pointer` +
+`registry.rs` lazy `get_string`). Confirmed by **live byte-test** against `spt 0.7.0`:
+
+```toml
+[strings]
+inline_key  = "INLINE-VALUE"            # inline string — get-string prints as-is
+filebacked  = { file = "probe.txt" }     # pointer — get-string RESOLVES to file contents (lazy)
+```
+```text
+$ spt adapter add <dir>                            # ADAPTER_ADD:<name>:Harness:Copy (registered)
+$ spt adapter get-string <name> inline_key         # INLINE-VALUE
+$ spt adapter get-string <name> filebacked         # RESOLVED-FROM-FILE-OK   (file body, not the table)
+# containment (negative): escape = { file = "../outside.txt" }
+$ spt adapter add <dir>
+#   ADAPTER_ADD_FAIL: invalid [strings] file pointer: pointer ../outside.txt must be a relative
+#   path inside the strings/ dir (no absolute paths, no `..` traversal)   ← manifest-first: nothing registered
+```
+
+**Confirmed behavior (now the basis of our authoring + doyle's doc):**
+- Pointer files live in the per-adapter aux dir `adapters/<adapter>/strings/`; `file = "x"` is a bare
+  relative path **inside** that dir. On `adapter add` the whole adapter dir (incl. `strings/`) is
+  **copied** into the registry.
+- `get-string` **resolves the pointer lazily at read time** (live edits to the shipped file reflect
+  without re-register) and prints the **file contents**; inline string values print as-is.
+- **Containment** is enforced at register: `..`/absolute escaping `strings/` → `ADAPTER_ADD_FAIL`,
+  manifest-first (nothing registers). Missing-at-read is skip-diagnostic (mirrors `[digest]`), not a crash.
+- **Update-safe (todlando):** a **local profile's** pointers resolve to the *user-owned local-profile
+  dir*, not adapter-shipped `strings/` (adapter updates won't stomp user overrides). A value-table
+  carrying a `file` key is **reserved** as the pointer form — it cannot double as inline data.
+
+**Disposition:** ADR-0001's "file-backed `[strings]`" dependency is **SATISFIED** — no ADR amendment,
+no spt-core build change. We author UPS-injection skill bodies as `[strings.skills].<x> = { file =
+"skills/<x>.md" }` over `adapter/strings/skills/<x>.md`. **Residual = published-docs visibility only:**
+the pointer syntax was undocumented on the GH-Pages surface (it lived in spt-core-internal
+`CONTEXT.md §adapter strings`) — same class as the `{key}` catalog + `[digest]` cross-field rule.
+**doyle owns it** and is folding the exact byte behavior above into the docs-site manifest reference +
+`MANIFEST.md` in the same docs batch. F-003 stays logged as a **DOCS finding** until that publishes.

@@ -44,14 +44,16 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
      read + overlay observable via `get-string`, clean soft-remove. **REQ-DIST-MANIFEST-SCHEMA →
      [doc,impl,unit,int]**. Cross-field discovery fixed: `[digest]` needs `source` →
      `source="{home}/.claude/projects"`. Findings logged (key catalog + digest rule undocumented).
-   - **BLOCKED-AS-FINDING (F-003, 2026-06-15)** — file-backed `[strings]`. RESEARCH DONE: v0.7.0/M12
-     has **no** file-backed mechanism (schema inline `additionalProperties`; `get-string` prints raw
-     inline; `set-string` takes a literal `<VALUE>`; `create-profile --from` ingests a whole inline
-     overlay; published `llms-full.txt` documents no `@file`/include). ADR-0001's named M12 dependency
-     is **unmet by published M12**. Filed F-003 to doyle+todlando; HOLD authoring. Per ADR-0001's own
-     fallback, the `/sptc:whoami`+`/sptc:setup` skeletons keep **interim inline bodies**; the manifest
-     does not externalize skill bodies in v0.7.0. `REQ-UPS-INJECTION` stays `[doc,impl,unit]` (the
-     externalization half is held on this capability, not failed).
+   - **IN PROGRESS — capability confirmed (F-003 resolved 2026-06-15)** — file-backed `[strings]`.
+     Research conclusion REVERSED by live byte-test + doyle/todlando ruling: the mechanism **is
+     shipped** in v0.7.0 as a value-position table pointer `key = { file = "rel" }` over
+     `adapters/<adapter>/strings/` (lazy-resolved at `get-string`, containment-checked, copied on
+     `adapter add`). My avenue search missed it (it's a value-table shape, not a CLI verb / `@file`).
+     ADR-0001 dependency **SATISFIED**; residual is docs-only (doyle publishing, PR #13). **Authoring:**
+     ship `adapter/strings/skills/<x>.md` bodies + `[strings.skills].<x> = { file = "skills/<x>.md" }`;
+     prove resolve via an extension to `registration-int.sh`. Activates `REQ-UPS-INJECTION` int-half? No —
+     int stays held on the UPS-fires empirical check (F-002/ADR-0020); this is the manifest-side
+     externalization (the `impl` body source). Keep `REQ-UPS-INJECTION` `[doc,impl,unit]`.
    - **TODO** `[session.self]` + `spt endpoint run` bringup + `cc`/`sptc` launcher → unblocks the
      held **REQ-DIST-SHORTCUT-BASENAME** impl+int (the `<basename>-<id>` picker "lands in a later
      spt-core wave" per `endpoint run --help`; `endpoint run` spawns `[session.self]`, still deferred).

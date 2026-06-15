@@ -80,10 +80,13 @@ Concretely:
   instructions. (Tracked under `REQ-UPS-INJECTION`; see `SKELETON-PLAN.md`.)
 - **File-backed `[strings]` is an M12 spt-core dependency** — until M12 publishes, instruction
   bodies cannot be externalized; skeleton SKILL.md files may carry interim inline instructions.
-  **Update 2026-06-15:** M12 published (`spt 0.7.0`) **without** a file-backed `[strings]` mechanism
-  on the public surface — confirmed against the live binary and docs-site. Tracked as finding
-  **F-003** (`docs/SPT-CORE-FINDINGS.md`); the interim-inline fallback above stands until spt-core
-  adds the capability or this ADR is amended.
+  **Update 2026-06-15 — SATISFIED.** M12 (`spt 0.7.0`) ships file-backed `[strings]` as a
+  value-position table pointer: `key = { file = "rel" }` over the per-adapter aux dir
+  `adapters/<adapter>/strings/`, resolved lazily at `get-string` (containment-checked; copied on
+  `adapter add`). Confirmed by live byte-test + spt-core ruling (`REQ-MANIFEST-5`, M12-W3). The
+  dependency is met — skill bodies are externalized via this pointer (no manifest bloat); the
+  interim-inline fallback is retired. The pointer syntax was merely **undocumented** on the published
+  surface (now finding **F-003**, docs-only, doyle publishing). See `docs/SPT-CORE-FINDINGS.md`.
 
 ## Consequences
 
