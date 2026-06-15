@@ -55,9 +55,16 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
        `registration-int.sh` extended (8/8) — asserts a `{ file }` pointer resolves to FILE CONTENTS
        and an inline sibling prints as-is, vs live v0.7.0. `strings/` resolves next to the manifest
        FILE on `adapter add`. Bodies grounded in the public surface (`spt whoami`; shipped bootstrap).
-     - **TODO (per-skill increments)** — convert the remaining inline summaries (commune, live, ready,
-       send, signoff, version) to file-backed bodies as each is authored. ready/send should **delegate
-       to `spt how-to ready|send`** (published agent guidance) rather than duplicate.
+     - **DONE (this session)** — ready, send, version authored as file-backed bodies + pointers; stubs
+       refreshed. ready/send **delegate to `spt how-to ready|send`** (stay current vs published surface);
+       version reports the version-of-truth via `spt --version` + `spt adapter list` (ADR-0001).
+     - **TODO (needs live-layer mapping verification first — don't invent)** — commune, live, signoff
+       (+ the un-listed force-stop, list-agents, new-alarm). These touch the live-agent/Psyche layer;
+       core-`spt`-surface mapping is partial/unconfirmed: list-agents≈`spt endpoint list`,
+       force-stop≈`spt endpoint stop`/`shutdown`, live≈`spt endpoint run` (the deferred picker wave),
+       signoff≈`spt endpoint shutdown`+commune; commune/new-alarm have no obvious core-`spt` command
+       (likely live-layer, not core v0.7.0). Verify each against the public surface (or file a finding)
+       before authoring.
    - **DONE (this session) — UPS skill-injection branch BUILT.** UPS-fires-on-slash was already
      proven (ADR-0002 validation 2026-06-15: `/sptc:X` fires with token intact on CC 2.1.177) — my
      earlier "still-open" framing was stale. Built: `_common.sh` `sptc_skill_key` (pure, detect

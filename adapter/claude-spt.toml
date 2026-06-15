@@ -143,13 +143,15 @@ not_installed = "spt-core not found on PATH — run /sptc:setup to install it."
 # their body lands; converting an inline summary to a `{ file }` pointer is the per-skill increment.
 whoami = { file = "skills/whoami.md" }
 setup = { file = "skills/setup.md" }
-# --- inline summaries, pending file-backed bodies (next increments) ---
+ready = { file = "skills/ready.md" }
+send = { file = "skills/send.md" }
+version = { file = "skills/version.md" }
+# --- inline summaries, pending file-backed bodies. live/commune/signoff touch the live-agent +
+# Psyche layer; their core-`spt`-surface mapping is not yet confirmed (likely gated on the
+# endpoint-run/live wave or a finding) — author once verified, don't invent commands. ---
 commune = "Send a communal context update to your Psyche."
 live = "Run or resume a live agent session."
-ready = "Enable inter-agent messaging for this session."
-send = "Send a message to another spt agent."
 signoff = "Graceful live-agent shutdown with a final context summary."
-version = "Report the spt-core-tracked adapter/binary version-of-truth."
 
 # ── [[hints]] ──────────────────────────────────────────────────────────────────────────────
 # Once-per-session keyword hints (order significant, first match wins; case-insensitive substrings).

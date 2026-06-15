@@ -46,8 +46,8 @@ deep=$(spt adapter get-string claude-spt:deep adapter_label 2>&1)
 #     sibling still prints as-is. Proves `{ file = "skills/<x>.md" }` over adapter/strings/ (F-003).
 body=$(spt adapter get-string claude-spt skills.whoami 2>&1)
 case "$body" in "# /sptc:whoami"*) ok "file-backed string resolves: skills.whoami -> body" ;; *) bad "skills.whoami not resolved to file body: '$(printf %.40s "$body")'" ;; esac
-inline=$(spt adapter get-string claude-spt skills.version 2>&1)
-[ "$inline" = "Report the spt-core-tracked adapter/binary version-of-truth." ] && ok "inline string prints as-is: skills.version" || bad "skills.version inline='$inline'"
+inline=$(spt adapter get-string claude-spt skills.commune 2>&1)
+[ "$inline" = "Send a communal context update to your Psyche." ] && ok "inline string prints as-is: skills.commune" || bad "skills.commune inline='$inline'"
 
 # 4c. UPS skill-injection end-to-end: the hook helper resolves a /sptc:<skill> prompt to the wrapped
 #     operative body via get-string (REQ-UPS-INJECTION impl, on the registered adapter).
