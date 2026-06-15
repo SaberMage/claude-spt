@@ -49,11 +49,23 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
      shipped** in v0.7.0 as a value-position table pointer `key = { file = "rel" }` over
      `adapters/<adapter>/strings/` (lazy-resolved at `get-string`, containment-checked, copied on
      `adapter add`). My avenue search missed it (it's a value-table shape, not a CLI verb / `@file`).
-     ADR-0001 dependency **SATISFIED**; residual is docs-only (doyle publishing, PR #13). **Authoring:**
-     ship `adapter/strings/skills/<x>.md` bodies + `[strings.skills].<x> = { file = "skills/<x>.md" }`;
-     prove resolve via an extension to `registration-int.sh`. Activates `REQ-UPS-INJECTION` int-half? No —
-     int stays held on the UPS-fires empirical check (F-002/ADR-0020); this is the manifest-side
-     externalization (the `impl` body source). Keep `REQ-UPS-INJECTION` `[doc,impl,unit]`.
+     ADR-0001 dependency **SATISFIED**; residual is docs-only (doyle publishing, PR #13).
+     - **DONE (this session)** — pattern proven end-to-end + first two bodies authored:
+       `adapter/strings/skills/{whoami,setup}.md` + `[strings.skills].{whoami,setup} = { file = ... }`;
+       `registration-int.sh` extended (8/8) — asserts a `{ file }` pointer resolves to FILE CONTENTS
+       and an inline sibling prints as-is, vs live v0.7.0. `strings/` resolves next to the manifest
+       FILE on `adapter add`. Bodies grounded in the public surface (`spt whoami`; shipped bootstrap).
+     - **TODO (per-skill increments)** — convert the remaining inline summaries (commune, live, ready,
+       send, signoff, version) to file-backed bodies as each is authored. ready/send should **delegate
+       to `spt how-to ready|send`** (published agent guidance) rather than duplicate.
+     - **NOT this slice (separate, REQ-UPS-INJECTION):** the UPS hook only *drains the inbox* today
+       (`user-prompt-submit.sh`: `api poll` → `render_frames`); the **skill-body injection branch**
+       (detect `/sptc:X` → inject `get-string skills.<x>`) is **unbuilt**, and its gate — *does CC's
+       UserPromptSubmit even fire on a `/slash` prompt?* — is still ADR-0001's open empirical question
+       (throwaway live-CC byte-test). That, not the manifest source, is the real blocker for operative
+       skills. `REQ-UPS-INJECTION` int stays held on it. The whoami/setup SKILL.md stubs still say
+       "held pending … M12 file-backed `[strings]`" — that clause is now stale (capability shipped);
+       refresh when the injection branch lands.
    - **TODO** `[session.self]` + `spt endpoint run` bringup + `cc`/`sptc` launcher → unblocks the
      held **REQ-DIST-SHORTCUT-BASENAME** impl+int (the `<basename>-<id>` picker "lands in a later
      spt-core wave" per `endpoint run --help`; `endpoint run` spawns `[session.self]`, still deferred).

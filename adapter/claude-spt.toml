@@ -136,13 +136,19 @@ adapter_label = "Claude Code (spt)"
 not_installed = "spt-core not found on PATH — run /sptc:setup to install it."
 
 [strings.skills]
-# One-line summaries (the operative multi-line bodies arrive file-backed in the M12 slice).
+# Operative UPS-injection skill bodies. File-backed values (`{ file = "skills/<x>.md" }`) live in the
+# adapter aux dir `adapter/strings/skills/` (copied to `adapters/<adapter>/strings/` on `adapter add`,
+# resolved lazily at `spt adapter get-string` — proven vs live v0.7.0, F-003). File-backed so the
+# manifest does not bloat (ADR-0001). Skills not yet authored keep a one-line inline summary until
+# their body lands; converting an inline summary to a `{ file }` pointer is the per-skill increment.
+whoami = { file = "skills/whoami.md" }
+setup = { file = "skills/setup.md" }
+# --- inline summaries, pending file-backed bodies (next increments) ---
 commune = "Send a communal context update to your Psyche."
 live = "Run or resume a live agent session."
 ready = "Enable inter-agent messaging for this session."
 send = "Send a message to another spt agent."
 signoff = "Graceful live-agent shutdown with a final context summary."
-whoami = "Report this session's spt endpoint id."
 version = "Report the spt-core-tracked adapter/binary version-of-truth."
 
 # ── [[hints]] ──────────────────────────────────────────────────────────────────────────────

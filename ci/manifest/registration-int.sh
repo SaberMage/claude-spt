@@ -42,6 +42,13 @@ base=$(spt adapter get-string claude-spt adapter_label 2>&1)
 deep=$(spt adapter get-string claude-spt:deep adapter_label 2>&1)
 [ "$deep" = "Claude Code (spt, deep)" ] && ok "overlay observable: :deep adapter_label differs" || bad "deep adapter_label='$deep'"
 
+# 4b. File-backed [strings] pointer resolves to FILE CONTENTS (not the table, not raw); an inline
+#     sibling still prints as-is. Proves `{ file = "skills/<x>.md" }` over adapter/strings/ (F-003).
+body=$(spt adapter get-string claude-spt skills.whoami 2>&1)
+case "$body" in "# /sptc:whoami"*) ok "file-backed string resolves: skills.whoami -> body" ;; *) bad "skills.whoami not resolved to file body: '$(printf %.40s "$body")'" ;; esac
+inline=$(spt adapter get-string claude-spt skills.version 2>&1)
+[ "$inline" = "Report the spt-core-tracked adapter/binary version-of-truth." ] && ok "inline string prints as-is: skills.version" || bad "skills.version inline='$inline'"
+
 # 5. Soft-deregister cleanly.
 rm=$(spt adapter remove claude-spt 2>&1)
 list2=$(spt adapter list 2>&1)
