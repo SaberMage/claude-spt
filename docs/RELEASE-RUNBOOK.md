@@ -5,7 +5,7 @@
 > `spt` binary — there is NO two-key signing ceremony in this project.** spt-claude-code is a
 > thin adapter; the heavy signed-release machinery lives in spt-core, not here.
 
-<!-- [doc->REQ-EXAMPLE-REL] -->
+<!-- [<doc>->REQ-EXAMPLE-REL] (illustration; escaped per docs/TRACEABILITY.md) -->
 
 ## Publish targets
 
@@ -54,6 +54,66 @@ requires).
    - **Manifest + binary** → publish through the **spt-core adapter registry**; the `spt`
      binary performs signing/integrity as part of spt-core's adapter-update framework. You do
      **not** run a separate signing step.
+
+## cplugs skeleton publish — concrete mechanics
+
+<!-- [doc->REQ-DIST-PLUGIN-SKELETON] -->
+The concrete cplugs marketplace steps, captured from the sister project's
+`claude_skill_owl/docs/DEPLOY.md`. **Take only the SKELETON SUBSET.** spt-claude-code's cplugs
+target is the **thin skeleton** — `/spt:*` skill skeletons, `hooks.json`, the SessionStart
+bootstrap, `plugin.json`. **No binary, no manifest in cplugs** — the binary + adapter manifest
+ride the **spt-core adapter registry** (spt-conducted; the *other* publish target above), so
+none of owl's binary-lifecycle machinery applies here.
+
+**One-time marketplace setup:**
+
+```bash
+# Clone the marketplace repo
+git clone https://github.com/SaberMage/cplugs.git ~/.claude/plugins/marketplaces/cplugs
+# Register a "cplugs" entry in ~/.claude/plugins/known_marketplaces.json
+#   source: { source: "github", repo: "SaberMage/cplugs" }
+```
+
+**Per skeleton bump** (only when the skeleton *structurally* changes — see "Per release"):
+
+```bash
+# 1. Bump plugin.json version. The plugin manager compares this to the cached copy and
+#    SKIPS the update entirely if they match — a stale version = a silent no-update.
+# 2. Copy skeleton files (NO binary) into the marketplace clone:
+MARKET=~/.claude/plugins/marketplaces/cplugs/plugins/<plugin>
+cp -r skills/*  "$MARKET/skills/"
+cp -r hooks/*   "$MARKET/hooks/"
+cp .claude-plugin/plugin.json "$MARKET/.claude-plugin/"
+# 3. Commit + push the cplugs repo:
+cd ~/.claude/plugins/marketplaces/cplugs && git add plugins/<plugin>/ \
+  && git commit -m "<plugin>: <change>" && git push
+```
+
+**Pointer flip** (the authoritative install-state update):
+
+```bash
+claude plugin install <plugin>@cplugs   # un-orphans + rewrites installed_plugins.json atomically
+# then, inside Claude Code:
+/reload-plugins
+```
+
+**Gotchas (these DO apply to the skeleton):**
+- **Never hand-patch `installed_plugins.json`** (`jq`/`sed` are brittle; CC may silently reject).
+  Use the `claude plugin install` CLI — it's the atomic pointer flip + orphan-marker cleanup.
+- **No legacy manual-install dir alongside the marketplace install.** A `~/.claude/plugins/<name>/`
+  regular dir coexisting with the marketplace cache install makes `/plugin` report the plugin
+  **not installed** (CC enumerates both; the untracked one wins the conflict). Keep the two exclusive.
+- **Restart the Claude Code session after install** so the SessionStart hook re-runs and repopulates
+  the plugin's env (`$OWL`/`$LIVE` equivalents) in Bash subprocesses.
+
+**Explicitly NOT ours** (owl ships a live self-migrating binary; the thin skeleton has none, so
+skip all of it): `owl.exe` binary sync · the cache targeted-prune + keep-PREVIOUS-version logic ·
+the seamless binary handoff (owl Phase 18.4/18.5) · `DEPLOY.ps1`'s build/handoff orchestration.
+
+> **OPEN — cplugs plugin name.** Legacy already occupies the `spt` plugin name on cplugs; the
+> skeleton needs a **distinct** marketplace plugin name (candidate: `spt-claude-code` /
+> `claude-spt`) while still exposing the `/spt:` *skill* namespace (plugin name ≠ skill-namespace
+> prefix). Resolve before first cplugs push; replace `<plugin>` above.
 
 ## Update path (dual, kept in sync)
 

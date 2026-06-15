@@ -26,8 +26,10 @@
 
 [scan]
 # Every evidence location. A missing root makes evidence SILENTLY vanish from the trace —
-# audit this whenever a new evidence dir appears. Fill with this project's real layout.
-roots = ["skills", "hooks", "plugin", "tests", "docs", "CONTEXT.md", "SCOPE.md"]
+# audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
+# the moment those dirs are created (skeleton milestone, body #2) — until they exist a
+# nonexistent root is a hard manifest_error, so only list what is on disk now.
+roots = ["docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -50,3 +52,38 @@ required_stages = []
 # id = "REQ-HAZARD-EXAMPLE"
 # title = "The invariant, stated so a test can prove it"
 # required_stages = []
+
+# ── Milestone: SKELETON (thin cplugs plugin) — minted at kickoff, per-milestone (not
+# the whole registry up front). All inactive (required_stages = []) so `check` stays
+# green until body #2 lands evidence and flips each to ["doc"] / ["doc","impl"] etc.
+# Seeded from SCOPE.md "Parity-trim" (Distribution + ADD buckets).
+
+[[requirements]]
+id = "REQ-DIST-PLUGIN-SKELETON"
+title = "Marketplace artifact on cplugs is a thin skeleton: namespaced /spt:* skill stubs + hooks.json + plugin.json, no embedded logic"
+required_stages = []
+
+[[requirements]]
+id = "REQ-DIST-BOOTSTRAP-INSTALL"
+title = "SessionStart bootstrap installs spt-core when absent (invisible-installer pattern)"
+required_stages = []
+
+[[requirements]]
+id = "REQ-DIST-HOOKS-API"
+title = "hooks.json delegates to `spt api` rather than carrying adapter logic"
+required_stages = []
+
+[[requirements]]
+id = "REQ-DIST-MANIFEST-SCHEMA"
+title = "CC adapter manifest validates against spt-core's published manifest.schema.json (from spt-releases)"
+required_stages = []
+
+[[requirements]]
+id = "REQ-UPS-INJECTION"
+title = "UserPromptSubmit hook detects /spt:X and injects X's real instructions as additionalContext (SKILL.md files stay skeletons); must be empirically confirmed UPS fires on slash-commands"
+required_stages = []
+
+[[requirements]]
+id = "REQ-SKILL-VERSION"
+title = "/spt:version reports the spt-core-tracked manifest/binary version (the version-of-truth, not the marketplace skeleton version)"
+required_stages = []

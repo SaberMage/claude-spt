@@ -34,4 +34,4 @@
 ## Tagging
 
 If an ADR section is the `doc`-stage evidence for a requirement, tag it in place:
-`<!-- [doc->REQ-…] -->` immediately above that section (see `docs/TRACEABILITY.md`).
+`<!-- [<doc>->REQ-…] -->` immediately above that section (see `docs/TRACEABILITY.md`).

@@ -33,7 +33,9 @@ This project uses [`traceable-reqs`](https://github.com/BigscreenVR/traceable-re
 
 1. **Tag evidence in the same change.** When you write a function/test/doc-section that
    satisfies a requirement stage, add its tag in that same commit:
-   `// [impl->REQ-FOO]` · `// [unit->REQ-FOO]` · `<!-- [doc->REQ-FOO] -->`
+   `// [<impl>->REQ-FOO]` · `// [<unit>->REQ-FOO]` · `<!-- [<doc>->REQ-FOO] -->`
+   (the stage is angle-bracketed *here only* so the scanner treats these as illustrations,
+   not live evidence — in real code write a bare stage word: `impl`, not `<impl>`)
    Stages: `doc` / `impl` / `unit` / `int`. Tag *on or immediately above* the real
    evidence — never at file tops to satisfy coverage.
 2. **Run `traceable-reqs check` before declaring work done.** Exit-1 means missing/invalid

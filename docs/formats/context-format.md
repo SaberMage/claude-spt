@@ -32,4 +32,4 @@
 - New domain term introduced in a plan or PR → add it here before (or with) the code that uses
   it, so reviewers and dev-agents share one vocabulary.
 - If an entry is the `doc`-stage evidence for a requirement, tag it in place:
-  `<!-- [doc->REQ-…] -->` (see `docs/TRACEABILITY.md`). `CONTEXT.md` is a valid `[scan].root`.
+  `<!-- [<doc>->REQ-…] -->` (see `docs/TRACEABILITY.md`). `CONTEXT.md` is a valid `[scan].root`.
