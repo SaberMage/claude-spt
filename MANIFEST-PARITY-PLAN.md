@@ -38,16 +38,31 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
 3. **M12 parity surfaces** (seed REQs per surface as each starts — activate-don't-pre-fail):
    - **DONE (8cd8372)** — `/sptc:whoami` + `/sptc:setup` skill skeletons (the manifest advertised
      both; skeletons now exist, covered by REQ-DIST-PLUGIN-SKELETON + skeleton-validate).
-   - **TODO** file-backed `[strings]` — lift the SKILL.md-skeleton bodies into adapter `[strings]`
-     (UPS-injection source). Authoring buildable now; the **int** (binary serves file-backed
-     strings) needs the **v0.7.0 binary locally** (have 0.6.0).
-   - **TODO** `spt endpoint run` bringup + `cc`/`sptc` launcher — needs the **v0.7.0 binary** (the
-     picker reads shortcut_basename, a v0.7.0 field). This is REQ-DIST-SHORTCUT-BASENAME's held impl+int.
+   - **DONE (435e1be)** — **manifest proven against live v0.7.0**. Local spt upgraded to 0.7.0;
+     `ci/manifest/registration-int.sh` (SPTC_ACCEPTANCE-gated) green 6/6: `spt adapter add`
+     accepted (2nd-layer cross-field validation), shipped `:deep` profile resolves, `[strings]`
+     read + overlay observable via `get-string`, clean soft-remove. **REQ-DIST-MANIFEST-SCHEMA →
+     [doc,impl,unit,int]**. Cross-field discovery fixed: `[digest]` needs `source` →
+     `source="{home}/.claude/projects"`. Findings logged (key catalog + digest rule undocumented).
+   - **TODO** file-backed `[strings]` — inline `[strings]` + `get-string` PROVEN. Remaining: lift
+     the SKILL.md-skeleton BODIES out as **file-backed** values (so the manifest doesn't bloat).
+     ⚠️ RESEARCH FIRST: the v0.7.0 `[strings]` schema is `additionalProperties` inline TOML with NO
+     visible file-backed mechanism — confirm how (if) v0.7.0 externalizes large string bodies
+     (get-string runtime include? adapter-shipped files via `[update]` file_pull?) before authoring.
+   - **TODO** `[session.self]` + `spt endpoint run` bringup + `cc`/`sptc` launcher → unblocks the
+     held **REQ-DIST-SHORTCUT-BASENAME** impl+int (the `<basename>-<id>` picker "lands in a later
+     spt-core wave" per `endpoint run --help`; `endpoint run` spawns `[session.self]`, still deferred).
+   - **TODO** digest extractor binary `claude-spt-digest` → unblocks `spt adapter digest-proof`
+     (the deeper [digest] int; the seam is declared + registration-accepted, extractor unbuilt).
 
-### Gating note (local binary)
-Local `spt` is **0.6.0**; the v0.7.0 picker/strings ints need v0.7.0 installed. Upgrading spt-core
-on this machine could disrupt the **running live-agent perch** (perri runs on spt-core) — do NOT do
-it autonomously; confirm with the operator first. Until then the v0.7.0-gated ints stay held.
+### Still held on spt-core (non-blocking)
+- `sptc-<id>` shortcut EMISSION — spt-core picker wave (not in 0.7.0) + needs `[session.self]`.
+- REQ-MSG-ENVELOPE poll→additionalContext bus-delivery int — doyle pings for byte-capture when
+  todlando lands the ADR-0020 relic removal; I owe a confirm-match + a HOOKS-API/UPS-INJECTION int flip.
+
+### Note: claude-spt is now a REGISTERED adapter artifact on this node (the v1 acceptance proof).
+The int test soft-removes it each run; re-add with `spt adapter add adapter/claude-spt.toml`.
+Local `spt` is **0.7.0** (operator-upgraded 2026-06-15).
 
 ## Still gated on spt-core (non-blocking)
 
