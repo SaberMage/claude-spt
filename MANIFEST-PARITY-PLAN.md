@@ -82,11 +82,18 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
      stubs refreshed (stale "not yet operative" removed). `REQ-UPS-INJECTION` `[doc,impl,unit]` stays
      covered; `int` still held — but ONLY on the message-DRAIN half (`api poll` → additionalContext
      round-trip, gated on REQ-MSG-ENVELOPE publish). The skill-injection int is satisfied (4c).
-   - **TODO** `[session.self]` + `spt endpoint run` bringup + `cc`/`sptc` launcher → unblocks the
-     held **REQ-DIST-SHORTCUT-BASENAME** impl+int (the `<basename>-<id>` picker "lands in a later
-     spt-core wave" per `endpoint run --help`; `endpoint run` spawns `[session.self]`, still deferred).
-   - **TODO** digest extractor binary `claude-spt-digest` → unblocks `spt adapter digest-proof`
-     (the deeper [digest] int; the seam is declared + registration-accepted, extractor unbuilt).
+   - **DONE (d1f14ab)** — `[session.self]` + bind path. Authored `[session.self]` (spawns `claude`)
+     + `[env.SPT_ENDPOINT_ID]={id}` + the SessionStart bind/seed/boundary branch (`sptc_register_verb`
+     → `api bind`, spt-hosted self-register; bind is establishing/intrinsic-auth, --set-session-id
+     only, doyle-confirmed). registration-int 10/10. **REQ-DIST-SHORTCUT-BASENAME → [doc,impl,unit]**.
+     int deferred: cc-<id> picker still waved + needs a real-claude acceptance spawn (now contract-
+     unblocked). The standalone `cc`/`cc-<id>` launcher SCRIPT still TODO (bakes a non-interactive
+     `spt endpoint run`); the `[session.self]` it targets is now authored.
+   - **DONE (39c05d1)** — digest extractor `claude-spt-digest` (Rust). CC JSONL → digest NDJSON;
+     9 cargo tests; ci/digest/build.sh gate. **REQ-DIST-DIGEST-EXTRACTOR → [impl,unit]**. digest-proof
+     int deferred behind **F-004** (doyle-confirmed spt-core impl bug: digest-proof --sample passes an
+     empty key map, cli.rs:5135; fix in progress). Proven via cargo + source-only Variant A
+     (DIGEST_PROOF_OK 5/0). Flips green on doyle's carrying release.
 
 ### Still held on spt-core (non-blocking)
 - `sptc-<id>` shortcut EMISSION — spt-core picker wave (not in 0.7.0) + needs `[session.self]`.
