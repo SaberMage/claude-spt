@@ -11,3 +11,7 @@ ci/git-hooks/*  text eol=lf
 *.json text eol=lf
 *.toml text eol=lf
 *.md   text eol=lf
+# Generated agent indexes (llms.txt / llms-full.txt) are emitted LF by ci/docs/gen-llms.sh; force
+# LF so the docs-drift gate's diff (generated LF vs committed file) never false-fails on a CRLF
+# checkout. Applies to any *.txt for consistency.
+*.txt  text eol=lf
