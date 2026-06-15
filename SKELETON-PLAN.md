@@ -31,25 +31,47 @@ Out (deferred to post-M12 — sequence after doyle's M12-live ping):
 
 ## Open design questions
 
-- **cplugs plugin name** — legacy occupies `spt`; skeleton needs a distinct marketplace name
-  (`spt-claude-code` / `claude-spt`?) while keeping the `/spt:` *skill* namespace. Resolve
-  before any cplugs push. (`docs/RELEASE-RUNBOOK.md` OPEN note.)
+- ~~cplugs plugin name~~ **RULED (operator, 2026-06-14): `sptc`** → skills `/sptc:*` (CC ties the
+  prefix to `plugin.json` name, no override). Succession: flip `sptc`→`spt` on parity-proof,
+  retiring legacy `spt` in the same move. `sptc` is the single-substitution rename seam.
 - **UPS-on-slash-command** — design assumes UPS fires; confirm empirically (above).
 - `/spt:setup` #9 verify fold-inline vs deferred (`SCOPE.md` §8 open item) — not skeleton-blocking.
 
 ## Tasks
 
 - [x] Green `traceable-reqs check` (fix seed scan-root manifest_error + 4 template tag-leaks).
-- [x] Seed skeleton-milestone REQs (inactive): DIST-PLUGIN-SKELETON, DIST-BOOTSTRAP-INSTALL,
-      DIST-HOOKS-API, DIST-MANIFEST-SCHEMA, UPS-INJECTION, SKILL-VERSION.
+- [x] Seed skeleton-milestone REQs: DIST-PLUGIN-SKELETON, DIST-BOOTSTRAP-INSTALL, DIST-HOOKS-API,
+      DIST-MANIFEST-SCHEMA, UPS-INJECTION, SKILL-VERSION.
 - [x] Capture cplugs skeleton-publish mechanics in `docs/RELEASE-RUNBOOK.md`.
-- [ ] Write ADR-0001 (distribution split) → `doc` evidence; activate reqs' `doc` stage.
-- [ ] Scaffold `plugin/` (plugin.json), `hooks/` (hooks.json → `spt api`; UPS-injection hook),
-      `skills/` (KEEP skeletons + `/spt:version`). Add these as `[scan].roots` when created.
-- [ ] Empirically test UPS-fires-on-slash-command; record result in ADR / KNOWN-HAZARDS.
-- [ ] Validate `plugin.json` + adapter manifest shape against published `manifest.schema.json`
-      from `SaberMage/spt-releases`.
-- [ ] Activate `impl`/`unit` stages + tag as each surface lands; `traceable-reqs check` EXIT=0.
+- [x] Write ADR-0001 (distribution split) → `doc` evidence (PLUGIN-SKELETON, HOOKS-API,
+      BOOTSTRAP-INSTALL, UPS-INJECTION activated to `doc`).
+- [x] `plugin/sptc/plugin.json` (name=sptc), `plugin/sptc/bootstrap.{sh,ps1}` (published
+      install-on-demand verbatim; BOOTSTRAP-INSTALL → `doc,impl`), 9 skill skeletons (KEEP set +
+      `/sptc:version`, thin stubs). Added `plugin` as a `[scan].root`.
+- [x] Record spt-core public-surface finding **F-001** in `docs/SPT-CORE-FINDINGS.md`; reported.
+- [ ] **BLOCKED on F-001 ruling:** the hook artifact. Held in BOTH media (CC `hooks.json` AND
+      manifest `[hooks.*]`) pending gap-#2 (does the plugin hand-write `hooks.json`, or does
+      spt-core materialize it from the manifest?). The 4 published mappings are ready (below).
+- [ ] **BLOCKED on F-001 #3:** UPS-injection impl (the additionalContext channel HOW).
+- [ ] UPS-fires-on-`/sptc:X` empirical test — run in a **throwaway** session (never
+      `/reload-plugins` on the live perch); trivial UPS echo hook; report the narrow fire/no-fire.
+- [ ] `/sptc:version` operative body + adapter manifest → validate against published
+      `manifest.schema.json` (`reference/schema.md`); activate MANIFEST-SCHEMA, SKILL-VERSION.
+- [ ] Tag `impl`/`unit` + activate as each surface lands; `traceable-reqs check` EXIT=0.
+
+## Published hook→`spt api` mappings (ready-to-wire once F-001 #2 rules the medium)
+
+From the published harness-contract (`api.md` / `integration-checklist.md` / `manifest.md`):
+
+| Claude Code hook | `spt api` invocation (published) |
+|---|---|
+| SessionStart | `api seed --pid {parent_pid} --session-id {session_id}` then `api listen <id>` |
+| Stop / Idle | `api state idle` (and `api state busy` on activity) |
+| PreCompact / clear | `api boundary <clear\|compact> <id> --to-session-id <sid>` |
+| SessionEnd | `api session-end <id>` (or `api shutdown <id>` for graceful final echo-commune) |
+| UserPromptSubmit | **gap F-001 #1/#3** — not published |
+| PreToolUse | **gap F-001 #1/#3** — not published |
+| SubagentStart / SubagentStop | `api worker-start/worker-stop` exist but **not mapped** (gap F-001 #1) |
 
 ## Gate
 

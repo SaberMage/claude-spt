@@ -29,7 +29,7 @@
 # audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
 # the moment those dirs are created (skeleton milestone, body #2) — until they exist a
 # nonexistent root is a hard manifest_error, so only list what is on disk now.
-roots = ["docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
+roots = ["plugin", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -60,18 +60,18 @@ required_stages = []
 
 [[requirements]]
 id = "REQ-DIST-PLUGIN-SKELETON"
-title = "Marketplace artifact on cplugs is a thin skeleton: namespaced /spt:* skill stubs + hooks.json + plugin.json, no embedded logic"
-required_stages = []
+title = "Marketplace artifact on cplugs is a thin skeleton: namespaced /sptc:* skill stubs + hooks.json + plugin.json, no embedded logic"
+required_stages = ["doc"]  # doc: ADR-0001. impl held until hooks.json lands (gap-F-001 #2).
 
 [[requirements]]
 id = "REQ-DIST-BOOTSTRAP-INSTALL"
 title = "SessionStart bootstrap installs spt-core when absent (invisible-installer pattern)"
-required_stages = []
+required_stages = ["doc", "impl"]  # doc: ADR-0001. impl: plugin/sptc/bootstrap.{sh,ps1}.
 
 [[requirements]]
 id = "REQ-DIST-HOOKS-API"
 title = "hooks.json delegates to `spt api` rather than carrying adapter logic"
-required_stages = []
+required_stages = ["doc"]  # doc: ADR-0001. impl held until gap-F-001 #2 (hooks.json vs spt-materialized) ruled.
 
 [[requirements]]
 id = "REQ-DIST-MANIFEST-SCHEMA"
@@ -80,8 +80,8 @@ required_stages = []
 
 [[requirements]]
 id = "REQ-UPS-INJECTION"
-title = "UserPromptSubmit hook detects /spt:X and injects X's real instructions as additionalContext (SKILL.md files stay skeletons); must be empirically confirmed UPS fires on slash-commands"
-required_stages = []
+title = "UserPromptSubmit hook detects /sptc:X and injects X's real instructions as additionalContext (SKILL.md files stay skeletons); must be empirically confirmed UPS fires on slash-commands"
+required_stages = ["doc"]  # doc: ADR-0001. impl held until gap-F-001 #3 (injection contract) ruled + UPS-fires test.
 
 [[requirements]]
 id = "REQ-SKILL-VERSION"

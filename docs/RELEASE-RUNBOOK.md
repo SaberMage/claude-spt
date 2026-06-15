@@ -80,19 +80,19 @@ git clone https://github.com/SaberMage/cplugs.git ~/.claude/plugins/marketplaces
 # 1. Bump plugin.json version. The plugin manager compares this to the cached copy and
 #    SKIPS the update entirely if they match — a stale version = a silent no-update.
 # 2. Copy skeleton files (NO binary) into the marketplace clone:
-MARKET=~/.claude/plugins/marketplaces/cplugs/plugins/<plugin>
+MARKET=~/.claude/plugins/marketplaces/cplugs/plugins/sptc
 cp -r skills/*  "$MARKET/skills/"
 cp -r hooks/*   "$MARKET/hooks/"
 cp .claude-plugin/plugin.json "$MARKET/.claude-plugin/"
 # 3. Commit + push the cplugs repo:
-cd ~/.claude/plugins/marketplaces/cplugs && git add plugins/<plugin>/ \
-  && git commit -m "<plugin>: <change>" && git push
+cd ~/.claude/plugins/marketplaces/cplugs && git add plugins/sptc/ \
+  && git commit -m "sptc: <change>" && git push
 ```
 
 **Pointer flip** (the authoritative install-state update):
 
 ```bash
-claude plugin install <plugin>@cplugs   # un-orphans + rewrites installed_plugins.json atomically
+claude plugin install sptc@cplugs   # un-orphans + rewrites installed_plugins.json atomically
 # then, inside Claude Code:
 /reload-plugins
 ```
@@ -110,10 +110,11 @@ claude plugin install <plugin>@cplugs   # un-orphans + rewrites installed_plugin
 skip all of it): `owl.exe` binary sync · the cache targeted-prune + keep-PREVIOUS-version logic ·
 the seamless binary handoff (owl Phase 18.4/18.5) · `DEPLOY.ps1`'s build/handoff orchestration.
 
-> **OPEN — cplugs plugin name.** Legacy already occupies the `spt` plugin name on cplugs; the
-> skeleton needs a **distinct** marketplace plugin name (candidate: `spt-claude-code` /
-> `claude-spt`) while still exposing the `/spt:` *skill* namespace (plugin name ≠ skill-namespace
-> prefix). Resolve before first cplugs push; replace `<plugin>` above.
+> **RULED (operator, 2026-06-14) — cplugs plugin name = `sptc`.** CC ties the skill prefix to the
+> `plugin.json` name (no override), so skills surface as `/sptc:*`. **Succession:** once parity is
+> proven, flip `plugin.json` name `sptc`→`spt` (skills → `/spt:*`) and retire/rename legacy owl's
+> cplugs `spt` plugin in the same coordinated move — two plugins cannot share the `spt` name. The
+> flip is a single substitution `s/sptc/spt/` (plugin dir, `plugin.json` name, marketplace path).
 
 ## Update path (dual, kept in sync)
 
