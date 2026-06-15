@@ -115,7 +115,7 @@ required_stages = ["doc", "impl", "unit"]
 [[requirements]]
 id = "REQ-CI-ACCEPTANCE"
 title = "Acceptance = scripted orchestration spawning real claude/headless sessions as the system-under-test, asserting spt-state/digest output (LLM is SUT, never the runner)"
-required_stages = ["doc", "impl"]  # doc: docs/CI.md. impl: ci/acceptance/{lib,run-acceptance}.sh + harness unit. int (real-claude spawn) held until demonstrated under disposable id (CI-ACCEPTANCE-PLAN follow-up).
+required_stages = ["doc", "impl", "int"]  # doc: docs/CI.md. impl: ci/acceptance/{lib,run-acceptance}.sh + harness unit. int: real `claude -p` spawn asserted UPS-hook-fires green 2026-06-15 under disposable id sptc-ci-40322 (operator perch perri survived — guard proven e2e).
 
 [[requirements]]
 id = "REQ-HAZARD-PERCH-COLLISION"
