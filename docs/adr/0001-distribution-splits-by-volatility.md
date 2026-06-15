@@ -93,6 +93,11 @@ Concretely:
 - New obligation: a dual update path kept in sync — file-pull (real) + a cautionary
   `claude plugin update` (skeleton sync only).
 <!-- [doc->REQ-DIST-SHORTCUT-BASENAME] -->
+- The manifest brands the `spt endpoint run` launcher shortcut **`cc-<id>`** via
+  `shortcut_basename = "cc"` (the M12 `cc` launcher; the harness-agnostic default would be
+  `spt-<id>`, and it matches the schema's own `spt-claude-code → cc` example). This launcher brand
+  is **decoupled** from the `sptc` plugin name — the `s/sptc/spt/` succession (next bullet) renames
+  the plugin, not this shortcut. (Operator-ruled 2026-06-15.)
 - Forces the cplugs **plugin-name** question, now **ruled (operator, 2026-06-14)**: because CC
   invokes skills as `/<plugin>:<skill>` (the skill prefix is hard-tied to the `plugin.json` name —
   no override; confirmed against the official plugin docs), the marketplace plugin is named

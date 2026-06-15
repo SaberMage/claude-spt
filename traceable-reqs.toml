@@ -80,8 +80,8 @@ required_stages = ["doc", "impl", "unit", "int"]  # doc: ADR-0001 (manifest laye
 
 [[requirements]]
 id = "REQ-DIST-SHORTCUT-BASENAME"
-title = "The adapter manifest brands the `spt endpoint run` picker shortcut as `sptc-<id>` via adapter.shortcut_basename = \"sptc\" (the s/sptc/spt/ succession seam, ADR-0001)"
-required_stages = ["doc", "unit"]  # doc: ADR-0001 (sptc seam + succession). unit: tests/manifest-shortcut.sh (brand-value regression guard on the declarative field). impl (a cc/sptc launcher) + int (real `spt endpoint run` picker emits sptc-<id>) deferred to the endpoint-run/cc-launcher parity slice — gated on the v0.7.0 binary (local spt is 0.6.0; shortcut_basename is a v0.7.0 field). The field itself is declarative config, not production code, so it carries no impl tag (the scanner classifies impl by file type — config is not impl).
+title = "The adapter manifest brands the `spt endpoint run` launcher shortcut as `cc-<id>` via adapter.shortcut_basename = \"cc\" (the M12 cc launcher; decoupled from the sptc plugin name, ADR-0001)"
+required_stages = ["doc", "unit"]  # doc: ADR-0001 (cc launcher brand, decoupled from the s/sptc/spt/ plugin-name succession). unit: tests/manifest-shortcut.sh (brand-value regression guard on the declarative field). impl (the cc launcher) + int (real `spt endpoint run` picker emits cc-<id>) deferred to the endpoint-run/cc-launcher parity slice — the shortcut-emitting picker "lands in a later spt-core wave" (per `endpoint run --help`) and needs `[session.self]`. The field itself is declarative config, not production code, so it carries no impl tag (the scanner classifies impl by file type — config is not impl).
 
 [[requirements]]
 id = "REQ-UPS-INJECTION"

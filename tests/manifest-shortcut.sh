@@ -1,8 +1,9 @@
 #!/bin/sh
 # Brand-value regression guard for the `spt endpoint run` shortcut: the manifest MUST declare
-# adapter.shortcut_basename = "sptc" (→ sptc-<id>). This is the s/sptc/spt/ succession seam
-# (ADR-0001) — a premature flip to "spt", or a drift to "cc"/default, is caught here, distinct
-# from the structural manifest-schema check. Run: sh tests/manifest-shortcut.sh (exit 0 = pass).
+# adapter.shortcut_basename = "cc" (→ cc-<id>, the M12 cc launcher). A drift to "sptc"/"spt"/default
+# is caught here, distinct from the structural manifest-schema check. (The launcher brand is
+# decoupled from the plugin name `sptc`; the s/sptc/spt/ succession renames the plugin, not this.)
+# Run: sh tests/manifest-shortcut.sh (exit 0 = pass).
 # [unit->REQ-DIST-SHORTCUT-BASENAME]
 ROOT=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 MANIFEST="$ROOT/adapter/claude-spt.toml"
@@ -13,8 +14,8 @@ line=$(grep -E '^[[:space:]]*shortcut_basename[[:space:]]*=' "$MANIFEST")
 if [ -z "$line" ]; then echo "FAIL no shortcut_basename assignment in manifest"; exit 1; fi
 
 case "$line" in
-  *'"sptc"'*) echo "ok   shortcut_basename = \"sptc\" (sptc-<id> brand intact)" ;;
-  *) echo "FAIL shortcut_basename is not \"sptc\": $line"; fail=1 ;;
+  *'"cc"'*) echo "ok   shortcut_basename = \"cc\" (cc-<id> brand intact)" ;;
+  *) echo "FAIL shortcut_basename is not \"cc\": $line"; fail=1 ;;
 esac
 
 # Defensive: exactly one active assignment (a stray second would make the picker value ambiguous).
