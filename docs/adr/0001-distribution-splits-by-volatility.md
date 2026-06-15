@@ -80,6 +80,10 @@ Concretely:
   instructions. (Tracked under `REQ-UPS-INJECTION`; see `SKELETON-PLAN.md`.)
 - **File-backed `[strings]` is an M12 spt-core dependency** — until M12 publishes, instruction
   bodies cannot be externalized; skeleton SKILL.md files may carry interim inline instructions.
+  **Update 2026-06-15:** M12 published (`spt 0.7.0`) **without** a file-backed `[strings]` mechanism
+  on the public surface — confirmed against the live binary and docs-site. Tracked as finding
+  **F-003** (`docs/SPT-CORE-FINDINGS.md`); the interim-inline fallback above stands until spt-core
+  adds the capability or this ADR is amended.
 
 ## Consequences
 

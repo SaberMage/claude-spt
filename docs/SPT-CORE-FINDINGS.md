@@ -10,6 +10,7 @@
 |---|------|--------|---------|
 | F-001 | 2026-06-14 | **re-scoped 2026-06-15** — most = adapter-authoring (closed); 1 residual spt-core docs item open | Hook-wiring for a CC adapter — boundary clarified |
 | F-002 | 2026-06-15 | **resolved-by-design** (ADR-0020) — envelope self-delimits; impl refactor pending | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
+| F-003 | 2026-06-15 | **open** — M12/v0.7.0 published, but the file-backed `[strings]` capability ADR-0001 depends on is **absent** from the public surface | No mechanism to externalize large `[strings]` values to files — `[strings]` is inline-only |
 
 ---
 
@@ -148,3 +149,46 @@ spt-core**. The `<EVENT>` envelope is **self-delimiting**, so multi-message drai
   relic at the poll surface. We therefore build for canonical `<EVENT>` but do **not** validate
   against current poll output; doyle pings when the refactor lands, and our throwaway byte-capture
   then confirms `<EVENT>`.
+
+---
+
+## F-003 — No file-backed `[strings]` mechanism on the M12/v0.7.0 public surface (ADR-0001 dependency unmet)
+
+**Reported:** 2026-06-15 to doyle + todlando. **Status:** open — spt-core capability gap (M12 shipped
+without the dependency ADR-0001 names).
+
+**The dependency (ours, ADR-0001):** UPS-injection delivers `/sptc:X` skill bodies from the adapter
+`[strings]` tree, explicitly **"file-backed, so the manifest doesn't bloat"** (`REQ-UPS-INJECTION`).
+ADR-0001's own Open/to-confirm names it: *"File-backed `[strings]` is an M12 spt-core dependency —
+until M12 publishes, instruction bodies cannot be externalized."* M12 is now public (`spt 0.7.0`).
+
+**The gap (confirmed against the live binary AND the published docs):** v0.7.0 exposes **no** way to
+externalize a `[strings]` value to a file. Every avenue is inline-only:
+
+- **Schema** (`adapter/manifest.schema.json`, vendored from the docs-site): `[strings]` is a plain
+  `object`, `additionalProperties: true` — no `$file`/`include`/`@file` value convention.
+- **`spt adapter get-string <opt> <key>`**: "prints the value (strings raw, else JSON)" — reads the
+  merged inline view; no file-reference resolution.
+- **`spt adapter set-string <opt> <key> <VALUE>`**: takes a **literal** `<VALUE>` positional — no
+  `--from-file`/stdin path for an individual value.
+- **`spt adapter create-profile --from <file>`**: ingests a *whole overlay TOML* whose values are
+  still inline — not a per-value file backing.
+- **Published docs** (`llms-full.txt`, manifest + CLI reference): no `@file`/include/external-ref
+  syntax documented anywhere; strings are described purely as inline manifest-resident data.
+
+(`[update] file_pull` ships adapter *files*, but it needs an Ed25519 signing key + a registry repo
+target we do not hold — already a finding-class gap, see manifest header — and it does not make a
+`[strings]` *value* resolve from a shipped file. Not a substitute.)
+
+**Impact / our handling:** non-blocking, by ADR-0001's own fallback — *"skeleton SKILL.md files may
+carry interim inline instructions."* So:
+- The `/sptc:whoami` + `/sptc:setup` skeletons keep **interim inline bodies** in the cplugs skeleton;
+  the manifest does **not** carry (and does not externalize) skill bodies in v0.7.0.
+- `REQ-UPS-INJECTION` stays at `[doc, impl, unit]` (activate-don't-pre-fail) — the externalization
+  half is held on this capability, not failed.
+- The manifest-bloat avoidance ADR-0001 promised is **unachievable on the published surface** until
+  spt-core adds a file-backed string mechanism (or rules that large bodies belong in another layer).
+
+**Ask for doyle/todlando:** does M12 intend file-backed `[strings]` and it is unpublished/unshipped,
+or has the design moved (e.g. bodies belong in a file-pull-shipped layer, not `[strings]`)? Either a
+docs+binary capability or an ADR-0001 amendment closes this.
