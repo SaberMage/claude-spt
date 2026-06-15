@@ -1,0 +1,17 @@
+# claude-spt-psyche — the [session.psyche_init] Psyche runner for the claude-spt adapter (the
+# LiveAgent companion). Rust for the SAME reasons as its sibling claude-spt-digest: a compiled,
+# dependency-light binary the spt-core daemon can spawn BARE (detached, stdio-null) on Win+Linux
+# with no interpreter-on-PATH or locale hazard. `psyche_init.command` in claude-spt.toml launches
+# this. std-only (no deps): its whole job is orchestration glue (spawn `claude`, poll its perch).
+[package]
+name = "claude-spt-psyche"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "claude-spt-psyche"
+path = "src/main.rs"
+
+[profile.release]
+strip = true

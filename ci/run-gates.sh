@@ -29,6 +29,13 @@ else
   echo "SKIP: no digest extractor build yet"
 fi
 
+gate "psyche-runner (cargo build + test)"
+if [ -f "$ROOT/ci/psyche/build.sh" ]; then
+  if sh "$ROOT/ci/psyche/build.sh"; then :; else fail "psyche-runner"; fi
+else
+  echo "SKIP: no psyche runner build yet"
+fi
+
 gate "traceable-reqs check (requirement coverage)"
 if command -v traceable-reqs >/dev/null 2>&1; then
   if traceable-reqs check >/dev/null 2>&1; then echo "ok  coverage green"; else fail "traceable-reqs check"; traceable-reqs check || true; fi

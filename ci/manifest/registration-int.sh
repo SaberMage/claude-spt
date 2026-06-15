@@ -54,9 +54,10 @@ cbody=$(spt adapter get-string claude-spt skills.commune 2>&1)
 case "$cbody" in "# /sptc:commune"*) ok "file-backed string resolves: skills.commune -> body" ;; *) bad "skills.commune not resolved to file body: '$(printf %.40s "$cbody")'" ;; esac
 fbody=$(spt adapter get-string claude-spt "skills.force-stop" 2>&1)
 case "$fbody" in "# /sptc:force-stop"*) ok "file-backed string resolves: skills.force-stop -> body" ;; *) bad "skills.force-stop not resolved to file body: '$(printf %.40s "$fbody")'" ;; esac
-# `live` remains an inline summary (held pending doyle's psyche_init propagation confirmation).
-inline=$(spt adapter get-string claude-spt skills.live 2>&1)
-[ "$inline" = "Upgrade this session to a live agent (Psyche-backed)." ] && ok "inline string prints as-is: skills.live" || bad "skills.live inline='$inline'"
+# `live` is now file-backed too (LiveAgent activation body; the inline summary was flipped once the
+# :live profile + claude-spt-psyche runner landed — REQ-SKILL-LIVE).
+lbody=$(spt adapter get-string claude-spt skills.live 2>&1)
+case "$lbody" in "# /sptc:live"*) ok "file-backed string resolves: skills.live -> body" ;; *) bad "skills.live not resolved to file body: '$(printf %.40s "$lbody")'" ;; esac
 
 # 4c. UPS skill-injection end-to-end: the hook helper resolves a /sptc:<skill> prompt to the wrapped
 #     operative body via get-string (REQ-UPS-INJECTION impl, on the registered adapter).

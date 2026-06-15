@@ -176,11 +176,12 @@ adapter_label = "Claude Code (spt, deep)"
 # published example's use of it is a bug doyle fixed) and NOT {psyche_context} (the resume-preload
 # seam, not first spawn). `detach=true` + cwd={psyche_dir}: the Psyche is fire-and-forget detached
 # (Stdio::null, unsupervised), owns its `<parent>-psyche` perch, authors commune-drops only, exits at
-# session end. SKELETON: claude-spt-psyche (the resident headless-claude companion runner) is built in
-# the live sub-slice — `claude -p` is one-shot, so the runner is a resident wrapper (claude --continue
-# loop driven by its perch) / Agent SDK, NOT a bare `claude -p`. The /sptc:live ACTIVATION verb for a
-# hook-draining (no `api listen`) session is held pending doyle (what daemon event raises spawn_psyche).
-# [impl->REQ-DIST-MANIFEST-SCHEMA]
+# session end. The runner (claude-spt-psyche, tools/) is BUILT: a resident wrapper — `claude -p` is
+# one-shot, so it seeds the Psyche `claude` session once from {psyche_prompt} then drives one
+# `claude --continue` turn per daemon pulse (NOT a bare `claude -p`), the claude authoring commune
+# drops. Activation: /sptc:live brings the perch up under the `claude-spt:live` composite (the overlay
+# the daemon resolves to see psyche_init) + runs the delivery relay via Monitor (skills/live.md).
+# [impl->REQ-SKILL-LIVE]
 [profiles.live.session.psyche_init]
 command = "claude-spt-psyche --id {id} --session-id {session_id} --prompt {psyche_prompt}"
 cwd = "{psyche_dir}"
@@ -212,13 +213,12 @@ signoff = { file = "skills/signoff.md" }       # -> spt endpoint shutdown (grace
 list-agents = { file = "skills/list-agents.md" } # -> spt endpoint list (the roster)
 commune = { file = "skills/commune.md" }       # -> file-drop <id>-commune.md into [session].commune_dir
 force-stop = { file = "skills/force-stop.md" } # -> spt endpoint shutdown (graceful, tears down Psyche)
-# --- pending bodies (don't invent; doyle scope ruling 2026-06-15) ---
-# `live` -> upgrade THIS session to LiveAgent via a `claude-spt:live` profile that overlays
-# [session.psyche_init]. HELD pending doyle confirming (in spt-core code) that the seed-time profile
-# PROPAGATES to drive the daemon's psyche_init spawn (the api accepts `--adapter claude-spt:live` but
-# whether it resolves the overlay vs the base manifest at spawn is unconfirmed — a doc-vs-code edge
-# doyle is grounding). Author the `:live` profile + body on his answer. (SKILLS-SLICE-PLAN.md)
-live = "Upgrade this session to a live agent (Psyche-backed)."
+# `live` -> upgrade THIS session to a LiveAgent via the `claude-spt:live` profile (overlays
+# [session.psyche_init] -> daemon spawns the Psyche) + a resident Monitor relay as the delivery pipe.
+# Profile propagation CONFIRMED in spt-core code (doyle 2026-06-15: api seed stores the composite ->
+# info.json adapter -> daemon resolve_option_in applies the overlay -> BrainLifecycle checks
+# psyche_init on the merged view). Body authored; runner (claude-spt-psyche) built (tools/).
+live = { file = "skills/live.md" }             # -> activate claude-spt:live + Monitor relay (LiveAgent)
 # `new-alarm` -> EXPLICIT OUT OF SCOPE for v1: no core `spt` alarm/timed-pulse primitive exists
 # (legacy $LIVE TIMED PULSE is owl/Psyche-layer, not lifted into core; adapters don't add core
 # features). doyle carries a parity-gap finding to mint a core deferred-pulse primitive; the skill

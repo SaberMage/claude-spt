@@ -105,6 +105,19 @@
 - hard/no-grace force-stop core primitive (force-stop hard path).
 - (pending) ready-vs-live authoring path doc clarity — confirm or flag in task 1.
 
+## LIVE SUB-SLICE — DONE (this session)
+- `tools/claude-spt-psyche` resident runner (Rust, std-only): seeds the Psyche `claude` session from
+  `{psyche_prompt}`, drives one `claude --continue` turn per perch pulse (`spt ready <id> --once`),
+  exits on perch-close. NOT bare `claude -p` (one-shot). 8 cargo tests (arg parse + seed/pulse/poll
+  command construction + blank-pulse guard); `ci/psyche/build.sh` gate wired into run-gates.
+- `adapter/strings/skills/live.md` authored; manifest `live` inline → `{ file }`; psyche_init comment
+  updated (runner built, propagation confirmed); live SKILL.md stub refreshed (operative).
+- REQ-SKILL-LIVE added + satisfied [doc,impl,unit]; int deferred (daemon Psyche loop staged behind
+  REQ-DAEMON-1/M11-W0 + Monitor relay needs a real live CC session). registration-int.sh updated
+  (live now file-backed, not inline). **Gate PASS + traceable green.**
+- Psyche treated as daemon-managed (runner = dumb resident wrapper; no lifecycle orchestration in the
+  live body). Monitor-relay activation documented in live.md; poll/relay reconcile noted.
+
 ## Done earlier this session (context)
 - d1f14ab `[session.self]` + bind path (REQ-DIST-SHORTCUT-BASENAME [doc,impl,unit]).
 - 39c05d1 digest extractor (Rust) (REQ-DIST-DIGEST-EXTRACTOR [impl,unit]; int F-004-blocked, doyle fixing).
