@@ -48,30 +48,23 @@ Out (deferred to post-M12 — sequence after doyle's M12-live ping):
 - [x] `plugin/sptc/plugin.json` (name=sptc), `plugin/sptc/bootstrap.{sh,ps1}` (published
       install-on-demand verbatim; BOOTSTRAP-INSTALL → `doc,impl`), 9 skill skeletons (KEEP set +
       `/sptc:version`, thin stubs). Added `plugin` as a `[scan].root`.
-- [x] Record spt-core public-surface finding **F-001** in `docs/SPT-CORE-FINDINGS.md`; reported.
-- [ ] **BLOCKED on F-001 ruling:** the hook artifact. Held in BOTH media (CC `hooks.json` AND
-      manifest `[hooks.*]`) pending gap-#2 (does the plugin hand-write `hooks.json`, or does
-      spt-core materialize it from the manifest?). The 4 published mappings are ready (below).
-- [ ] **BLOCKED on F-001 #3:** UPS-injection impl (the additionalContext channel HOW).
-- [ ] UPS-fires-on-`/sptc:X` empirical test — run in a **throwaway** session (never
-      `/reload-plugins` on the live perch); trivial UPS echo hook; report the narrow fire/no-fire.
+- [x] Record spt-core public-surface finding **F-001**; **converged + re-scoped 2026-06-15** with
+      doyle (grounded in `CONTEXT.md`): the hook wiring is adapter-authoring (ours), not spt-core
+      gaps. Residual spt-core item = publish `api poll` emit-format + sub-key catalog (doyle, non-
+      blocking). See `docs/SPT-CORE-FINDINGS.md`.
+- [x] **ADR-0002** — hook wiring: hand-written CC `hooks.json` shells `spt api --adapter claude-spt`;
+      full CC-event→api mapping; lifecycle (SessionStart seeds, `listen` runs from `/sptc:ready|live`
+      not a hook); UPS→`poll`→stdout→`additionalContext`. Grounded in observed 0.6.0 binary + CC
+      hook-input schema.
+- [ ] **NEXT BODY — author + validate the hook glue (unblocked):**
+  - [ ] `plugin/sptc/hooks/hooks.json` + portable stdin→`api`-flag wrappers, per ADR-0002 mapping.
+  - [ ] Resolve **hook-side id-resolution** (ADR-0002 Open #1) empirically against the binary.
+  - [ ] `UPS-fires-on-/sptc:X` empirical test in a **throwaway** session (never `/reload-plugins`
+        on the live perch); report fire/no-fire + the observed `api poll` frame format to doyle.
+  - [ ] Activate `REQ-DIST-HOOKS-API` / `REQ-UPS-INJECTION` `impl` + tag as the validated wiring lands.
 - [ ] `/sptc:version` operative body + adapter manifest → validate against published
       `manifest.schema.json` (`reference/schema.md`); activate MANIFEST-SCHEMA, SKILL-VERSION.
 - [ ] Tag `impl`/`unit` + activate as each surface lands; `traceable-reqs check` EXIT=0.
-
-## Published hook→`spt api` mappings (ready-to-wire once F-001 #2 rules the medium)
-
-From the published harness-contract (`api.md` / `integration-checklist.md` / `manifest.md`):
-
-| Claude Code hook | `spt api` invocation (published) |
-|---|---|
-| SessionStart | `api seed --pid {parent_pid} --session-id {session_id}` then `api listen <id>` |
-| Stop / Idle | `api state idle` (and `api state busy` on activity) |
-| PreCompact / clear | `api boundary <clear\|compact> <id> --to-session-id <sid>` |
-| SessionEnd | `api session-end <id>` (or `api shutdown <id>` for graceful final echo-commune) |
-| UserPromptSubmit | **gap F-001 #1/#3** — not published |
-| PreToolUse | **gap F-001 #1/#3** — not published |
-| SubagentStart / SubagentStop | `api worker-start/worker-stop` exist but **not mapped** (gap F-001 #1) |
 
 ## Gate
 

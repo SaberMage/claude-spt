@@ -8,7 +8,7 @@
 
 | # | Date | Status | Summary |
 |---|------|--------|---------|
-| F-001 | 2026-06-14 | reported → doyle | Hook-wiring contract for a CC adapter is incomplete (3 sub-gaps) |
+| F-001 | 2026-06-14 | **re-scoped 2026-06-15** — most = adapter-authoring (closed); 1 residual spt-core docs item open | Hook-wiring for a CC adapter — boundary clarified |
 
 ---
 
@@ -48,6 +48,36 @@
    (`docs/adr/0001-*`) specifically — it cannot be validated against the public surface until this
    is documented.
 
-**Impact:** SessionStart / Stop(idle) / SessionEnd / boundary are buildable now. UserPromptSubmit +
-PreToolUse + Subagent wiring + the entire injection path are blocked pending docs. `hooks.json` and
-the UPS-injection design are held.
+**Impact (as first reported):** SessionStart / Stop(idle) / SessionEnd / boundary are buildable now.
+UserPromptSubmit + PreToolUse + Subagent wiring + the entire injection path were *thought* blocked.
+
+### Resolution (2026-06-15 — converged with doyle, grounded in `CONTEXT.md`)
+
+The boundary canon (`CONTEXT.md` L52/L181/L112/L149/L137) re-frames F-001: **spt-core is
+harness-independent and supplies the agnostic `spt api` primitives + their I/O format; the adapter
+authors the harness-specific wiring + output-formatting.** So most of F-001 is **adapter-authoring
+work (ours), not an spt-core gap**:
+
+- **Gap 1 (CC-event → api mapping) — OURS, closed.** Which CC hook drives which `api` primitive is
+  adapter glue (L181). Owned mappings: SessionStart → `api seed` (+ env aliases); `/sptc:ready|live`
+  → `api listen <id>` (the blocking poll loop — *not* SessionStart, which must not block); Stop/Idle
+  → `api state idle|busy`; PreCompact/clear → `api boundary`; SessionEnd → `api session-end` /
+  signoff → `api shutdown`; SubagentStart/Stop → `api worker-start`/`worker-stop`; UserPromptSubmit
+  → `api poll`; **PreToolUse out-of-scope v1** (UPS covers delivery). See `docs/adr/0002-*`.
+- **Gap 2 (medium) — OURS, closed.** The `sptc` plugin **hand-writes** its CC `hooks.json` shelling
+  `spt api`. spt-core materializing a CC `hooks.json` would violate L52/L181 — it correctly doesn't.
+- **Gap 3 (injection HOW) — OURS, closed.** `api poll` emits message frames to **stdout** by design
+  (L149) — that IS the hook-injection delivery path; routing/formatting that stdout into CC's
+  `additionalContext` channel is adapter glue (L112). The earlier "`can_inject`/`[inject]`
+  method-discard is dead code" alarm is **retracted** — it is M2a roadmap staging (stdout/hook only
+  now; PTY at M3), and `can_inject` drives the *built* echo-gate/relay fallback (L137) for hooks that
+  cannot inject (e.g. CC Stop).
+- **CC param-sourcing** ({parent_pid}/{session_id}) — OURS: read off the CC hook-input schema
+  (`session_id` is a common stdin field; pid via the hook process). Not an spt-core concern.
+
+**Residual spt-core item (doyle owns; non-blocking):** publish the **agnostic primitives** to the
+adapter-facing docs-site — specifically `api poll`'s **emit frame format** (the frame we parse +
+format for CC) and the **substitution-key catalog** (currently code-only). doyle verifies against
+`CONTEXT.md`/ADRs then propagates (no new design). We will report the **observed** `api poll` frame
+format so the publish can confirm-match. Until published we may rely on observed behavior of the
+public binary (observable behavior = public surface).
