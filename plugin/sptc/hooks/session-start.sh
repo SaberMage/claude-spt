@@ -1,6 +1,8 @@
 #!/bin/sh
-# SessionStart: ensure spt-core installed, seed the perch (or rebind on clear/compact),
-# and persist session env so whoami + per-prompt hooks resolve. Non-blocking (never `listen`).
+# SessionStart: ensure spt-core installed, then register the perch — bind (spt-hosted, broker
+# spawned us via [session.self] + injected $SPT_ENDPOINT_ID), seed (harness-hosted, user-launched
+# CC), or boundary-rebind (clear/compact) — and persist session env so whoami + per-prompt hooks
+# resolve. Non-blocking (never `listen`).
 # [impl->REQ-DIST-HOOKS-API]
 . "$CLAUDE_PLUGIN_ROOT/hooks/_common.sh"
 
@@ -12,13 +14,24 @@ src=$(json_str "$input" source)
 sh "$CLAUDE_PLUGIN_ROOT/bootstrap.sh" >/dev/null 2>&1 || true
 SPT=$(spt_bin)
 
-case "$src" in
-  clear|compact)
+case "$(sptc_register_verb "$src")" in
+  boundary)
     id=$(sptc_self_id "$sid")
     [ -n "$id" ] && "$SPT" api --adapter "$ADAPTER" boundary "$src" "$id" \
       --to-session-id "$sid" >/dev/null 2>&1 || true
     ;;
-  *)
+  bind)
+    # spt-hosted: `spt endpoint run` spawned us into the broker PTY and injected the endpoint id via
+    # [env.SPT_ENDPOINT_ID]. The perch already exists — self-register post-spawn by binding our
+    # discovered CC session id, NOT seed (no seed file in this path). `bind` is an ESTABLISHING call:
+    # the broker parentage IS the credential (auth intrinsic), so --set-session-id alone, no proof
+    # token — confirmed by doyle 2026-06-15 (harness-contract/api.md "Auth is intrinsic"). Later
+    # mutating calls prove association with --session-id "$sid" against the record bind wrote.
+    "$SPT" api --adapter "$ADAPTER" bind "$SPT_ENDPOINT_ID" \
+      --set-session-id "$sid" >/dev/null 2>&1 || true
+    ;;
+  seed)
+    # harness-hosted (seed→listen path): user-launched CC. Record the seed for /sptc:ready|live.
     "$SPT" api --adapter "$ADAPTER" seed --pid "$PPID" --session-id "$sid" >/dev/null 2>&1 || true
     ;;
 esac

@@ -12,8 +12,10 @@
 #
 # Deferred to later parity slices (not in this slice; each declares an adapter seam we have not
 # yet built, or needs a capability not on the public surface — see notes inline):
-#   * [session] + [session.<role>]  — live-agent / Psyche / commune / signoff / notif spawn
-#     templates. Land with the M12 parity surfaces (/sptc:live, commune, signoff).
+#   * [session.<role>] for psyche_init/psyche_resume/echo_commune/signoff/notif — the live-agent /
+#     Psyche layer (owl/$LIVE), absent from the core `spt` surface. Open scope question (does
+#     claude-spt reach the Psyche layer?). [session.self] IS authored below (the endpoint-run/bind
+#     bringup that hosts a fresh CC session — the M12 `cc` launcher target).
 #   * [history]                     — transcript-access seam. Lands with [digest]'s sibling fetcher.
 #   * [update]                      — distribution self-update. `file_pull` needs (a) a published
 #     adapter-registry repo target and (b) an Ed25519 content-signing key we do not yet hold;
@@ -85,6 +87,30 @@ can_inject = false
 session_id_source = "post_spawn"
 # Process-tree anchor when session_id is absent: the Claude Code binary.
 parent_ancestor_name = "claude"
+
+# ── [session.self] ─────────────────────────────────────────────────────────────────────────
+# The spt-hosted bringup template (publish target #2's launcher seam). `spt endpoint run --adapter
+# claude-spt --id <id>` spawns this command into a broker-held PTY; CC self-registers its perch
+# post-spawn (`api bind <id>`, the spt-hosted path — NOT the seed→listen path /sptc:ready|live uses).
+# This is what the `cc-<id>` shortcut (shortcut_basename="cc") bakes into a non-interactive launch.
+#
+# command is `claude` bare: CC mints its OWN session id internally (identity.session_id_source =
+# post_spawn), so spt's {session_id} is not threaded on argv — only the endpoint {id} matters, and
+# CC has no native flag for it, so it rides the ENV instead (see [env.SPT_ENDPOINT_ID] below; the
+# published sanctioned pattern for a flagless harness). SessionStart reads $SPT_ENDPOINT_ID and binds.
+# [impl->REQ-DIST-SHORTCUT-BASENAME]
+[session.self]
+command = "claude"
+keys = ["id"]
+
+# ── [env.<VAR>] ────────────────────────────────────────────────────────────────────────────
+# Broker-injected env for spt-hosted (bind-path) sessions. The endpoint {id} is injected so CC's
+# SessionStart hook can self-register the right perch via `api bind $SPT_ENDPOINT_ID`. spt-hosted
+# sessions inherit env from the spawning broker, so no `channel` is needed (that field is for the
+# harness-hosted injection path). [impl->REQ-DIST-SHORTCUT-BASENAME]
+[env.SPT_ENDPOINT_ID]
+direction = "inject"
+value = "{id}"
 
 # ── [inject] ───────────────────────────────────────────────────────────────────────────────
 [inject]

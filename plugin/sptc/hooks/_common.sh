@@ -23,6 +23,19 @@ json_str() {
   printf '%s' "$1" | sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" | head -n1
 }
 
+# Decide the SessionStart registration verb for this spawn ($1 = CC hook `source`; reads env
+# $SPT_ENDPOINT_ID). Pure — no spt/CC. [impl->REQ-DIST-SHORTCUT-BASENAME]
+#   boundary — a /clear or /compact within a live session (rebind the perch to the new session id)
+#   bind     — spt-hosted: `spt endpoint run` spawned us via [session.self] + injected the endpoint
+#              id into $SPT_ENDPOINT_ID; the perch already exists, self-register post-spawn
+#   seed     — harness-hosted: user-launched CC; record an ephemeral seed for /sptc:ready|live
+sptc_register_verb() {
+  case "$1" in
+    clear|compact) printf boundary ;;
+    *) if [ -n "${SPT_ENDPOINT_ID:-}" ]; then printf bind; else printf seed; fi ;;
+  esac
+}
+
 # Resolve this session's perch id via spt whoami (off $OWL_SESSION_ID / $SPT_AGENT_ID).
 # Empty => no perch yet (session never readied) => caller no-ops.
 sptc_self_id() {

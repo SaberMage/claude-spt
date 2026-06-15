@@ -58,6 +58,14 @@ inline=$(spt adapter get-string claude-spt skills.commune 2>&1)
     *) printf 'inject got: %.60s\n' "$inj"; exit 1 ;;
   esac ) && ok "UPS skill-injection: /sptc:whoami -> wrapped body" || bad "skill-injection did not emit wrapped body"
 
+# 4d. The spt-hosted bringup blocks ([session.self] + [env.SPT_ENDPOINT_ID]) cross-field-validate:
+#     `adapter add` (step 1) is manifest-first ("an invalid manifest registers nothing"), so the
+#     manifest carrying these blocks registering at all proves spt-core accepted their shape. Confirm
+#     the registered adapter advertises a hostable harness — the thing `spt endpoint run` spawns via
+#     [session.self] (the M12 cc-launcher target). [int->REQ-DIST-MANIFEST-SCHEMA]
+cap=$(spt api --adapter claude-spt --manifest "$MANIFEST" capability 2>&1)
+case "$cap" in *LiveAgent*) ok "bringup blocks accepted; capability reports hostable harness" ;; *) bad "capability missing LiveAgent: $cap" ;; esac
+
 # 5. Soft-deregister cleanly.
 rm=$(spt adapter remove claude-spt 2>&1)
 list2=$(spt adapter list 2>&1)

@@ -56,4 +56,17 @@ check "skill_key other ns"    ""       "$(sptc_skill_key '/other:whoami')"
 check "skill_key not a cmd"   ""       "$(sptc_skill_key 'whoami am i')"
 check "skill_key empty"       ""       "$(sptc_skill_key '')"
 
+# --- sptc_register_verb: SessionStart bind/seed/boundary branch --- [unit->REQ-DIST-SHORTCUT-BASENAME]
+# spt-hosted (endpoint id injected) -> bind; harness-hosted (no id) -> seed; clear/compact -> boundary.
+unset SPT_ENDPOINT_ID
+check "verb harness-hosted startup"   "seed"     "$(sptc_register_verb startup)"
+check "verb harness-hosted empty src" "seed"     "$(sptc_register_verb '')"
+check "verb boundary clear"           "boundary" "$(sptc_register_verb clear)"
+check "verb boundary compact"         "boundary" "$(sptc_register_verb compact)"
+SPT_ENDPOINT_ID=cc-7; export SPT_ENDPOINT_ID
+check "verb spt-hosted startup -> bind" "bind"     "$(sptc_register_verb startup)"
+# A /clear inside an spt-hosted session still rebinds via boundary (never re-binds fresh).
+check "verb spt-hosted clear -> boundary" "boundary" "$(sptc_register_verb clear)"
+unset SPT_ENDPOINT_ID
+
 [ "$fail" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "FAILURES"; exit 1; }
