@@ -74,10 +74,11 @@ Concretely:
 
 ### Open / to-confirm
 
-- **UPS-fires-on-slash-command is an empirical assumption.** The design assumes
-  `UserPromptSubmit` fires when the prompt is a `/spt:X` slash-command. This is undocumented and
-  must be confirmed at build time; if it does **not** fire, the fallback is in-SKILL.md
-  instructions. (Tracked under `REQ-UPS-INJECTION`; see `SKELETON-PLAN.md`.)
+- **UPS-fires-on-slash-command — CONFIRMED (2026-06-15, ADR-0002 validation).** `UserPromptSubmit`
+  fires on a `/sptc:X` slash-command with the token intact (`prompt:"/sptc:send doyle"` literal, hook
+  fired, skill ran, on CC 2.1.177). The injection branch is built (`user-prompt-submit.sh`
+  `sptc_skill_key` + `sptc_inject_skill`); the in-SKILL.md fallback is unneeded for injection (but
+  `setup` stays self-contained — it runs when spt may be absent). (`REQ-UPS-INJECTION`.)
 - **File-backed `[strings]` is an M12 spt-core dependency** — until M12 publishes, instruction
   bodies cannot be externalized; skeleton SKILL.md files may carry interim inline instructions.
   **Update 2026-06-15 — SATISFIED.** M12 (`spt 0.7.0`) ships file-backed `[strings]` as a

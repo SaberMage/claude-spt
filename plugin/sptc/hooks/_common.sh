@@ -67,3 +67,26 @@ render_frames() {
     fi
   done
 }
+
+# Extract the skill name from a `/sptc:<skill>` slash-command prompt ($1=prompt). UPS fires on a
+# slash-command with the token intact (ADR-0002 validation 2026-06-15: `prompt:"/sptc:send doyle"`),
+# so the wrapper detects the command here. Leading-only (after optional whitespace) to avoid firing
+# on prose that merely mentions `/sptc:x` mid-sentence. Empty => not a sptc slash-command.
+# [unit->REQ-UPS-INJECTION]
+sptc_skill_key() {
+  printf '%s' "$1" | sed -n 's#^[[:space:]]*/sptc:\([a-z][a-z0-9-]*\).*#\1#p' | head -n1
+}
+
+# Inject a skill's operative instructions ($1=skill name) as additionalContext. Resolves the
+# file-backed/inline body from the adapter `[strings.skills].<skill>` via `spt adapter get-string`
+# (F-003: pointer values resolve to file contents at read time). No-op (silent) if spt is absent,
+# the adapter is unregistered, or the key is unset — the thin SKILL.md skeleton still loaded by CC
+# is the floor. The injected body is what the agent follows for this `/sptc:<skill>` invocation.
+# [impl->REQ-UPS-INJECTION]
+sptc_inject_skill() {
+  _skill="$1"; [ -z "$_skill" ] && return 0
+  _spt="$(spt_bin)"
+  _body=$("$_spt" adapter get-string "$ADAPTER" "skills.$_skill" 2>/dev/null) || return 0
+  [ -z "$_body" ] && return 0
+  printf '<sptc_skill name="%s">\n%s\n</sptc_skill>\n' "$_skill" "$_body"
+}

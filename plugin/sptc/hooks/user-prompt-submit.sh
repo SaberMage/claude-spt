@@ -1,13 +1,23 @@
 #!/bin/sh
-# UserPromptSubmit: drain delivered messages (the hook-injection channel, L149) and surface
-# them to CC as additionalContext. Parses the canonical self-delimiting <EVENT> envelope
-# (ADR-0020), so multi-message drains split cleanly on </EVENT>. [impl->REQ-UPS-INJECTION]
+# UserPromptSubmit: two jobs on the same hook (ADR-0002 — UPS fires on a `/sptc:X` slash-command
+# with the token intact, validated 2026-06-15). Both write to stdout = CC additionalContext:
+#   1. SKILL-INJECTION — detect `/sptc:<skill>` in the prompt and inject that skill's operative
+#      instructions from the adapter `[strings.skills].<skill>` (the thin SKILL.md stays a stub).
+#   2. MESSAGE-DRAIN — `api poll` the perch and surface delivered <EVENT> messages.
+# [impl->REQ-UPS-INJECTION]
 . "$CLAUDE_PLUGIN_ROOT/hooks/_common.sh"
 
 input=$(cat)
 sid=$(json_str "$input" session_id)
+
+# 1. Skill-injection runs BEFORE the perch check — skills like /sptc:whoami and /sptc:setup are
+#    valid without a readied perch (setup even runs before spt exists). No-op if not a sptc command.
+prompt=$(json_str "$input" prompt)
+sptc_inject_skill "$(sptc_skill_key "$prompt")"
+
+# 2. Message-drain needs a perch. No perch (session not readied) -> nothing to deliver.
 id=$(sptc_self_id "$sid")
-[ -z "$id" ] && exit 0   # no perch (session not readied) -> nothing to deliver
+[ -z "$id" ] && exit 0
 
 SPT=$(spt_bin)
 frames=$("$SPT" api --adapter "$ADAPTER" poll "$id" --session-id "$sid" 2>/dev/null)
@@ -15,7 +25,5 @@ frames=$("$SPT" api --adapter "$ADAPTER" poll "$id" --session-id "$sid" 2>/dev/n
 
 # Format for CC, preserving the sender (reply-correlation: ADR-0009/0012). render_frames parses
 # the self-delimiting <EVENT> envelope (ADR-0020) — multi-message drains split on </EVENT>.
-# UserPromptSubmit: stdout is added to the prompt context. (JSON additionalContext shape is an
-# alternative — to confirm in throwaway validation which CC accepts here.)
 render_frames "$frames"
 exit 0

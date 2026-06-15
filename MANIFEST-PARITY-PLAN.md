@@ -58,14 +58,17 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
      - **TODO (per-skill increments)** — convert the remaining inline summaries (commune, live, ready,
        send, signoff, version) to file-backed bodies as each is authored. ready/send should **delegate
        to `spt how-to ready|send`** (published agent guidance) rather than duplicate.
-     - **NOT this slice (separate, REQ-UPS-INJECTION):** the UPS hook only *drains the inbox* today
-       (`user-prompt-submit.sh`: `api poll` → `render_frames`); the **skill-body injection branch**
-       (detect `/sptc:X` → inject `get-string skills.<x>`) is **unbuilt**, and its gate — *does CC's
-       UserPromptSubmit even fire on a `/slash` prompt?* — is still ADR-0001's open empirical question
-       (throwaway live-CC byte-test). That, not the manifest source, is the real blocker for operative
-       skills. `REQ-UPS-INJECTION` int stays held on it. The whoami/setup SKILL.md stubs still say
-       "held pending … M12 file-backed `[strings]`" — that clause is now stale (capability shipped);
-       refresh when the injection branch lands.
+   - **DONE (this session) — UPS skill-injection branch BUILT.** UPS-fires-on-slash was already
+     proven (ADR-0002 validation 2026-06-15: `/sptc:X` fires with token intact on CC 2.1.177) — my
+     earlier "still-open" framing was stale. Built: `_common.sh` `sptc_skill_key` (pure, detect
+     `/sptc:<skill>` leading-only) + `sptc_inject_skill` (resolve body via `get-string skills.<x>`,
+     wrap `<sptc_skill name>`); `user-prompt-submit.sh` now injects BEFORE the perch check (whoami/
+     setup need no perch) then drains. Tests: hooks-parse unit (skill_key, 8 cases) + registration-int
+     4c (end-to-end `/sptc:whoami` → wrapped body, 9/9 vs live v0.7.0). `setup` SKILL.md is
+     self-contained (runs when spt may be absent → injection no-ops; stub is the floor). whoami/setup
+     stubs refreshed (stale "not yet operative" removed). `REQ-UPS-INJECTION` `[doc,impl,unit]` stays
+     covered; `int` still held — but ONLY on the message-DRAIN half (`api poll` → additionalContext
+     round-trip, gated on REQ-MSG-ENVELOPE publish). The skill-injection int is satisfied (4c).
    - **TODO** `[session.self]` + `spt endpoint run` bringup + `cc`/`sptc` launcher → unblocks the
      held **REQ-DIST-SHORTCUT-BASENAME** impl+int (the `<basename>-<id>` picker "lands in a later
      spt-core wave" per `endpoint run --help`; `endpoint run` spawns `[session.self]`, still deferred).

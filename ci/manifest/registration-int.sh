@@ -49,6 +49,15 @@ case "$body" in "# /sptc:whoami"*) ok "file-backed string resolves: skills.whoam
 inline=$(spt adapter get-string claude-spt skills.version 2>&1)
 [ "$inline" = "Report the spt-core-tracked adapter/binary version-of-truth." ] && ok "inline string prints as-is: skills.version" || bad "skills.version inline='$inline'"
 
+# 4c. UPS skill-injection end-to-end: the hook helper resolves a /sptc:<skill> prompt to the wrapped
+#     operative body via get-string (REQ-UPS-INJECTION impl, on the registered adapter).
+( . "$ROOT/plugin/sptc/hooks/_common.sh"
+  inj=$(sptc_inject_skill "$(sptc_skill_key '/sptc:whoami report me')")
+  case "$inj" in
+    '<sptc_skill name="whoami">'*'# /sptc:whoami'*'</sptc_skill>'*) exit 0 ;;
+    *) printf 'inject got: %.60s\n' "$inj"; exit 1 ;;
+  esac ) && ok "UPS skill-injection: /sptc:whoami -> wrapped body" || bad "skill-injection did not emit wrapped body"
+
 # 5. Soft-deregister cleanly.
 rm=$(spt adapter remove claude-spt 2>&1)
 list2=$(spt adapter list 2>&1)
