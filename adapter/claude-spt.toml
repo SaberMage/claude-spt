@@ -88,6 +88,19 @@ session_id_source = "post_spawn"
 # Process-tree anchor when session_id is absent: the Claude Code binary.
 parent_ancestor_name = "claude"
 
+# ── [session] ──────────────────────────────────────────────────────────────────────────────
+# Watched-dir seams for the file-drop lifecycle (doyle 2026-06-15: commune/signoff are FILE-DROPS,
+# not api verbs — "there is deliberately no api commune"). The agent writes `<endpoint_id>-commune.md`
+# / `<endpoint_id>-signoff.md` into this dir; spt-core's daemon watcher ingests it into the endpoint's
+# tracked mind, then deletes it (daemon = single writer). The filenames are fixed by the contract;
+# only the dir is adapter-declared. `.claude` is CC's per-project state dir — where a live CC session
+# already drops these (matches the live-agent reorientation), resolved per-endpoint against its cwd.
+# /sptc:commune writes the commune file here; /sptc:signoff's graceful path is `endpoint shutdown`
+# (the signoff file-drop is the watcher's equivalent). [impl->REQ-DIST-MANIFEST-SCHEMA]
+[session]
+commune_dir = ".claude"
+signoff_dir = ".claude"
+
 # ── [session.self] ─────────────────────────────────────────────────────────────────────────
 # The spt-hosted bringup template (publish target #2's launcher seam). `spt endpoint run --adapter
 # claude-spt --id <id>` spawns this command into a broker-held PTY; CC self-registers its perch
@@ -177,13 +190,19 @@ send = { file = "skills/send.md" }
 version = { file = "skills/version.md" }
 signoff = { file = "skills/signoff.md" }       # -> spt endpoint shutdown (graceful + final save)
 list-agents = { file = "skills/list-agents.md" } # -> spt endpoint list (the roster)
-# --- inline summaries, pending file-backed bodies. NOT cleanly mappable to the core `spt` v0.7.1
-# surface yet (don't invent): `live` -> `spt endpoint run` but needs manifest [session.self] (deferred
-# slice); `commune` + `new-alarm` have NO core-spt command (live-agent/Psyche layer, owl/$LIVE);
-# `force-stop` has only soft `endpoint stop`/`shutdown`, no force-kill-Psyche equivalent. Verify or
-# file a finding before authoring. ---
-commune = "Send a communal context update to your Psyche."
-live = "Run or resume a live agent session."
+commune = { file = "skills/commune.md" }       # -> file-drop <id>-commune.md into [session].commune_dir
+force-stop = { file = "skills/force-stop.md" } # -> spt endpoint shutdown (graceful, tears down Psyche)
+# --- pending bodies (don't invent; doyle scope ruling 2026-06-15) ---
+# `live` -> upgrade THIS session to LiveAgent via a `claude-spt:live` profile that overlays
+# [session.psyche_init]. HELD pending doyle confirming (in spt-core code) that the seed-time profile
+# PROPAGATES to drive the daemon's psyche_init spawn (the api accepts `--adapter claude-spt:live` but
+# whether it resolves the overlay vs the base manifest at spawn is unconfirmed — a doc-vs-code edge
+# doyle is grounding). Author the `:live` profile + body on his answer. (SKILLS-SLICE-PLAN.md)
+live = "Upgrade this session to a live agent (Psyche-backed)."
+# `new-alarm` -> EXPLICIT OUT OF SCOPE for v1: no core `spt` alarm/timed-pulse primitive exists
+# (legacy $LIVE TIMED PULSE is owl/Psyche-layer, not lifted into core; adapters don't add core
+# features). doyle carries a parity-gap finding to mint a core deferred-pulse primitive; the skill
+# lands only after that ships. No `[strings.skills].new-alarm` entry by design (visible-not-silent).
 
 # ── [[hints]] ──────────────────────────────────────────────────────────────────────────────
 # Once-per-session keyword hints (order significant, first match wins; case-insensitive substrings).

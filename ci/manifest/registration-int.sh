@@ -46,8 +46,14 @@ deep=$(spt adapter get-string claude-spt:deep adapter_label 2>&1)
 #     sibling still prints as-is. Proves `{ file = "skills/<x>.md" }` over adapter/strings/ (F-003).
 body=$(spt adapter get-string claude-spt skills.whoami 2>&1)
 case "$body" in "# /sptc:whoami"*) ok "file-backed string resolves: skills.whoami -> body" ;; *) bad "skills.whoami not resolved to file body: '$(printf %.40s "$body")'" ;; esac
-inline=$(spt adapter get-string claude-spt skills.commune 2>&1)
-[ "$inline" = "Send a communal context update to your Psyche." ] && ok "inline string prints as-is: skills.commune" || bad "skills.commune inline='$inline'"
+# Newly file-backed skills (commune = file-drop body; force-stop = endpoint shutdown body).
+cbody=$(spt adapter get-string claude-spt skills.commune 2>&1)
+case "$cbody" in "# /sptc:commune"*) ok "file-backed string resolves: skills.commune -> body" ;; *) bad "skills.commune not resolved to file body: '$(printf %.40s "$cbody")'" ;; esac
+fbody=$(spt adapter get-string claude-spt "skills.force-stop" 2>&1)
+case "$fbody" in "# /sptc:force-stop"*) ok "file-backed string resolves: skills.force-stop -> body" ;; *) bad "skills.force-stop not resolved to file body: '$(printf %.40s "$fbody")'" ;; esac
+# `live` remains an inline summary (held pending doyle's psyche_init propagation confirmation).
+inline=$(spt adapter get-string claude-spt skills.live 2>&1)
+[ "$inline" = "Upgrade this session to a live agent (Psyche-backed)." ] && ok "inline string prints as-is: skills.live" || bad "skills.live inline='$inline'"
 
 # 4c. UPS skill-injection end-to-end: the hook helper resolves a /sptc:<skill> prompt to the wrapped
 #     operative body via get-string (REQ-UPS-INJECTION impl, on the registered adapter).
