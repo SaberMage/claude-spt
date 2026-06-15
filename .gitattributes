@@ -1,6 +1,8 @@
 # Shell scripts MUST be LF — they ship in the plugin and run under /bin/sh on Unix/CC;
 # CRLF would break the shebang and `sed`/`case` parsing. Force LF regardless of core.autocrlf.
 *.sh   text eol=lf
+# Extensionless shell scripts (git hooks) must also be LF + run under /bin/sh.
+ci/git-hooks/*  text eol=lf
 # PowerShell + Windows batch are CRLF.
 *.ps1  text eol=crlf
 *.bat  text eol=crlf
