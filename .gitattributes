@@ -1,0 +1,11 @@
+# Shell scripts MUST be LF — they ship in the plugin and run under /bin/sh on Unix/CC;
+# CRLF would break the shebang and `sed`/`case` parsing. Force LF regardless of core.autocrlf.
+*.sh   text eol=lf
+# PowerShell + Windows batch are CRLF.
+*.ps1  text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+# Keep these LF for consistent diffs / cross-platform tooling.
+*.json text eol=lf
+*.toml text eol=lf
+*.md   text eol=lf
