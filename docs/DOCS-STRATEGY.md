@@ -42,6 +42,9 @@ correctly on the first try.
 10. **Docs-as-product, gated in CI** — generation (API reference, `llms.txt`, schema, CLI help)
     is part of the build so docs can never drift from code. Drift is the #1 most-cited docs
     failure; this kills it structurally.
+    <!-- [doc->REQ-DOCS-DRIFT] The drift gate (ci/docs/check-docs.sh) regenerates llms.txt
+         deterministically and fails the build on any diff vs the committed file; the book must
+         also build. This is the structural anti-drift commitment, enforced in run-gates. -->
 
 ## Information architecture — by capability vertical
 

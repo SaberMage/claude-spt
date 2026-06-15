@@ -29,7 +29,7 @@
 # audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
 # the moment those dirs are created (skeleton milestone, body #2) — until they exist a
 # nonexistent root is a hard manifest_error, so only list what is on disk now.
-roots = ["plugin", "ci", "ci/acceptance", "ci/publish", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
+roots = ["plugin", "ci", "ci/acceptance", "ci/publish", "ci/docs", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -126,6 +126,19 @@ required_stages = ["unit"]  # unit: tests/acceptance-harness.sh. Diagnosed 2026-
 id = "REQ-HAZARD-MSYS-PATHCONV"
 title = "Hook wrappers read the CC payload from stdin, never from a /-leading positional argv (Git-Bash/MSYS path-mangles those on Windows)"
 required_stages = ["unit"]  # unit: tests/msys-hazard.sh. Confirmed live 2026-06-15 (UPS validation run A).
+
+# ── Milestone: DOCS-SITE (mdBook, drift-gated) — minted on-start. Dual-audience product docs
+# in docs-site/, built with mdBook, gated against drift. Seeded from docs/DOCS-STRATEGY.md.
+
+[[requirements]]
+id = "REQ-DOCS-SITE"
+title = "docs-site/ builds with mdBook from src/ (themed, Diátaxis-shaped, all-real-content — no placeholders)"
+required_stages = ["doc", "impl"]  # doc: DOCS-STRATEGY. impl: docs-site/book.toml + src/ pages.
+
+[[requirements]]
+id = "REQ-DOCS-DRIFT"
+title = "Generated docs (llms.txt) are CI-gated against drift: a deterministic generator's output must match what's checked in, and the book must build"
+required_stages = ["doc", "impl", "unit"]  # doc: DOCS-STRATEGY #10. impl: ci/docs/{gen-llms,check-docs}.sh + run-gates wiring. unit: tests/docs-gen.sh.
 
 [[requirements]]
 id = "REQ-SKILL-VERSION"

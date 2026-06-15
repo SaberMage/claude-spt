@@ -1,0 +1,18 @@
+# mdBook config for the spt-claude-code docs-site. Built in CI, published to GitHub Pages from
+# THIS repo, drift-gated (docs/DOCS-STRATEGY.md). The shared experimplate theme is layered via
+# additional-css over the ayu theme (theme/theme.css). [impl->REQ-DOCS-SITE]
+[book]
+title = "claude-spt — Spacetime adapter for Claude Code"
+description = "Agent messaging, live agents, and an invisible spt-core installer, delivered as a Claude Code plugin."
+authors = ["perri"]
+src = "src"
+language = "en"
+
+[output.html]
+default-theme = "ayu"
+preferred-dark-theme = "ayu"
+additional-css = ["theme/theme.css"]
+git-repository-url = "https://github.com/SaberMage/spt-claude-code"
+# Stable, never-renamed anchors (DOCS-STRATEGY #9): agents cache links.
+[output.html.fold]
+enable = false

@@ -40,7 +40,11 @@ gate "manifest-schema"
 echo "SKIP: no adapter manifest yet — activates when the CC adapter manifest lands"
 
 gate "docs-drift"
-echo "SKIP: no docs-site build yet — activates with the mdBook docs milestone"
+if [ -f "$ROOT/ci/docs/check-docs.sh" ]; then
+  if sh "$ROOT/ci/docs/check-docs.sh"; then :; else fail "docs-drift"; fi
+else
+  echo "SKIP: no docs check yet"
+fi
 
 printf '\n=== RESULT: %s ===\n' "$([ "$rc" -eq 0 ] && echo PASS || echo FAIL)"
 exit "$rc"

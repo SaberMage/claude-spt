@@ -1,0 +1,9 @@
+# claude-spt
+
+> Spacetime (spt) adapter for Claude Code: agent messaging, live agents, and an invisible spt-core installer, delivered as a Claude Code plugin. Built against spt-core's published public surface only.
+
+## Docs
+
+- [Introduction](introduction.html)
+- [Quickstart](quickstart.html)
+- [Harness contract](reference/harness-contract.html)

@@ -5,6 +5,9 @@
 **/.claude/*-commune.md
 **/.claude/*-signoff.md
 
+# mdBook build artifact (generated; source is docs-site/src)
+docs-site/book/
+
 # generated launchers (capsule-style cc / cc-<id>)
 /cc
 /cc.bat
