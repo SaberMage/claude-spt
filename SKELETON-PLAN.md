@@ -67,11 +67,13 @@ Out (deferred to post-M12 — sequence after doyle's M12-live ping):
       `from` attr + `<br>`/entity unescape) — **multi-message built + unit-tested** (10/10). No
       `<EVENT-PART>` reassembly at poll (listener-stream-only). Follow-up: CC `additionalContext`
       10k cap is adapter-side (truncate/spill) — `int` item.
-- [ ] **`int` validation (throwaway CC session — never `/reload-plugins` on the live perch):**
-  - [ ] Confirm `UPS-fires-on-/sptc:X` (CC hooks ref says UserPromptSubmit "always fires" —
-        confirm for slash-commands). Confirm Windows-shell/wrapper packaging (ADR-0002 Open#2).
-  - [ ] Capture `api poll` actual stdout BYTES → send doyle (confirm current concat + post-F-002 fix).
-  - [ ] On pass: activate `int` for HOOKS-API/UPS-INJECTION.
+- [x] **`int` validation — CC-side confirmed** (throwaway `claude -p` rig, 2026-06-15):
+      `UPS-fires-on-/sptc:X` ✅ (literal `/send hi` in `prompt`, hook fired, skill ran);
+      Windows `shell:bash` hooks ✅ (`$CLAUDE_PROJECT_DIR` resolves); stdin schema ✅. Surfaced the
+      MSYS `/`-arg hazard → KNOWN-HAZARDS 1.1 + `REQ-HAZARD-MSYS-PATHCONV` (tests/msys-hazard.sh).
+- [ ] **`int` remaining — gated on spt-core `REQ-MSG-ENVELOPE`:** the `api poll`→`additionalContext`
+      round-trip against a real spt perch (capture `<EVENT>` bytes → confirm-match to doyle → flip
+      `int` for HOOKS-API/UPS-INJECTION). Plus large-drain injection-size handling (10k cap).
 - [ ] `/sptc:version` operative body + adapter manifest → validate against published
       `manifest.schema.json` (`reference/schema.md`); activate MANIFEST-SCHEMA, SKILL-VERSION.
 - [ ] Tag `impl`/`unit` + activate as each surface lands; `traceable-reqs check` EXIT=0.

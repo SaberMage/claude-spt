@@ -106,18 +106,30 @@ threaded in — they resolve it from the session env. Wiring:
 The frame contract is corroborated at the binary level too: `spt send --from <FROM>` = "Sender id
 **written into `__REPLY_TO__`**" — matching the `spool.rs` frame doyle provided.
 
-## Open (validate empirically in a throwaway session — never on the live perch)
+## Validation results (throwaway `claude -p` session, 2026-06-15)
 
-1. **`UPS-fires-on-/sptc:X`** — confirm `UserPromptSubmit` fires when the prompt is a `/sptc:`
-   slash-command (the UPS-injection design assumes it). The CC hooks reference lists
-   UserPromptSubmit as "Always fires" — strong evidence — but slash-command routing is the exact
-   thing SCOPE flagged to confirm empirically. Throwaway session, trivial echo hook.
-2. **Wrapper packaging + Windows shell.** Handlers parse CC stdin JSON → `api` flags (no jq
-   guarantee; POSIX `sh` via `sed`/`grep`, PowerShell via `ConvertFrom-Json`). hooks.json cannot
-   OS-branch, so resolve: `"shell": "bash"` (needs git-bash on Windows) vs a single portable entry.
-   Validate on real CC (does `$CLAUDE_PLUGIN_ROOT` + the chosen shell resolve on Windows?).
-3. **`api poll` actual stdout bytes** — capture in the throwaway run; send to doyle to confirm-match
-   his canonical docs publish (no drift).
+Ran an isolated temp-project rig (UserPromptSubmit marker hook + a registered `/send` project
+skill) on the real CC 2.1.177 binary:
+
+- ✅ **UPS fires on a `/`-slash-command.** `MSYS_NO_PATHCONV=1 claude -p "/send hi"` → the hook
+  received `prompt:"/send hi"` (literal) **and** fired **and** the skill ran. Answers the
+  SCOPE-flagged question: `UserPromptSubmit` fires on a `/sptc:X` invocation with the token intact,
+  so the wrapper can detect `/sptc:X` in `prompt` and inject. (`REQ-UPS-INJECTION`.)
+- ✅ **Windows `shell:"bash"` command hooks work** — the hook executed via Git-Bash,
+  `$CLAUDE_PROJECT_DIR` resolved, exit-0 stdout honored. Resolves Open#2 for the POSIX-wrapper
+  packaging on Windows (no per-OS branch needed for the hook to run).
+- ✅ **Hook stdin schema confirmed**: `{session_id, transcript_path, cwd, permission_mode,
+  hook_event_name, prompt}` — `json_str` targets the right fields; `session_id` sourcing confirmed.
+- ⚠️ **MSYS `/`-arg mangling** observed (run A): a `/send` passed as a Git-Bash *argument* became
+  `C:/Program Files/Git/send`. Test artifact (wrappers read stdin, not argv) but a real Windows
+  hazard → `docs/KNOWN-HAZARDS.md` 1.1 + `REQ-HAZARD-MSYS-PATHCONV` (test: `tests/msys-hazard.sh`).
+
+## Open (remaining `int` — gated on the spt-core poll refactor)
+
+1. **`api poll` → `additionalContext` round-trip** against a real spt perch, once `REQ-MSG-ENVELOPE`
+   lands (poll emits `<EVENT>`): capture actual stdout bytes, confirm-match to doyle, flip `int`.
+2. **Large-drain injection size** — CC `additionalContext` caps at 10k chars; add truncate/spill in
+   the UPS wrapper (adapter-side; `int`).
 
 ## Consequences
 

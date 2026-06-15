@@ -32,11 +32,24 @@ required_stages = []   # activate (["unit"] or ["unit","int"]) when you cover it
 
 ---
 
-## 1. `<Category — e.g. Race conditions & ordering>`
+## 1. Windows / MSYS shell environment
 
-### 1.1 `<Short hazard name>` — PLACEHOLDER (replace with a real hazard)
+### 1.1 MSYS `/`-prefix path conversion mangles slash-leading arguments
 
-- **Failure:** `<the concrete bad behavior and the exact sequence that triggers it>`.
-- **Invariant:** `<the property that must hold, phrased for a test>`.
-- **Mapping / notes:** `<where this lives in this project; what changes the test's shape>`.
-- **cite:** `<incident / commit / source path — reference only>`.
+- **Failure:** On Windows under Git-Bash / MSYS, any **command-line argument** beginning with `/`
+  is silently rewritten to an absolute Windows path before the target binary sees it. Observed
+  2026-06-15 during the UPS-fires validation: invoking `claude -p "/send hi"` from Git-Bash
+  delivered the prompt to Claude Code as `C:/Program Files/Git/send hi` — the `/send` token was
+  path-converted. Anything that passes a `/sptc:…` (or other `/`-leading) token as a **positional
+  argument** through a Git-Bash layer is corrupted the same way. (Legacy `claude_skill_owl`
+  documents the identical hazard in `new-alarm`.)
+- **Invariant:** sptc adapter glue MUST NOT depend on receiving `/`-leading content as a
+  Git-Bash positional argument. Message/prompt content is read from the **hook stdin JSON**
+  (`prompt`, message bodies), never reconstructed from a `/`-prefixed argv; any helper that must
+  take such an argument uses a stdin/`--message-file` transport or `MSYS_NO_PATHCONV=1`.
+- **Mapping / notes:** the hook wrappers (`plugin/sptc/hooks/*.sh`) are immune by construction —
+  they parse the CC hook payload from stdin (`json_str`), not from argv. The invariant is the
+  *commitment* to keep it that way (and to apply it to any future `/sptc:*` arg-taking surface).
+  A test asserts the stdin path is honored (no argv `/`-token dependency).
+- **cite:** UPS-fires validation 2026-06-15 (`ups.log`, run A); legacy `new-alarm` SKILL.md
+  MSYS note. Reference only — binding evidence is the tagged test under `REQ-HAZARD-MSYS-PATHCONV`.

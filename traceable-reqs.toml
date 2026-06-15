@@ -84,6 +84,11 @@ title = "UserPromptSubmit hook detects /sptc:X and injects X's real instructions
 required_stages = ["doc", "impl", "unit"]  # doc: ADR-0002. impl: user-prompt-submit.sh. unit: render_frames test. int (UPS-fires + multi-frame post-F-002) held for throwaway validation.
 
 [[requirements]]
+id = "REQ-HAZARD-MSYS-PATHCONV"
+title = "Hook wrappers read the CC payload from stdin, never from a /-leading positional argv (Git-Bash/MSYS path-mangles those on Windows)"
+required_stages = ["unit"]  # unit: tests/msys-hazard.sh. Confirmed live 2026-06-15 (UPS validation run A).
+
+[[requirements]]
 id = "REQ-SKILL-VERSION"
 title = "/spt:version reports the spt-core-tracked manifest/binary version (the version-of-truth, not the marketplace skeleton version)"
 required_stages = []
