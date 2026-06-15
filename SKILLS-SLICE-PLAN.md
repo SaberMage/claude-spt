@@ -38,18 +38,23 @@
      contract, not a literal stale line); (b) manifest.md psyche_init example used the never-filled
      `{session_name}`. Both fixed by doyle.
    - **OPEN (impl HOW — the live body/activation is its own sub-slice, NEXT):**
-     - **Q-A — RESOLVED 2026-06-15 (doyle traced spawn_psyche): RELAY PATH, zero core change.** Psyche
-       spawn fires in EXACTLY ONE place — the `api listen` blocking relay loop (startup.rs:286-293,
-       LiveHost::new_opt → spawn_psyche). `api bind` does NOT spawn it; the always-on daemon doesn't yet.
-       So a re-bind to `:live` flips info.json but spawns NO Psyche — WRONG model. **A live agent IS a
-       long-running relay.** Sanctioned activation = `/sptc:live` launches `spt api --adapter
-       claude-spt:live listen <id>` as a RESIDENT blocking relay **via CC's Monitor tool** (persistent
-       background task; stdout streams into the session) — CC's equivalent of owl's "$LIVE start behind
-       the Monitor tool" (proven: perri runs exactly this relay live right now). That binds :live, fires
-       spawn_psyche, AND is the delivery pipe. NOT a re-bind. DELIVERY MODEL: READY = UPS api-poll hook;
-       LIVE = the Monitor relay stream IS the pipe → the live body/hook must RECONCILE (UPS poll no-ops
-       while the relay is up, else double-delivery). Adapter-side design, not a core gap. (The daemon-
-       hosted spawn consolidation stays doyle's tracked finding for later; not needed for v1 live.)
+     - **Q-A — RESOLVED 2026-06-15 (doyle, corrected): RELAY PATH works NOW on the interim; Psyche is
+       daemon-managed by CONTRACT.** Activation = `/sptc:live` launches `spt api --adapter claude-spt:live
+       listen <id>` as a RESIDENT blocking relay **via CC's Monitor tool** (persistent background task;
+       stdout streams in) — CC's equivalent of owl's "$LIVE start behind Monitor" (perri runs exactly this
+       live). DELIVERY MODEL: READY = UPS api-poll hook; LIVE = the Monitor relay stream IS the pipe → the
+       live body/hook RECONCILES (UPS poll no-ops while the relay is up, else double-delivery).
+       - **MENTAL-MODEL CORRECTION (doyle, grounded in CONTEXT.md + REQ-DAEMON-1):** the Psyche is
+         **spt-core/daemon-managed**, keyed to the LiveAgent endpoint, **DECOUPLED from message delivery**
+         — the relay is a dumb pipe (CONTEXT:30,34,38,194). "listen spawns the Psyche" (startup.rs) is the
+         **INTERIM** impl, NOT the contract. The daemon-hosted Psyche loop is built + E2E-tested
+         (lifecycle.rs run_pulse_loop), but its activation is STAGED behind "the live-agent adapter landing"
+         (brainproc.rs no-op today). **claude-spt IS that live-agent adapter** → completing REQ-DAEMON-1
+         (M11, doyle/todlando core) coordinates with this slice. **For the build:** declare
+         `[session.psyche_init]` (done, the seam); run the Monitor relay (pipe + today's interim Psyche
+         trigger); **treat the Psyche as spt-core-managed — do NOT orchestrate its lifecycle in the live
+         body**; do NOT hard-code "listen spawns the Psyche" as permanent (post-REQ-DAEMON-1 the daemon
+         spawns it for the live endpoint regardless of listen-vs-poll). doyle fixed api.md to the contract.
      - **Q-B — RESOLVED (claude-code-guide agent + doyle boundary ruling): the Psyche RUNNER is MINE to
        build** (spt-core never dictates harness invocation; psyche_init.command is adapter-authored/opaque).
        `claude -p {psyche_prompt}` is **one-shot** (one turn → exits; Stop hooks can't re-loop it) — and
