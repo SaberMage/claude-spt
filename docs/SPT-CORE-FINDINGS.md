@@ -9,6 +9,7 @@
 | # | Date | Status | Summary |
 |---|------|--------|---------|
 | F-001 | 2026-06-14 | **re-scoped 2026-06-15** — most = adapter-authoring (closed); 1 residual spt-core docs item open | Hook-wiring for a CC adapter — boundary clarified |
+| F-002 | 2026-06-15 | **open** — spt-core CODE gap; doyle raised to operator | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
 
 ---
 
@@ -81,3 +82,32 @@ format for CC) and the **substitution-key catalog** (currently code-only). doyle
 `CONTEXT.md`/ADRs then propagates (no new design). We will report the **observed** `api poll` frame
 format so the publish can confirm-match. Until published we may rely on observed behavior of the
 public binary (observable behavior = public surface).
+
+---
+
+## F-002 — `api poll` (agent path) has no inter-frame delimiter — multi-message drains unsplittable
+
+**Reported:** 2026-06-15 to doyle. **Status:** open — **spt-core CODE gap** (not docs); doyle has
+raised the framing as a contract decision to the operator.
+
+**The gap (confirmed from source by doyle):** the **agent** `api poll` path emits each drained
+message with `print!("{msg}")` (`delivery.rs:192`) and `format_row` adds **no trailing newline**
+(`spool.rs:91-97`). So a multi-message drain **concatenates frames with nothing between them**.
+Combined with the frame format (anonymous senders emit a **bare body**, and bodies may be
+multiline), a multi-message `poll` stdout is **genuinely unsplittable** — there is no delimiter to
+parse on. Tell that this is a rough edge, not intent: the **shell** drain (`cmd_poll_shell`,
+`delivery.rs:169`) uses `println!` (newline-framed); only the agent path omits it. The framing is
+unspecified in `CONTEXT.md` / `docs/api.md`.
+
+**Impact / our handling:**
+- **Single-message poll = unambiguous, works now** — `__REPLY_TO__:<id>\n<body>` or bare body.
+- **Multi-frame splitter is HELD** — we do not assume a delimiter that does not exist. The
+  UserPromptSubmit wrapper surfaces whatever `poll` returns: a single frame is cleanly per-sender
+  formatted; a (rare) concatenated multi-drain degrades to a surfaced-but-unattributed blob rather
+  than a parser guessing boundaries.
+
+**Resolution (spt-core, doyle):** a self-delimiting emit on the agent path (length-prefix or a
+record separator — plain newline is insufficient given multiline bodies). When it lands, the emit
+becomes parseable-for-N and doyle publishes the canonical framing; we then finalize the multi-message
+parser. Our throwaway-session byte-capture confirms both the current concatenation behavior and the
+fixed framing post-change.

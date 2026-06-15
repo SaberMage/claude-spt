@@ -29,7 +29,7 @@
 # audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
 # the moment those dirs are created (skeleton milestone, body #2) — until they exist a
 # nonexistent root is a hard manifest_error, so only list what is on disk now.
-roots = ["plugin", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
+roots = ["plugin", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -71,7 +71,7 @@ required_stages = ["doc", "impl"]  # doc: ADR-0001. impl: plugin/sptc/bootstrap.
 [[requirements]]
 id = "REQ-DIST-HOOKS-API"
 title = "hooks.json delegates to `spt api` rather than carrying adapter logic"
-required_stages = ["doc"]  # doc: ADR-0001. impl held until gap-F-001 #2 (hooks.json vs spt-materialized) ruled.
+required_stages = ["doc", "impl", "unit"]  # doc: ADR-0001/0002. impl: hooks.json + wrappers. unit: tests/hooks-parse.sh. int (real-CC e2e) held for throwaway validation.
 
 [[requirements]]
 id = "REQ-DIST-MANIFEST-SCHEMA"
@@ -81,7 +81,7 @@ required_stages = []
 [[requirements]]
 id = "REQ-UPS-INJECTION"
 title = "UserPromptSubmit hook detects /sptc:X and injects X's real instructions as additionalContext (SKILL.md files stay skeletons); must be empirically confirmed UPS fires on slash-commands"
-required_stages = ["doc"]  # doc: ADR-0001. impl held until gap-F-001 #3 (injection contract) ruled + UPS-fires test.
+required_stages = ["doc", "impl", "unit"]  # doc: ADR-0002. impl: user-prompt-submit.sh. unit: render_frames test. int (UPS-fires + multi-frame post-F-002) held for throwaway validation.
 
 [[requirements]]
 id = "REQ-SKILL-VERSION"

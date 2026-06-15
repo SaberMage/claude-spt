@@ -1,0 +1,22 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/session-start.sh\"", "shell": "bash" } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/user-prompt-submit.sh\"", "shell": "bash" } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/stop.sh\"", "shell": "bash" } ] }
+    ],
+    "SessionEnd": [
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/session-end.sh\"", "shell": "bash" } ] }
+    ],
+    "SubagentStart": [
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/subagent-start.sh\"", "shell": "bash" } ] }
+    ],
+    "SubagentStop": [
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/subagent-stop.sh\"", "shell": "bash" } ] }
+    ]
+  }
+}

@@ -56,12 +56,19 @@ Out (deferred to post-M12 — sequence after doyle's M12-live ping):
       full CC-event→api mapping; lifecycle (SessionStart seeds, `listen` runs from `/sptc:ready|live`
       not a hook); UPS→`poll`→stdout→`additionalContext`. Grounded in observed 0.6.0 binary + CC
       hook-input schema.
-- [ ] **NEXT BODY — author + validate the hook glue (unblocked):**
-  - [ ] `plugin/sptc/hooks/hooks.json` + portable stdin→`api`-flag wrappers, per ADR-0002 mapping.
-  - [ ] Resolve **hook-side id-resolution** (ADR-0002 Open #1) empirically against the binary.
-  - [ ] `UPS-fires-on-/sptc:X` empirical test in a **throwaway** session (never `/reload-plugins`
-        on the live perch); report fire/no-fire + the observed `api poll` frame format to doyle.
-  - [ ] Activate `REQ-DIST-HOOKS-API` / `REQ-UPS-INJECTION` `impl` + tag as the validated wiring lands.
+- [x] **Author the hook glue:** `plugin/sptc/hooks/hooks.json` + wrappers (`_common.sh`,
+      session-start, user-prompt-submit, stop, session-end, subagent-start/stop) per ADR-0002.
+      All `sh -n` clean; hooks.json valid JSON.
+- [x] **Hook-side id-resolution** (ADR-0002 Open#1) resolved via `spt whoami`.
+- [x] **Parser unit-tested** (`tests/hooks-parse.sh`: `json_str` + `render_frames`, 7/7 pass).
+      `REQ-DIST-HOOKS-API` + `REQ-UPS-INJECTION` activated to `[doc,impl,unit]` (`int` held).
+- [x] Multi-frame splitter HELD per **F-002** (spt-core CODE gap: `api poll` agent path has no
+      inter-frame delimiter; doyle raising the framing fix to operator). Single-message path built.
+- [ ] **`int` validation (throwaway CC session — never `/reload-plugins` on the live perch):**
+  - [ ] Confirm `UPS-fires-on-/sptc:X` (CC hooks ref says UserPromptSubmit "always fires" —
+        confirm for slash-commands). Confirm Windows-shell/wrapper packaging (ADR-0002 Open#2).
+  - [ ] Capture `api poll` actual stdout BYTES → send doyle (confirm current concat + post-F-002 fix).
+  - [ ] On pass: activate `int` for HOOKS-API/UPS-INJECTION.
 - [ ] `/sptc:version` operative body + adapter manifest → validate against published
       `manifest.schema.json` (`reference/schema.md`); activate MANIFEST-SCHEMA, SKILL-VERSION.
 - [ ] Tag `impl`/`unit` + activate as each surface lands; `traceable-reqs check` EXIT=0.
