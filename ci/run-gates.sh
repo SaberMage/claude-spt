@@ -29,6 +29,13 @@ else
   echo "SKIP: traceable-reqs not on PATH (install per docs/TRACEABILITY.md)"
 fi
 
+gate "skeleton-validate (cplugs installability)"
+if [ -x "$ROOT/ci/publish/validate-skeleton.sh" ] || [ -f "$ROOT/ci/publish/validate-skeleton.sh" ]; then
+  if sh "$ROOT/ci/publish/validate-skeleton.sh" >/dev/null 2>&1; then echo "ok  skeleton installable"; else fail "skeleton-validate"; sh "$ROOT/ci/publish/validate-skeleton.sh" || true; fi
+else
+  echo "SKIP: no skeleton validator yet"
+fi
+
 gate "manifest-schema"
 echo "SKIP: no adapter manifest yet — activates when the CC adapter manifest lands"
 

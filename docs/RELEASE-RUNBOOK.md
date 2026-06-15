@@ -65,6 +65,15 @@ bootstrap, `plugin.json`. **No binary, no manifest in cplugs** — the binary + 
 ride the **spt-core adapter registry** (spt-conducted; the *other* publish target above), so
 none of owl's binary-lifecycle machinery applies here.
 
+> **Now scripted (`ci/publish/`).** The validate + stage mechanics below are codified:
+> `ci/publish/validate-skeleton.sh` is a binary installability gate (valid `plugin.json` with
+> `name=sptc`; valid `hooks.json` whose referenced wrappers all exist; every skill has a
+> `SKILL.md`; **no runtime-state / binary / manifest leak in the published surface**) — it runs in
+> `ci/run-gates.sh` (the `skeleton-validate` gate) and is unit-tested by `tests/skeleton-validate.sh`.
+> `ci/publish/package-skeleton.sh` codifies the per-bump copy below — validates first, **dry-run by
+> default**, stages only the skeleton subset, never pushes (the marketplace commit/push stays the
+> operator's step).
+
 **One-time marketplace setup:**
 
 ```bash

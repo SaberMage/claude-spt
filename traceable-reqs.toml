@@ -29,7 +29,7 @@
 # audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
 # the moment those dirs are created (skeleton milestone, body #2) — until they exist a
 # nonexistent root is a hard manifest_error, so only list what is on disk now.
-roots = ["plugin", "ci", "ci/acceptance", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
+roots = ["plugin", "ci", "ci/acceptance", "ci/publish", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -61,7 +61,7 @@ required_stages = []
 [[requirements]]
 id = "REQ-DIST-PLUGIN-SKELETON"
 title = "Marketplace artifact on cplugs is a thin skeleton: namespaced /sptc:* skill stubs + hooks.json + plugin.json, no embedded logic"
-required_stages = ["doc"]  # doc: ADR-0001. impl held until hooks.json lands (gap-F-001 #2).
+required_stages = ["doc", "impl", "unit"]  # doc: ADR-0001 + RELEASE-RUNBOOK. impl: ci/publish/{validate,package}-skeleton.sh (installability gate + publish mechanic). unit: tests/skeleton-validate.sh (pass real + fail tampered).
 
 [[requirements]]
 id = "REQ-DIST-BOOTSTRAP-INSTALL"

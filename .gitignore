@@ -1,7 +1,9 @@
-# spt runtime perch state (not source)
-.claude/LIVE_AGENT_IDS.json
-.claude/*-commune.md
-.claude/*-signoff.md
+# spt runtime perch state (not source) — depth-safe (** ), so it's ignored under any nested
+# .claude/ too (e.g. plugin/sptc/.claude/ when this repo is loaded as a live plugin). A
+# root-anchored pattern previously leaked plugin/sptc/.claude/LIVE_AGENT_IDS.json into the tree.
+**/.claude/LIVE_AGENT_IDS.json
+**/.claude/*-commune.md
+**/.claude/*-signoff.md
 
 # generated launchers (capsule-style cc / cc-<id>)
 /cc
