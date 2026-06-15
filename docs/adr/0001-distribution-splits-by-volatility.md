@@ -92,6 +92,7 @@ Concretely:
   independent schedules (see `docs/RELEASE-RUNBOOK.md`).
 - New obligation: a dual update path kept in sync — file-pull (real) + a cautionary
   `claude plugin update` (skeleton sync only).
+<!-- [doc->REQ-DIST-SHORTCUT-BASENAME] -->
 - Forces the cplugs **plugin-name** question, now **ruled (operator, 2026-06-14)**: because CC
   invokes skills as `/<plugin>:<skill>` (the skill prefix is hard-tied to the `plugin.json` name —
   no override; confirmed against the official plugin docs), the marketplace plugin is named

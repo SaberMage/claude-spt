@@ -33,6 +33,7 @@ min_spt_core_version = "0.7.0"
 hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # Brands the `spt endpoint run` picker shortcut as `sptc-<id>` (default would be `spt-<id>`).
 # `sptc` is the single-substitution succession seam (ADR-0001): parity-proof flips s/sptc/spt/.
+# Guarded by tests/manifest-shortcut.sh (unit->REQ-DIST-SHORTCUT-BASENAME).
 shortcut_basename = "sptc"
 
 # ── [hooks.<event>] ──────────────────────────────────────────────────────────────────────────
