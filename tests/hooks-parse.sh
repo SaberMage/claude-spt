@@ -17,16 +17,33 @@ check "json_str prompt"      "/sptc:send doyle" \
   "$(json_str '{"session_id":"s1","prompt":"/sptc:send doyle"}' prompt)"
 check "json_str missing key" "" "$(json_str "$J" nope)"
 
-# --- render_frames: named sender (multiline body preserved, sender surfaced) --- [unit->REQ-UPS-INJECTION]
-named=$(render_frames "$(printf '__REPLY_TO__:doyle\nhello\nworld')")
-check "render named" \
+# --- sptc_unescape: <br> -> newline, entities, &amp; LAST --- [unit->REQ-UPS-INJECTION]
+check "unescape br+entities" \
+  "$(printf 'a <b>\n"c" & &lt;')" \
+  "$(sptc_unescape 'a &lt;b&gt;<br>&quot;c&quot; &amp; &amp;lt;')"
+
+# --- render_frames: canonical <EVENT> envelope (ADR-0020) --- [unit->REQ-UPS-INJECTION]
+# Named single, <br>-escaped multiline body, sender preserved.
+named=$(render_frames '<EVENT type="msg" from="doyle">hello<br>world</EVENT>')
+check "render named <EVENT>" \
   "$(printf '<sptc_messages from="doyle">\nhello\nworld\n</sptc_messages>')" "$named"
 
-# --- render_frames: anonymous (bare body, no header) ---
-anon=$(render_frames "bare body")
-check "render anon" "$(printf '<sptc_messages>\nbare body\n</sptc_messages>')" "$anon"
+# Entity-escaped body decodes.
+ent=$(render_frames '<EVENT type="msg" from="kit">a &lt;tag&gt; &amp; b</EVENT>')
+check "render entity body" \
+  "$(printf '<sptc_messages from="kit">\na <tag> & b\n</sptc_messages>')" "$ent"
 
-# --- render_frames: empty drain -> no output ---
-check "render empty" "" "$(render_frames "")"
+# Multi-message drain: two self-delimiting envelopes -> two rendered blocks.
+multi=$(render_frames '<EVENT type="msg" from="a">one</EVENT><EVENT type="msg" from="b">two</EVENT>')
+check "render multi-message" \
+  "$(printf '<sptc_messages from="a">\none\n</sptc_messages>\n<sptc_messages from="b">\ntwo\n</sptc_messages>')" \
+  "$multi"
+
+# Envelope without a from attr -> anonymous rendering.
+anon=$(render_frames '<EVENT type="msg">sys note</EVENT>')
+check "render no-from" "$(printf '<sptc_messages>\nsys note\n</sptc_messages>')" "$anon"
+
+# Empty drain -> no output.
+check "render empty" "" "$(render_frames '')"
 
 [ "$fail" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "FAILURES"; exit 1; }

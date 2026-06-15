@@ -30,22 +30,40 @@ sptc_self_id() {
   OWL_SESSION_ID="${OWL_SESSION_ID:-$_sid}" "$_spt" whoami 2>/dev/null | head -n1
 }
 
-# Render an `api poll` drain ($1) for CC, preserving the sender for reply-correlation.
-# Frame contract (spool.rs): named = "__REPLY_TO__:<from>\n<body>", anonymous = bare body.
-# SINGLE-MESSAGE only — a multi-frame drain has no delimiter (spt-core F-002), so it is surfaced
-# whole rather than split; do NOT guess frame boundaries here. [unit->REQ-UPS-INJECTION]
+# Decode an spt envelope body to plain text: literal `<br>` -> newline, then HTML entities
+# (&lt; &gt; &quot; then &amp; LAST, to avoid double-decoding). Exactly the live-agent
+# body-parsing rule (spt-proto::event, ADR-0001 grammar).
+sptc_unescape() {
+  printf '%s' "$1" | sed \
+    -e 's/<br>/\
+/g' \
+    -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&quot;/"/g' -e 's/&amp;/\&/g'
+}
+
+# Render an `api poll` drain ($1) for CC. Canonical format (ADR-0020): every message is a
+# self-delimiting `<EVENT type="msg" from="<sender>">body</EVENT>` envelope (spt-proto::event) —
+# the same grammar the live listener emits. Multi-message drains split cleanly on `</EVENT>`.
+# Sender is preserved as `from=` (reply-correlation). NOTE: targets canonical <EVENT>; the current
+# 0.6.0 binary still emits a `__REPLY_TO__` relic at the poll surface until the REQ-MSG-ENVELOPE
+# refactor lands (ADR-0020) — finalize/validate against poll only post-refactor. [unit->REQ-UPS-INJECTION]
 render_frames() {
-  _frames="$1"
-  [ -z "$_frames" ] && return 0
-  _first=$(printf '%s' "$_frames" | head -n1)
-  case "$_first" in
-    __REPLY_TO__:*)
-      _sender=${_first#__REPLY_TO__:}
-      _body=$(printf '%s' "$_frames" | sed '1d')
+  _in="$1"
+  [ -z "$_in" ] && return 0
+  # Normalise to one <EVENT>…</EVENT> per line (body newlines are <br>-escaped, so each envelope
+  # is single-line), then parse each.
+  printf '%s' "$_in" | sed 's#</EVENT>#</EVENT>\
+#g' | while IFS= read -r _ev; do
+    case "$_ev" in
+      *"<EVENT"*"</EVENT>"*) ;;
+      *) continue ;;
+    esac
+    _sender=$(printf '%s' "$_ev" | sed -n 's/.*<EVENT[^>]* from="\([^"]*\)".*/\1/p')
+    _raw=$(printf '%s' "$_ev" | sed -n 's#.*<EVENT[^>]*>\(.*\)</EVENT>.*#\1#p')
+    _body=$(sptc_unescape "$_raw")
+    if [ -n "$_sender" ]; then
       printf '<sptc_messages from="%s">\n%s\n</sptc_messages>\n' "$_sender" "$_body"
-      ;;
-    *)
-      printf '<sptc_messages>\n%s\n</sptc_messages>\n' "$_frames"
-      ;;
-  esac
+    else
+      printf '<sptc_messages>\n%s\n</sptc_messages>\n' "$_body"
+    fi
+  done
 }

@@ -62,8 +62,11 @@ Out (deferred to post-M12 — sequence after doyle's M12-live ping):
 - [x] **Hook-side id-resolution** (ADR-0002 Open#1) resolved via `spt whoami`.
 - [x] **Parser unit-tested** (`tests/hooks-parse.sh`: `json_str` + `render_frames`, 7/7 pass).
       `REQ-DIST-HOOKS-API` + `REQ-UPS-INJECTION` activated to `[doc,impl,unit]` (`int` held).
-- [x] Multi-frame splitter HELD per **F-002** (spt-core CODE gap: `api poll` agent path has no
-      inter-frame delimiter; doyle raising the framing fix to operator). Single-message path built.
+- [x] **F-002 resolved-by-design (ADR-0020):** canonical poll format = self-delimiting `<EVENT>`
+      envelope (`__REPLY_TO__` relic deleted). Parser retargeted to `<EVENT>` (split on `</EVENT>`,
+      `from` attr + `<br>`/entity unescape) — **multi-message built + unit-tested** (10/10). No
+      `<EVENT-PART>` reassembly at poll (listener-stream-only). Follow-up: CC `additionalContext`
+      10k cap is adapter-side (truncate/spill) — `int` item.
 - [ ] **`int` validation (throwaway CC session — never `/reload-plugins` on the live perch):**
   - [ ] Confirm `UPS-fires-on-/sptc:X` (CC hooks ref says UserPromptSubmit "always fires" —
         confirm for slash-commands). Confirm Windows-shell/wrapper packaging (ADR-0002 Open#2).

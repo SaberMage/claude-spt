@@ -9,7 +9,7 @@
 | # | Date | Status | Summary |
 |---|------|--------|---------|
 | F-001 | 2026-06-14 | **re-scoped 2026-06-15** — most = adapter-authoring (closed); 1 residual spt-core docs item open | Hook-wiring for a CC adapter — boundary clarified |
-| F-002 | 2026-06-15 | **open** — spt-core CODE gap; doyle raised to operator | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
+| F-002 | 2026-06-15 | **resolved-by-design** (ADR-0020) — envelope self-delimits; impl refactor pending | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
 
 ---
 
@@ -106,8 +106,20 @@ unspecified in `CONTEXT.md` / `docs/api.md`.
   formatted; a (rare) concatenated multi-drain degrades to a surfaced-but-unattributed blob rather
   than a parser guessing boundaries.
 
-**Resolution (spt-core, doyle):** a self-delimiting emit on the agent path (length-prefix or a
-record separator — plain newline is insufficient given multiline bodies). When it lands, the emit
-becomes parseable-for-N and doyle publishes the canonical framing; we then finalize the multi-message
-parser. Our throwaway-session byte-capture confirms both the current concatenation behavior and the
-fixed framing post-change.
+**Resolution — RESOLVED-BY-DESIGN (ADR-0020, operator-ruled 2026-06-15):** the framing question is
+settled, more cleanly than a delimiter patch. The **canonical format at every surface — including
+`api poll` — is the `<EVENT type="msg" from="<sender>">body</EVENT>` envelope** (`spt-proto::event`,
+the ADR-0001 grammar the live listener already emits). `__REPLY_TO__` was a **mis-elevated relic**
+(wrongly frozen as the "stable wire format" during the clean-room port) and is being **deleted from
+spt-core**. The `<EVENT>` envelope is **self-delimiting**, so multi-message drains split cleanly on
+`</EVENT>` — no delimiter needed, and the F-002 multi-frame hold is **lifted**.
+
+- **Our parser** now targets `<EVENT>` (the `from` attr → `<sptc_messages from="…">`, `<br>` →
+  newline, entity unescape with `&amp;` last) — exactly the live-agent body-parsing rule. See
+  `render_frames` in `plugin/sptc/hooks/_common.sh` + `tests/hooks-parse.sh` (multi-message covered).
+- **Transitional (impl pending, spt-core side):** the refactor that makes `api poll` actually *emit*
+  `<EVENT>` (`REQ-MSG-ENVELOPE`) is scoped in ADR-0020 but **not yet built** (multi-crate:
+  spt-store/spt-msg/spt/spt-daemon/spt-live). The current 0.6.0 binary still emits the `__REPLY_TO__`
+  relic at the poll surface. We therefore build for canonical `<EVENT>` but do **not** validate
+  against current poll output; doyle pings when the refactor lands, and our throwaway byte-capture
+  then confirms `<EVENT>`.

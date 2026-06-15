@@ -1,7 +1,7 @@
 #!/bin/sh
 # UserPromptSubmit: drain delivered messages (the hook-injection channel, L149) and surface
-# them to CC as additionalContext. SINGLE-MESSAGE path only — the multi-frame splitter is HELD
-# pending spt-core F-002 (api poll agent path has no inter-frame delimiter). [impl->REQ-UPS-INJECTION]
+# them to CC as additionalContext. Parses the canonical self-delimiting <EVENT> envelope
+# (ADR-0020), so multi-message drains split cleanly on </EVENT>. [impl->REQ-UPS-INJECTION]
 . "$CLAUDE_PLUGIN_ROOT/hooks/_common.sh"
 
 input=$(cat)
@@ -13,8 +13,8 @@ SPT=$(spt_bin)
 frames=$("$SPT" api --adapter "$ADAPTER" poll "$id" --session-id "$sid" 2>/dev/null)
 [ -z "$frames" ] && exit 0
 
-# Format for CC, preserving the sender (reply-correlation: ADR-0009/0012). Multi-frame drains are
-# surfaced whole (no delimiter — spt-core F-002), never split-by-guess. See render_frames().
+# Format for CC, preserving the sender (reply-correlation: ADR-0009/0012). render_frames parses
+# the self-delimiting <EVENT> envelope (ADR-0020) — multi-message drains split on </EVENT>.
 # UserPromptSubmit: stdout is added to the prompt context. (JSON additionalContext shape is an
 # alternative — to confirm in throwaway validation which CC accepts here.)
 render_frames "$frames"

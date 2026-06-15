@@ -53,23 +53,36 @@ queued messages (`api poll`) is where `/sptc:X` skill-instruction injection land
 `[strings]`, M12-dep). `api poll` emitting to stdout is by design (L149); formatting it for CC is
 ours. PTY/relay inject methods are M3 roadmap (M2a = stdout/hook only) — not a gap.
 
-### `api poll` frame format — the parse contract (provided by doyle from `spool.rs`)
+### `api poll` parse contract — the `<EVENT>` envelope (ADR-0020, operator-ruled 2026-06-15)
 
-> Provided by the spt-core owner (grounded in `spt-store/src/spool.rs`); **pending** canonical
-> publish to the adapter-facing docs-site and **pending our throwaway-session confirm** of the
-> binary's actual stdout (F-001 residual). Implement the wrapper parser against this:
+> **Supersedes** the earlier `__REPLY_TO__` framing (a mis-elevated relic, now deleted from
+> spt-core — see `docs/SPT-CORE-FINDINGS.md` F-002, resolved-by-design). Confirmed by doyle as the
+> deliberate poll-surface contract (ADR-0020 §1). **Transitional:** the current 0.6.0 binary still
+> emits the `__REPLY_TO__` relic at poll until `REQ-MSG-ENVELOPE` ships; build to `<EVENT>` but
+> validate against poll only post-refactor.
 
-`api poll` prints **one message per drained frame** to stdout. Each frame:
+The **canonical format at every surface, including `api poll`, is the `spt-proto::event` envelope**
+(the ADR-0001 grammar the live listener already emits):
 
-- **Named sender:** `__REPLY_TO__:<from_id>\n<body>` — line 1 is the literal header `__REPLY_TO__:`
-  followed by the sender id; the remaining lines are the message body.
-- **Anonymous sender** (`from_id == ""`): the **bare body**, no header.
+- **One whole, single-line `<EVENT type="msg" from="<sender>">body</EVENT>` per message.** Interior
+  newlines are `<br>`-escaped, so the envelope never breaks across lines.
+- **Self-delimiting** → a multi-message drain splits cleanly on `</EVENT>` (no delimiter, no
+  `F-002` ambiguity).
+- **No `<EVENT-PART>` chunking at the poll surface** (doyle Q2): `poll`/`worker-poll` emit whole
+  `<EVENT>`s. `<EVENT-PART seq="N/M">` exists only for the *listener stream* (the `« spt event »`
+  Monitor's ~500-char `EVENT_LINE_THRESHOLD`); the hook-drain injects via `additionalContext` which
+  has no per-line cap. **No id+seq reassembly on the poll path.**
 
-The adapter parses the `__REPLY_TO__:<sender>` header to recover the reply target, then renders the
-message for CC. **`__REPLY_TO__` is load-bearing** — it is the reply-correlation used by the access
-gate (`ADR-0009`) and Psyche routing (`ADR-0012`, both spt-core). We therefore **preserve the
-sender** in the CC rendering (e.g. `<owl_messages from="<sender>">…</owl_messages>`, mirroring
-legacy), never silently strip it, so reply-correlation survives the harness boundary.
+Parser (`render_frames`, `plugin/sptc/hooks/_common.sh`): split on `</EVENT>`; per envelope, read
+the `from` attr → `<sptc_messages from="<sender>">`, decode the body (`<br>` → newline, then entity
+unescape `&lt; &gt; &quot;` then `&amp;` **last**). **Sender preserved** (reply-correlation: access
+gate `ADR-0009`, Psyche routing `ADR-0012`), never silently stripped. Covered by
+`tests/hooks-parse.sh` (named / entity / multi-message / no-from / empty).
+
+**Harness injection-size limit is ours** (harness-agnostic boundary — spt-core emits whole
+`<EVENT>`s regardless): CC `additionalContext` caps at **10,000 chars** (larger output is spilled to
+a file by CC). A large multi-message drain can exceed it → adapter-side follow-up: truncate with a
+marker or spill. (`REQ-UPS-INJECTION` `int` item.)
 
 ### Portability
 
