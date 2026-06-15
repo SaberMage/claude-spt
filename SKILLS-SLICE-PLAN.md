@@ -15,21 +15,50 @@
      seam — the daemon BrainLifecycle only spawns the Psyche when the manifest declares it
      (early-returns None otherwise). There is **no "go-live" api verb**. So "this session is a
      LiveAgent" ≡ "its adapter/profile declares `psyche_init`."
-   - **RESOLVED (research 2026-06-15):** TWO-PROFILE shape. base `claude-spt` = ReadyAgent (no
-     `psyche_init`); `[profiles.live.session.psyche_init]` overlay = LiveAgent. `/sptc:ready` seeds
-     `--adapter claude-spt`; `/sptc:live` seeds `--adapter claude-spt:live`. **Empirically the api
-     accepts the composite:** `spt api --adapter claude-spt:deep seed …` → `SEEDED`. psyche_init keys
-     the daemon fills: `{session_name}` `{psyche_dir}` `{psyche_prompt}` `{psyche_context}`. Example:
-     `[session.psyche_init] command="… --name {session_name}" cwd="{psyche_dir}" detach=true`.
-   - **DOC GAP flagged to doyle (2026-06-15):** published llms-full.txt says api calls do NOT accept
-     profile qualifiers ("profiles are registration/data, not runtime dispatch") — CONTRADICTS the
-     empirical `--adapter claude-spt:deep seed` acceptance. Unconfirmed on the public surface: (1) does
-     seed→listen PROPAGATE the profile so the daemon spawns the `:live` psyche_init? (2) psyche_init
-     {keys} filled for a harness-hosted bind. doyle owns the doc fix; live-daemon int deferred (like
-     other acceptance ints) until confirmed.
-   - **OPEN design Q to doyle:** the CC Psyche spawn COMMAND (`psyche_init.command`) — what the daemon
-     expects the Psyche process to DO (summarizer companion contract? same as legacy owl?). Shapes the
-     command (likely `claude` headless w/ {psyche_prompt}/{psyche_context}). **Author on doyle's reply.**
+   - **GROUNDED by doyle 2026-06-15 (traced spt-core code) — TWO-PROFILE design CONFIRMED, author it:**
+     base `claude-spt` = ReadyAgent (no `psyche_init`); `[profiles.live.session.psyche_init]` overlay =
+     LiveAgent. `/sptc:ready` seeds `--adapter claude-spt`; `/sptc:live` activates `--adapter claude-spt:live`.
+     - **Q1 propagation CONFIRMED:** `api seed` stores the full `<adapter>:<profile>` → `establish_perch`
+       writes it verbatim to info.json `adapter` → daemon `resolve_option_in` SPLITS the composite +
+       applies the overlay → BrainLifecycle checks `psyche_init` on the MERGED manifest → Psyche spawns.
+       (Empirically `spt api --adapter claude-spt:deep seed` → `SEEDED`.)
+     - **Q2 psyche_init keys = EXACTLY `{id, session_id, psyche_dir, psyche_prompt}`.** NOT `{session_name}`
+       (that's a `[session.self]` fill — the published manifest.md example wrongly uses it and HARD-FAILS;
+       doyle fixed the example). NOT `{psyche_context}` on first spawn (that's the resume/preload seam key).
+       In spawn_psyche `{id}` is OVERRIDDEN to `<parent>-psyche`. Template only the four; `keys` a subset.
+     - **Q3 Psyche process contract:** FIRE-AND-FORGET DETACHED — spawned with Stdio::null on all three
+       fds, handle dropped, NOT supervised (liveness is daemon-authoritative via the perch, not pid).
+       Command is adapter-authored + opaque. The Psyche has its OWN perch (`<parent>-psyche`), communicates
+       via perch/commune drops (NOT stdin/stdout), authors COMMUNE deltas only (never reply/notify — the
+       echo-commune is a DISTINCT cheaper actor/model), exits at session end. → `detach = true`,
+       `cwd = "{psyche_dir}"`.
+   - **DOC GAPS (doyle's, fixes on a branch/PR):** (a) api.md never stated `--adapter` accepts
+     `<adapter>:<profile>` / that the bound profile drives runtime resolution incl psyche_init (the
+     WebFetch "not runtime dispatch" wording was the fetch model's paraphrase of the MISSING positive
+     contract, not a literal stale line); (b) manifest.md psyche_init example used the never-filled
+     `{session_name}`. Both fixed by doyle.
+   - **OPEN (impl HOW — the live body/activation is its own sub-slice, NEXT):**
+     - **Q-A — HELD ON DOYLE (core contract, he's tracing spawn_psyche call-site):** CC `:live` ACTIVATION
+       for a hook-draining session. Sharp edge doyle flagged: CC drains via the api-poll hook, NEVER
+       `api listen`; the Psyche is daemon-spawned, so the real question is *what daemon EVENT triggers
+       spawn_psyche, and does a hook-draining (no-listen) session ever raise it?* If spawn is gated on
+       `api listen`, a bare re-bind to `:live` rewrites info.json but won't spawn the Psyche → needs an
+       explicit trigger (a gap → doyle gives the sanctioned verb). **Do NOT author the activation path
+       until doyle confirms.** (Re-bind `spt api --adapter claude-spt:live bind <id> --set-session-id <sid>`
+       is the likely info.json-rewrite half — explicit adapter wins on re-bind — but insufficient if the
+       spawn event isn't raised.)
+     - **Q-B — RESOLVED (claude-code-guide agent + doyle boundary ruling): the Psyche RUNNER is MINE to
+       build** (spt-core never dictates harness invocation; psyche_init.command is adapter-authored/opaque).
+       `claude -p {psyche_prompt}` is **one-shot** (one turn → exits; Stop hooks can't re-loop it) — and
+       doyle says migrate OFF `claude -p` anyway (imminent CC billing change). So the runner is a small
+       **resident artifact** (like the digest extractor): a detached headless `claude` companion that stays
+       alive for the session — a wrapper loop re-invoking `claude --continue` driven by its own
+       `<parent>-psyche` perch (poll for turns), authoring commune drops; or the Agent SDK. Build it
+       (`tools/claude-spt-psyche` or a wrapper script), then `psyche_init.command` launches it with
+       `{psyche_prompt}`/`{psyche_dir}`/`{id}`/`{session_id}`, `cwd={psyche_dir}`, `detach=true`.
+   - **SAFE TO AUTHOR NOW (doyle confirmed):** the `[profiles.live.session.psyche_init]` overlay skeleton +
+     the four-key contract. Defer wiring it until the runner exists + Q-A resolves, so the live sub-slice
+     lands coherent (profile + runner + activation + body together).
 
 2. **commune — IN SCOPE, FILE-DROP (not a command).** No `api commune` by design. The adapter writes
    `<endpoint_id>-commune.md` into the manifest-declared **`[session].commune_dir`** (a spawn-session

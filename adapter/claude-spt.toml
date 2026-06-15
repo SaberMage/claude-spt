@@ -167,6 +167,26 @@ window_turns = 20
 [profiles.deep.strings]
 adapter_label = "Claude Code (spt, deep)"
 
+# `live` — the LiveAgent overlay. Selected as `claude-spt:live`; /sptc:live activates this profile so
+# the daemon resolves the MERGED manifest, sees [session.psyche_init], and spawns the endpoint's
+# Psyche companion (base claude-spt declares no psyche_init = ReadyAgent — doyle 2026-06-15, traced:
+# api seed stores the composite → info.json adapter → daemon resolve_option_in applies the overlay →
+# BrainLifecycle checks psyche_init on the merged view). Psyche keys the daemon fills are EXACTLY
+# {id, session_id, psyche_dir, psyche_prompt} — NOT {session_name} (a [session.self] fill; the
+# published example's use of it is a bug doyle fixed) and NOT {psyche_context} (the resume-preload
+# seam, not first spawn). `detach=true` + cwd={psyche_dir}: the Psyche is fire-and-forget detached
+# (Stdio::null, unsupervised), owns its `<parent>-psyche` perch, authors commune-drops only, exits at
+# session end. SKELETON: claude-spt-psyche (the resident headless-claude companion runner) is built in
+# the live sub-slice — `claude -p` is one-shot, so the runner is a resident wrapper (claude --continue
+# loop driven by its perch) / Agent SDK, NOT a bare `claude -p`. The /sptc:live ACTIVATION verb for a
+# hook-draining (no `api listen`) session is held pending doyle (what daemon event raises spawn_psyche).
+# [impl->REQ-DIST-MANIFEST-SCHEMA]
+[profiles.live.session.psyche_init]
+command = "claude-spt-psyche --id {id} --session-id {session_id} --prompt {psyche_prompt}"
+cwd = "{psyche_dir}"
+detach = true
+keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
+
 # ── [strings] ──────────────────────────────────────────────────────────────────────────────
 # Opaque adapter data (spt-core never executes it), dot-path-readable via `spt adapter get-string`.
 # Seed only this slice — the file-backed skill-instruction BODIES (UPS-injection source) land in

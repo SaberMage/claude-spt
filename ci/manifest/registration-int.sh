@@ -33,6 +33,9 @@ case "$out" in *registered*) ok "spt adapter add: registered" ;; *) bad "adapter
 list=$(spt adapter list 2>&1)
 case "$list" in *claude-spt*) ok "listed: claude-spt active" ;; *) bad "claude-spt not listed" ;; esac
 case "$list" in *claude-spt:deep*) ok "shipped profile resolves: claude-spt:deep" ;; *) bad "deep profile not resolved" ;; esac
+# The LiveAgent overlay (:live adds [session.psyche_init]) — proves a profile [session] overlay
+# validates + resolves on the live binary (the /sptc:live seam; doyle-grounded propagation).
+case "$list" in *claude-spt:live*) ok "shipped profile resolves: claude-spt:live (LiveAgent overlay)" ;; *) bad "live profile not resolved" ;; esac
 
 # 3. [strings] read through the registry (base value).
 base=$(spt adapter get-string claude-spt adapter_label 2>&1)
