@@ -77,17 +77,34 @@ Handlers must map CC stdin JSON → `api` flags. The plugin ships **no binary**,
 thin portable wrapper (POSIX `sh` + PowerShell), selected per-platform. Exact wrapper packaging is
 settled during impl (see Open).
 
-## Open (resolve during impl, validate empirically in a throwaway session)
+### Hook-side id-resolution — RESOLVED (observed on the 0.6.0 binary)
 
-1. **Hook-side id-resolution.** `poll`/`state`/`session-end`/`boundary`/`worker-*` all take a perch
-   `<id>` (+ `--session-id`/`--token` auth). SessionStart seeds a pid↔session mapping, but the
-   per-prompt hooks must learn `<id>`. Candidate: resolve from the seed/session (does `api poll`
-   self-resolve by `--session-id` alone? the positional `<id>` suggests not — to test on the
-   binary), or have `/sptc:ready|live` persist a session→id record the hooks read. **The single
-   genuinely-underspecified lifecycle point; derive empirically, report findings.**
-2. **`UPS-fires-on-/sptc:X`** — confirm `UserPromptSubmit` fires when the prompt is a `/sptc:`
-   slash-command (the UPS-injection design assumes it). Throwaway session, trivial echo hook.
-3. **Wrapper packaging** — single cross-platform entry vs per-OS scripts vs `shell:` selection.
+`spt whoami` "Print this session's own perch id. **Resolved from `$OWL_SESSION_ID` /
+`$SPT_AGENT_ID`.**" That is the id-resolver: the per-prompt hooks do not need a positional `<id>`
+threaded in — they resolve it from the session env. Wiring:
+
+- **SessionStart** writes the session env via `$CLAUDE_ENV_FILE`: `OWL_SESSION_ID=<session_id>`
+  (from the hook stdin) + `SPT_ADAPTER=claude-spt`. (It also runs the bootstrap and `api seed`.)
+- **Per-prompt hooks** (UserPromptSubmit/Stop/SessionEnd) resolve `id="$(spt whoami)"`; if empty
+  (session never readied → no perch), they no-op. Auth: pass `--session-id "$OWL_SESSION_ID"`
+  (`poll`/`state`/`session-end` all accept `--session-id` as the association proof — observed) so
+  no capability token is needed from the hook.
+
+The frame contract is corroborated at the binary level too: `spt send --from <FROM>` = "Sender id
+**written into `__REPLY_TO__`**" — matching the `spool.rs` frame doyle provided.
+
+## Open (validate empirically in a throwaway session — never on the live perch)
+
+1. **`UPS-fires-on-/sptc:X`** — confirm `UserPromptSubmit` fires when the prompt is a `/sptc:`
+   slash-command (the UPS-injection design assumes it). The CC hooks reference lists
+   UserPromptSubmit as "Always fires" — strong evidence — but slash-command routing is the exact
+   thing SCOPE flagged to confirm empirically. Throwaway session, trivial echo hook.
+2. **Wrapper packaging + Windows shell.** Handlers parse CC stdin JSON → `api` flags (no jq
+   guarantee; POSIX `sh` via `sed`/`grep`, PowerShell via `ConvertFrom-Json`). hooks.json cannot
+   OS-branch, so resolve: `"shell": "bash"` (needs git-bash on Windows) vs a single portable entry.
+   Validate on real CC (does `$CLAUDE_PLUGIN_ROOT` + the chosen shell resolve on Windows?).
+3. **`api poll` actual stdout bytes** — capture in the throwaway run; send to doyle to confirm-match
+   his canonical docs publish (no drift).
 
 ## Consequences
 
