@@ -1,0 +1,20 @@
+#!/bin/sh
+# git pre-push: fire the CI gates by pinging a fleet runner-agent over the spt bus — push-driven,
+# not polling (SCOPE names it "post-push"; git's client-side push hook is pre-push). NON-FATAL:
+# a missing bus or unset runner never blocks the push. [impl->REQ-CI-TRIGGER] [impl->REQ-CI-BUS]
+root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
+. "$root/ci/lib/spt-bus.sh" 2>/dev/null || exit 0
+
+runner="${SPTC_CI_RUNNER:-}"
+ref=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+sha=$(git rev-parse --short HEAD 2>/dev/null)
+bus=$(resolve_spt_send 2>/dev/null) || bus=""
+
+if [ -n "$bus" ] && [ -n "$runner" ]; then
+  printf 'CI: run gates for %s @ %s\n' "$ref" "$sha" | "$bus" send "$runner" >/dev/null 2>&1 \
+    && echo "sptc-ci: pinged runner '$runner' over the spt bus for $ref @ $sha" >&2 \
+    || echo "sptc-ci: bus send failed (non-fatal); run ci/run-gates.sh manually" >&2
+else
+  echo "sptc-ci: bus unresolved or SPTC_CI_RUNNER unset — run gates manually: ci/run-gates.sh" >&2
+fi
+exit 0

@@ -9,6 +9,12 @@
 > runner that fires them and reports.
 
 ## The gates (deterministic)
+<!-- [doc->REQ-CI-GATES] -->
+<!-- [doc->REQ-CI-OWL-DISCOVERY] -->
+<!-- [doc->REQ-CI-MANUAL] -->
+<!-- [doc->REQ-CI-TRIGGER] -->
+<!-- [doc->REQ-CI-BUS] -->
+<!-- [doc->REQ-CI-ACCEPTANCE] -->
 
 Every gate is a script with a binary pass / fail — no judgment, no model:
 

@@ -29,7 +29,7 @@
 # audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
 # the moment those dirs are created (skeleton milestone, body #2) — until they exist a
 # nonexistent root is a hard manifest_error, so only list what is on disk now.
-roots = ["plugin", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
+roots = ["plugin", "ci", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -82,6 +82,40 @@ required_stages = []
 id = "REQ-UPS-INJECTION"
 title = "UserPromptSubmit hook detects /sptc:X and injects X's real instructions as additionalContext (SKILL.md files stay skeletons); must be empirically confirmed UPS fires on slash-commands"
 required_stages = ["doc", "impl", "unit"]  # doc: ADR-0002. impl: user-prompt-submit.sh. unit: render_frames test. int (UPS-fires + multi-frame post-F-002) held for throwaway validation.
+
+# ── Milestone: CI (autonomous fleet) — minted on-start. Deterministic gates + git push-trigger +
+# spt reporting bus. Seeded from SCOPE.md "CI model" + docs/CI.md. Real-claude acceptance is a
+# later slice (doc-only now). All harness-agnostic shell; runs on the Win+Linux fleet.
+
+[[requirements]]
+id = "REQ-CI-GATES"
+title = "Deterministic gates (shell-syntax + unit tests + traceable-reqs check + manifest-schema + docs-drift), each a binary pass/fail, runnable as one command"
+required_stages = ["doc", "impl", "unit"]
+
+[[requirements]]
+id = "REQ-CI-MANUAL"
+title = "A manual 'run gates' command always exists — the same gate scripts runnable by hand on any fleet host"
+required_stages = ["doc", "impl"]
+
+[[requirements]]
+id = "REQ-CI-TRIGGER"
+title = "A git push hook fires the gates: pings a fleet runner-agent over spt rather than polling"
+required_stages = ["doc", "impl"]
+
+[[requirements]]
+id = "REQ-CI-BUS"
+title = "CI progress/results report over spt messaging (dogfood the product as its own CI nervous system)"
+required_stages = ["doc", "impl"]
+
+[[requirements]]
+id = "REQ-CI-OWL-DISCOVERY"
+title = "The spt messaging (bus) binary is located robustly at run time (per-version plugins path / PATH / configured) — never a hard-coded versioned path"
+required_stages = ["doc", "impl", "unit"]
+
+[[requirements]]
+id = "REQ-CI-ACCEPTANCE"
+title = "Acceptance = scripted orchestration spawning real claude/headless sessions as the system-under-test, asserting spt-state/digest output (LLM is SUT, never the runner)"
+required_stages = ["doc"]
 
 [[requirements]]
 id = "REQ-HAZARD-MSYS-PATHCONV"
