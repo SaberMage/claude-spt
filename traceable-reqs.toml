@@ -29,7 +29,7 @@
 # audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
 # the moment those dirs are created (skeleton milestone, body #2) — until they exist a
 # nonexistent root is a hard manifest_error, so only list what is on disk now.
-roots = ["plugin", "ci", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
+roots = ["plugin", "ci", "ci/acceptance", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -115,7 +115,12 @@ required_stages = ["doc", "impl", "unit"]
 [[requirements]]
 id = "REQ-CI-ACCEPTANCE"
 title = "Acceptance = scripted orchestration spawning real claude/headless sessions as the system-under-test, asserting spt-state/digest output (LLM is SUT, never the runner)"
-required_stages = ["doc"]
+required_stages = ["doc", "impl"]  # doc: docs/CI.md. impl: ci/acceptance/{lib,run-acceptance}.sh + harness unit. int (real-claude spawn) held until demonstrated under disposable id (CI-ACCEPTANCE-PLAN follow-up).
+
+[[requirements]]
+id = "REQ-HAZARD-PERCH-COLLISION"
+title = "The acceptance harness spawns every nested claude SUT under a DISPOSABLE identity (SPT_AGENT_ID=sptc-ci-<n>), never a live agent's perch id — a colliding id tears down the live agent's perch + poll stream (name-keyed, last-establish-wins)"
+required_stages = ["unit"]  # unit: tests/acceptance-harness.sh. Diagnosed 2026-06-15 (operator): nested claude loading the spt plugin established a perch under "perri" and displaced the live poll stream.
 
 [[requirements]]
 id = "REQ-HAZARD-MSYS-PATHCONV"

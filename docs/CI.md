@@ -36,17 +36,37 @@ This is what a stock hosted runner can't do, and why the fleet is mandatory. (sp
 GH-runner justification — heavy multi-platform Rust + signed releases + two-host net — does
 not carry here: the adapter binary is thin glue and delegates releases/signing to `spt`.)
 
+**Disposable-identity invariant (mandatory).** Every nested `claude` the harness spawns runs
+under a **throwaway perch id** (`SPT_AGENT_ID=sptc-ci-<n>`), never a live agent's name. A nested
+session that resolves a live id establishes a perch under that name and — perches being
+name-keyed, last-establish-wins — **tears down the live agent's perch and poll stream** (the
+self-inflicted collision diagnosed 2026-06-15; see `docs/KNOWN-HAZARDS.md` §2.1 /
+`REQ-HAZARD-PERCH-COLLISION`). `ci/acceptance/lib.sh` `sptc_ci_identity` enforces it.
+
+**Slice 1** (`ci/acceptance/run-acceptance.sh`) asserts a real `claude` **fires the
+UserPromptSubmit hook** via a hook-written digest marker — the harness-contract entry point
+working inside a real harness — independent of the spt bus or model text. It is **env-gated**
+(`SPTC_ACCEPTANCE=1`) so the deterministic gate run stays green on hosts without `claude`/auth.
+Bus-delivery acceptance (poll→additionalContext over real spt) is a later slice, gated on
+`REQ-MSG-ENVELOPE`.
+
 ## Reporting bus = spt messaging (dogfood)
 
 The reporting bus is **legacy spt** (`$OWL send`): the runner reports gate/acceptance results
 over spt messaging to the responsible agent / channel. This dogfoods the product as its own CI
 nervous system.
 
-## Trigger: git post-push hook → ping a runner-agent over spt
+## Trigger: git push hook → ping a runner-agent over spt
 
-The trigger is **push-driven, not polling** (polling adds latency and wastes cycles):
+The trigger is **push-driven, not polling** (polling adds latency and wastes cycles).
 
-1. A **git post-push hook** fires after a push.
+> **Implemented as `pre-push`, by design — not a deviation.** Git has **no client-side
+> `post-push` hook**; the only push-time client trigger is `pre-push` (a true post-receive lives
+> server-side, which the autonomous fleet is not). SCOPE's "post-push" is loose wording for
+> "push-driven." The hook (`ci/git-hooks/pre-push`) is non-fatal: a missing bus or unset runner
+> never blocks the push. (Confirmed correct by doyle, 2026-06-15.)
+
+1. The **git `pre-push` hook** fires at push time.
 2. The hook **`$OWL send`s a one-line "run gates for `<ref>`" message** to a fleet runner-agent
    over spt messaging.
 3. The runner-agent **runs the deterministic gates** (and acceptance) on the fleet.

@@ -53,3 +53,33 @@ required_stages = []   # activate (["unit"] or ["unit","int"]) when you cover it
   A test asserts the stdin path is honored (no argv `/`-token dependency).
 - **cite:** UPS-fires validation 2026-06-15 (`ups.log`, run A); legacy `new-alarm` SKILL.md
   MSYS note. Reference only — binding evidence is the tagged test under `REQ-HAZARD-MSYS-PATHCONV`.
+
+---
+
+## 2. Live-agent perch / CI orchestration
+
+### 2.1 Nested-`claude` perch collision tears down the live agent's poll stream
+
+<!-- [doc->REQ-HAZARD-PERCH-COLLISION] -->
+
+- **Failure:** The CI acceptance harness spawns a real `claude` session as the system-under-test.
+  If that nested session loads the spt plugin (whose SessionStart establishes a perch) and resolves
+  the **same perch id as the live operator agent** (e.g. `perri`), the nested establish **displaces
+  the operator's perch** — perches are name-keyed, last-establish-wins — killing the operator's
+  `api poll` / live stream. Observed 2026-06-15 as the live poll Monitor exiting `exit-1` plus a
+  `sessions log seal failed: git failed` on revive (the collision teardown). Diagnosed by the
+  operator as self-inflicted, NOT a legacy-substrate bug.
+- **Invariant:** Every nested SUT the acceptance harness spawns MUST run under a **disposable
+  identity** distinct from any live agent — `SPT_AGENT_ID=sptc-ci-<n>` (and the matching
+  `OWL_SESSION_ID`), never a live agent name. The harness MUST set this for every spawn; it MUST
+  NOT inherit the operator's `SPT_AGENT_ID`/`OWL_SESSION_ID`. A test asserts the harness always
+  overrides both to a `sptc-ci-` id and never emits a live id.
+- **Mapping / notes:** `ci/acceptance/lib.sh` `sptc_ci_identity` mints the disposable id and
+  exports it into the SUT env; `ci/acceptance/run-acceptance.sh` spawns `claude -p` only through
+  that env. The deterministic guard lives in `tests/acceptance-harness.sh` (no real `claude`
+  needed — it asserts the env the harness would hand a spawn). Identity is the documented
+  name-keyed knob (`spt whoami` resolves from `$OWL_SESSION_ID`/`$SPT_AGENT_ID`); a separate data
+  dir is not part of the public surface, so isolation rides on identity.
+- **cite:** Operator diagnosis 2026-06-15 (perch collision, self-inflicted via nested `claude -p`
+  loading the spt plugin). Reference only — binding evidence is the tagged test under
+  `REQ-HAZARD-PERCH-COLLISION`.
