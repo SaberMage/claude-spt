@@ -127,14 +127,17 @@ idle = ["hook"]
 #
 # spt-core's registration cross-field rule requires [digest] to name where it reads from (`source`
 # or a [history] `locate_template`) — verified against the live v0.7.0 `spt adapter add`. CC stores
-# transcripts at `{home}/.claude/projects/<cwd-slug>/<session_id>.jsonl`; the cwd-slug subdir is a
-# CC-internal encoding NOT expressible as a flat template with the published key catalog, so
-# `source` names the per-project ROOT dir and the extractor finds `{session_id}.jsonl` within it
-# (the `source` field documents accepting "log file(s)" — a dir is valid). The extractor binary
-# ships in the spt-core-conducted layer (built in a later parity slice); this is its declaration.
+# transcripts at `~/.claude/projects/<cwd-slug>/<session_id>.jsonl`; the cwd-slug subdir is a
+# CC-internal encoding with NO published key (doyle 2026-06-15: spt-core stays harness-agnostic and
+# must not bake a harness's directory scheme into the catalog — by design there is no {cwd_slug}).
+# So `source` names the per-project ROOT dir (`~` for home expansion — {home} is NOT a catalog key)
+# and the extractor receives `{session_id}` on the COMMAND and resolves `<slug>/<session_id>.jsonl`
+# within the root itself (the slug is the harness's own business). This matches the published example
+# shape and what `spt endpoint digest` fills at runtime. The extractor (tools/claude-spt-digest, a
+# Rust binary) ships in the spt-core-conducted layer; this is its declaration.
 [digest]
 extractor = "claude-spt-digest --session {session_id} --in {source}"
-source = "{home}/.claude/projects"
+source = "~/.claude/projects"
 window_turns = 6
 arg_truncation = 240
 sprint_collapse = true

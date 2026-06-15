@@ -29,7 +29,7 @@
 # audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
 # the moment those dirs are created (skeleton milestone, body #2) — until they exist a
 # nonexistent root is a hard manifest_error, so only list what is on disk now.
-roots = ["plugin", "ci", "ci/acceptance", "ci/publish", "ci/docs", "ci/manifest", "adapter", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
+roots = ["plugin", "ci", "ci/acceptance", "ci/publish", "ci/docs", "ci/manifest", "ci/digest", "adapter", "tools", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -82,6 +82,11 @@ required_stages = ["doc", "impl", "unit", "int"]  # doc: ADR-0001 (manifest laye
 id = "REQ-DIST-SHORTCUT-BASENAME"
 title = "The adapter manifest brands the `spt endpoint run` launcher shortcut as `cc-<id>` via adapter.shortcut_basename = \"cc\" (the M12 cc launcher; decoupled from the sptc plugin name, ADR-0001)"
 required_stages = ["doc", "impl", "unit"]  # doc: ADR-0001 (cc launcher brand, decoupled from the s/sptc/spt/ plugin-name succession). impl: the cc-launcher BRINGUP machinery — adapter [session.self] (spawns `claude`) + [env.SPT_ENDPOINT_ID] (broker injects the endpoint id) + the SessionStart bind branch (sptc_register_verb -> `api bind`, the spt-hosted self-register path). unit: tests/manifest-shortcut.sh (brand-value guard) + tests/hooks-parse.sh sptc_register_verb (bind/seed/boundary branch). int (real `spt endpoint run` picker emits cc-<id> + real-claude bringup-bind) deferred — the shortcut-emitting picker "lands in a later spt-core wave" (per `endpoint run --help`); the bringup-bind is now contract-unblocked (doyle confirmed 2026-06-15: bind is establishing/intrinsic-auth, --set-session-id only, no token) but still needs a real-claude acceptance spawn (heavier tier). adapter add accepting the [session.self]/[env] blocks is covered by registration-int.sh step 4d (REQ-DIST-MANIFEST-SCHEMA int).
+
+[[requirements]]
+id = "REQ-DIST-DIGEST-EXTRACTOR"
+title = "The claude-spt [digest] extractor (claude-spt-digest) maps Claude Code's JSONL transcript to the published digest-record NDJSON contract (role∈{input,agent,tool}; text/tool/ts), emitting RAW records for spt-core's renderer (ADR-0019)"
+required_stages = ["impl", "unit"]  # impl: tools/claude-spt-digest (Rust — CC JSONL -> digest NDJSON; per-session locate of <slug>/<session_id>.jsonl under the projects root via the {session_id} the command receives; native UTF-8 stdout; defensive ~ expansion) + ci/digest/build.sh gate. unit: the crate's cargo tests (9: input/agent/tool mapping, arg-key preference, thinking+tool_result+noise+bad-json drops, UTF-8 round-trip, contract invariants, tilde expansion) run by ci/digest/build.sh. doc deferred (the mapping is documented in the module + manifest [digest] comment; a docs-site section lands with the doc slice). int deferred behind F-004: `spt adapter digest-proof --sample` passes an empty substitution-key map (doyle-confirmed spt-core impl bug, cli.rs:5135; runtime fills {id}+{session_id}) so it false-fails the {session_id}-templated command; ci/digest/digest-proof-int.sh skips on that exact error. Extractor proven meanwhile: cargo tests + a source-only digest-proof run returned DIGEST_PROOF_OK (5 parsed / 0 dropped, correct render — F-004 Variant A). Flips green on doyle's carrying release.
 
 [[requirements]]
 id = "REQ-UPS-INJECTION"

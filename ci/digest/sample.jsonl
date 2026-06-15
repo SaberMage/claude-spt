@@ -1,0 +1,9 @@
+{"type":"user","timestamp":"2026-06-15T10:00:00.000Z","sessionId":"S","message":{"role":"user","content":"add a file at src/a.rs"}}
+{"type":"assistant","timestamp":"2026-06-15T10:00:01.000Z","sessionId":"S","message":{"role":"assistant","content":[{"type":"thinking","thinking":"internal reasoning — not in the digest","signature":"x"},{"type":"text","text":"On it — writing src/a.rs now."},{"type":"tool_use","id":"t1","name":"Write","input":{"file_path":"src/a.rs","content":"fn main(){}"}}]}}
+{"type":"user","timestamp":"2026-06-15T10:00:02.000Z","sessionId":"S","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}
+{"type":"attachment","timestamp":"2026-06-15T10:00:03.000Z","sessionId":"S","attachment":{"x":1}}
+{"type":"assistant","timestamp":"2026-06-15T10:00:04.000Z","sessionId":"S","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"cargo build","description":"build"}}]}}
+
+{"type":"last-prompt","sessionId":"S","leafUuid":"u","lastPrompt":"x"}
+this line is not valid json and must be skipped, never emitted
+{"type":"assistant","timestamp":"2026-06-15T10:00:05.000Z","sessionId":"S","message":{"role":"assistant","content":[{"type":"text","text":"Done — built clean."}]}}

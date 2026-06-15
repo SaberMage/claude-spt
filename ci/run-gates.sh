@@ -22,6 +22,13 @@ for t in tests/*.sh; do
   if sh "$t" >/dev/null 2>&1; then printf 'ok  %s\n' "$t"; else fail "unit: $t"; sh "$t" || true; fi
 done
 
+gate "digest-extractor (cargo build + test)"
+if [ -f "$ROOT/ci/digest/build.sh" ]; then
+  if sh "$ROOT/ci/digest/build.sh"; then :; else fail "digest-extractor"; fi
+else
+  echo "SKIP: no digest extractor build yet"
+fi
+
 gate "traceable-reqs check (requirement coverage)"
 if command -v traceable-reqs >/dev/null 2>&1; then
   if traceable-reqs check >/dev/null 2>&1; then echo "ok  coverage green"; else fail "traceable-reqs check"; traceable-reqs check || true; fi

@@ -11,6 +11,7 @@
 | F-001 | 2026-06-14 | **re-scoped 2026-06-15** — most = adapter-authoring (closed); 1 residual spt-core docs item open | Hook-wiring for a CC adapter — boundary clarified |
 | F-002 | 2026-06-15 | **RESOLVED-SHIPPED (v0.7.1)** — `<EVENT>` verified on the published `api poll` surface; F-002 dissolved; int flipped | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
 | F-003 | 2026-06-15 | **RESOLVED + docs CLOSED (v0.7.1)** — capability shipped; the file-pointer syntax is now on the published surface | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
+| F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
 
 ---
 
@@ -247,3 +248,52 @@ the pointer syntax was undocumented on the GH-Pages surface (it lived in spt-cor
 `{key}` substitution catalog and the `[digest]` register rule) to the docs-site manifest reference +
 `MANIFEST.md`. The next adapter author discovers the pointer form from the published surface alone —
 F-003 fully resolved.
+
+---
+
+## F-004 — `spt adapter digest-proof --sample` does not fill `{session_id}` (false-fails the published extractor shape)
+
+**Surfaced:** 2026-06-15, authoring the claude-spt `[digest]` extractor (ADR-0019).
+
+**Symptom.** `spt adapter digest-proof --sample <log>` substitutes only `{source}` (= the sample
+path) into the extractor command and hard-fails on any other key. The claude-spt extractor command
+is the production-correct, published-example shape:
+
+```
+extractor = "claude-spt-digest --session {session_id} --in {source}"
+```
+
+→ `DIGEST_PROOF_EXTRACT_FAIL:claude-spt: digest extractor failed: no value for substitution key {session_id}`.
+
+**Isolation (same adapter, only the command line differs):**
+- **Variant A** — `<exe> --in {source}` (source-only) → `DIGEST_PROOF_OK`, **parsed 5 / dropped 0**,
+  rendered digest correct (incl. sprint-collapse `used: Write(src/a.rs), Bash(cargo build)`). Proves
+  the extractor + the digest-proof render pipeline are correct.
+- **Variant B** — `<exe> --session {session_id} --in {source}` → fails on the unfilled `{session_id}`.
+
+**Why claude-spt needs `{session_id}` on the command (not a workaround — the only correct shape).**
+CC's transcript path is `~/.claude/projects/<cwd-slug>/<session_id>.jsonl`. The `<cwd-slug>` subdir
+is CC-internal and has **no published key** — and per doyle, *should* not (spt-core stays
+harness-agnostic; it must not bake a harness's directory scheme into the key catalog). So `source`
+must be the projects **root** and the extractor receives `{session_id}` on the command, resolving
+`<slug>/<session_id>.jsonl` itself (the slug is the harness's business). This matches the published
+example and what `spt endpoint digest` fills at runtime.
+
+**Root cause (doyle, spt-core).** `digest-proof --sample` builds an **empty** substitution-key map
+(`cli.rs:5135`, `let keys = BTreeMap::new()` — comment admits "placeholders like `{session_id}`
+will fail"), whereas the runtime daemon path fills `{id}`+`{session_id}` before running the same
+extractor (`digest.rs:208-210`). digest-proof is meant to be the author-time half of the *same*
+ADR-0019 engine (§diagnostics), so it must supply the same keys. It doesn't → it is infidelitous to
+runtime and false-fails any `{session_id}`-templated extractor, including the published example.
+
+Aside: `{home}` is **not** a catalog key — hard-failing on it is correct. Use `~` for home
+expansion in `source` (we switched `source` to `~/.claude/projects`; the extractor also expands a
+leading `~/` defensively).
+
+**Status — CONFIRMED-IMPL-BUG; fix in progress (doyle's worktree).** digest-proof will fill
+`{id}`+`{session_id}` matching runtime exactly (fidelity: *"passes proof" ⟺ "works at runtime"*),
+plus an optional `--session <id>` override (default placeholder). The published contract is right;
+the tool is catching up. **Our posture:** the extractor is built to the published contract and
+proven (cargo unit tests + Variant A `DIGEST_PROOF_OK`); the digest-proof `int`
+(`ci/digest/digest-proof-int.sh`, `REQ-DIST-DIGEST-EXTRACTOR`) **skips on the exact substitution
+error** until doyle's fix ships, then flips green on the carrying release.
