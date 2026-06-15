@@ -3,6 +3,8 @@
 *.sh   text eol=lf
 # Extensionless shell scripts (git hooks) must also be LF + run under /bin/sh.
 ci/git-hooks/*  text eol=lf
+# Python (CI validators) — LF for deterministic cross-platform runs on the fleet.
+*.py   text eol=lf
 # PowerShell + Windows batch are CRLF.
 *.ps1  text eol=crlf
 *.bat  text eol=crlf

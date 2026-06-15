@@ -37,7 +37,11 @@ else
 fi
 
 gate "manifest-schema"
-echo "SKIP: no adapter manifest yet — activates when the CC adapter manifest lands"
+if [ -f "$ROOT/ci/manifest/check-manifest.sh" ]; then
+  if sh "$ROOT/ci/manifest/check-manifest.sh"; then :; else fail "manifest-schema"; fi
+else
+  echo "SKIP: no adapter manifest yet — activates when the CC adapter manifest lands"
+fi
 
 gate "docs-drift"
 if [ -f "$ROOT/ci/docs/check-docs.sh" ]; then

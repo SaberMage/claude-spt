@@ -83,9 +83,12 @@ Concretely:
 
 ## Consequences
 
+<!-- [doc->REQ-DIST-MANIFEST-SCHEMA] -->
 - The marketplace plugin can sit static across many manifest/binary updates → the
   version-of-truth is the spt-core-tracked manifest/binary version (`spt adapter list` /
-  `/spt:version`), **not** the marketplace `plugin.json` version. These are distinct numbers on
+  `/spt:version`), **not** the marketplace `plugin.json` version. The CC adapter manifest
+  (`adapter/claude-spt.toml`) is authored against spt-core's **published** `manifest.schema.json`
+  (vendored at `adapter/manifest.schema.json`) and CI-gated against it (`ci/manifest/`). These are distinct numbers on
   independent schedules (see `docs/RELEASE-RUNBOOK.md`).
 - New obligation: a dual update path kept in sync — file-pull (real) + a cautionary
   `claude plugin update` (skeleton sync only).

@@ -1,0 +1,145 @@
+# claude-spt — Claude Code adapter manifest (publish target #2: the spt-core adapter registry side).
+#
+# This is the spt-core-conducted layer of the distribution split (ADR-0001): the volatile
+# `[digest]` extractor / profiles / strings / hints ride here, NOT in the thin cplugs skeleton.
+# Registered with `spt adapter add <path>`; the version-of-truth is `spt adapter list`, not the
+# marketplace `plugin.json` version.
+#
+# Authored against spt-core's PUBLISHED v0.7.0 surface ONLY (spt-releases + sabermage.github.io/
+# spt-releases) — `manifest.schema.json` is vendored beside this file (adapter/manifest.schema.json,
+# provenance: https://sabermage.github.io/spt-releases/manifest.schema.json). Validated by the
+# manifest-schema CI gate (ci/manifest/). NEVER copy spt-core internals (AGENTS.md).
+#
+# Deferred to later parity slices (not in this slice; each declares an adapter seam we have not
+# yet built, or needs a capability not on the public surface — see notes inline):
+#   * [session] + [session.<role>]  — live-agent / Psyche / commune / signoff / notif spawn
+#     templates. Land with the M12 parity surfaces (/sptc:live, commune, signoff).
+#   * [history]                     — transcript-access seam. Lands with [digest]'s sibling fetcher.
+#   * [update]                      — distribution self-update. `file_pull` needs (a) a published
+#     adapter-registry repo target and (b) an Ed25519 content-signing key we do not yet hold;
+#     `delegated` to `claude plugin update` needs CC to attest signature verification
+#     (`self_verifies`) — unconfirmed on the public surface. Tracked as a finding
+#     (docs/SPT-CORE-FINDINGS.md) rather than guessed here.
+#
+# [impl->REQ-DIST-MANIFEST-SCHEMA]
+
+[adapter]
+name = "claude-spt"
+kind = "harness"
+version = "0.1.0"
+# Local spt binary is 0.6.0; the published contract we build to is v0.7.0 (manifest.schema.json,
+# shortcut_basename). 0.7.0 is the floor this manifest's fields require.
+min_spt_core_version = "0.7.0"
+hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
+# Brands the `spt endpoint run` picker shortcut as `sptc-<id>` (default would be `spt-<id>`).
+# `sptc` is the single-substitution succession seam (ADR-0001): parity-proof flips s/sptc/spt/.
+shortcut_basename = "sptc"
+
+# ── [hooks.<event>] ──────────────────────────────────────────────────────────────────────────
+# CC hook event → the opaque `api …` command it fires. These mirror the hand-written plugin
+# hooks.json (plugin/sptc/hooks/hooks.json) one-for-one; the plugin shells `spt api`, this table
+# is the registry-side declaration (ADR-0002, F-001 resolution). `reads` = the CC hook-stdin
+# fields we map; `can_inject` = whether the event can surface additionalContext back to the agent.
+
+[hooks.SessionStart]
+# Seed the endpoint. pid is sourced from the hook PROCESS tree, not stdin (F-001); session_id is
+# a CC stdin field. NOT the blocking poll/listen loop — that is /sptc:ready|live, never SessionStart.
+fires = "api seed --session-id {session_id} --pid {parent_pid}"
+reads = ["session_id"]
+can_inject = true
+
+[hooks.UserPromptSubmit]
+# Drain the inbox (api poll → additionalContext) and run keyword hints (api hint over the prompt).
+fires = "api poll {session_id}"
+reads = ["session_id", "prompt"]
+can_inject = true
+
+[hooks.Stop]
+# Idle marker on turn-end. Stop cannot inject → relay/sentinel fallback (echo-gate, F-001 §Gap3).
+fires = "api state idle"
+reads = ["session_id"]
+can_inject = false
+
+[hooks.SessionEnd]
+fires = "api session-end {session_id}"
+reads = ["session_id"]
+can_inject = false
+
+[hooks.SubagentStart]
+fires = "api worker-start {session_id}"
+reads = ["session_id"]
+can_inject = false
+
+[hooks.SubagentStop]
+fires = "api worker-stop {session_id}"
+reads = ["session_id"]
+can_inject = false
+
+# ── [identity] ─────────────────────────────────────────────────────────────────────────────
+[identity]
+# CC hands the session_id on hook stdin once running (discovered post-spawn, not injected).
+session_id_source = "post_spawn"
+# Process-tree anchor when session_id is absent: the Claude Code binary.
+parent_ancestor_name = "claude"
+
+# ── [inject] ───────────────────────────────────────────────────────────────────────────────
+[inject]
+# v1 delivery is the hook channel only (UserPromptSubmit/SessionStart additionalContext).
+# PTY injection is spt-core M3 roadmap (F-001 resolution); not claimed here.
+activity = ["hook"]
+idle = ["hook"]
+
+# ── [digest] ───────────────────────────────────────────────────────────────────────────────
+# Session-digest extractor seam (ADR-0019). CC's transcript is JSONL (one event per line); the
+# extractor maps that native log → the published {role,text,tool,ts} digest-record contract,
+# one JSON record per output line. The extractor binary self-locates CC's transcript from the
+# session id (no [history] locate_template declared this slice), so no {source} placeholder.
+# The extractor binary ships in the spt-core-conducted layer (built in a later parity slice);
+# this is its declaration.
+[digest]
+extractor = "claude-spt-digest --session {session_id}"
+window_turns = 6
+arg_truncation = 240
+sprint_collapse = true
+
+# ── [profiles.<name>] ────────────────────────────────────────────────────────────────────────
+# Shipped profile overlays (sparse leaf-replace; selected as the composite `claude-spt:<name>`).
+# `deep` widens the digest window for long-context review sessions without forking the base.
+# (Node-local user profiles are created with `spt adapter create-profile` and live in the
+# registry, never in this manifest.)
+[profiles.deep.digest]
+window_turns = 20
+
+# ── [strings] ──────────────────────────────────────────────────────────────────────────────
+# Opaque adapter data (spt-core never executes it), dot-path-readable via `spt adapter get-string`.
+# Seed only this slice — the file-backed skill-instruction BODIES (UPS-injection source) land in
+# the M12 file-backed-strings parity slice. A profile may leaf-replace any key here.
+[strings]
+adapter_label = "Claude Code (spt)"
+
+[strings.notice]
+not_installed = "spt-core not found on PATH — run /sptc:setup to install it."
+
+[strings.skills]
+# One-line summaries (the operative multi-line bodies arrive file-backed in the M12 slice).
+commune = "Send a communal context update to your Psyche."
+live = "Run or resume a live agent session."
+ready = "Enable inter-agent messaging for this session."
+send = "Send a message to another spt agent."
+signoff = "Graceful live-agent shutdown with a final context summary."
+whoami = "Report this session's spt endpoint id."
+version = "Report the spt-core-tracked adapter/binary version-of-truth."
+
+# ── [[hints]] ──────────────────────────────────────────────────────────────────────────────
+# Once-per-session keyword hints (order significant, first match wins; case-insensitive substrings).
+[[hints]]
+keywords = ["go live", "live agent", "start live"]
+text = "Tip: /sptc:live starts or resumes a live agent session."
+
+[[hints]]
+keywords = ["who am i", "my owl name", "my agent name", "my endpoint id"]
+text = "Tip: /sptc:whoami reports this session's spt endpoint id."
+
+[[hints]]
+keywords = ["message another agent", "send to agent", "tell the other agent"]
+text = "Tip: /sptc:send messages another spt agent; /sptc:ready first to receive replies."
