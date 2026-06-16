@@ -204,7 +204,9 @@ not_installed = "spt-core not found on PATH — run /sptc:setup to install it."
 # resolved lazily at `spt adapter get-string` — proven vs live v0.7.0, F-003). File-backed so the
 # manifest does not bloat (ADR-0001). Skills not yet authored keep a one-line inline summary until
 # their body lands; converting an inline summary to a `{ file }` pointer is the per-skill increment.
-whoami = { file = "skills/whoami.md" }
+# whoami SKILL dropped (SCOPE LOCKED parity-trim; operator-confirmed 2026-06-15): core `spt whoami`
+# stays in the hot path (-> M12 `endpoint list` alias), so the adapter ships no whoami skill. The
+# "who am i" hint below points at the core CLI. (docs/PARITY.md.)
 setup = { file = "skills/setup.md" }
 ready = { file = "skills/ready.md" }
 send = { file = "skills/send.md" }
@@ -232,7 +234,7 @@ text = "Tip: /sptc:live starts or resumes a live agent session."
 
 [[hints]]
 keywords = ["who am i", "my owl name", "my agent name", "my endpoint id"]
-text = "Tip: /sptc:whoami reports this session's spt endpoint id."
+text = "Tip: run `spt whoami` to see this session's spt endpoint id."
 
 [[hints]]
 keywords = ["message another agent", "send to agent", "tell the other agent"]

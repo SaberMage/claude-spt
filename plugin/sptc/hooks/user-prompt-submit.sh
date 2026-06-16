@@ -14,7 +14,7 @@ sid=$(json_str "$input" session_id)
 # skill body + a big drain could jointly exceed CC's spill threshold.
 out=""
 
-# 1. Skill-injection runs BEFORE the perch check — skills like /sptc:whoami and /sptc:setup are
+# 1. Skill-injection runs BEFORE the perch check — skills like /sptc:version and /sptc:setup are
 #    valid without a readied perch (setup even runs before spt exists). No-op if not a sptc command.
 prompt=$(json_str "$input" prompt)
 out="$(sptc_inject_skill "$(sptc_skill_key "$prompt")")"

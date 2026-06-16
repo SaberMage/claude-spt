@@ -47,8 +47,8 @@ deep=$(spt adapter get-string claude-spt:deep adapter_label 2>&1)
 
 # 4b. File-backed [strings] pointer resolves to FILE CONTENTS (not the table, not raw); an inline
 #     sibling still prints as-is. Proves `{ file = "skills/<x>.md" }` over adapter/strings/ (F-003).
-body=$(spt adapter get-string claude-spt skills.whoami 2>&1)
-case "$body" in "# /sptc:whoami"*) ok "file-backed string resolves: skills.whoami -> body" ;; *) bad "skills.whoami not resolved to file body: '$(printf %.40s "$body")'" ;; esac
+body=$(spt adapter get-string claude-spt skills.ready 2>&1)
+case "$body" in "# /sptc:ready"*) ok "file-backed string resolves: skills.ready -> body" ;; *) bad "skills.ready not resolved to file body: '$(printf %.40s "$body")'" ;; esac
 # Newly file-backed skills (commune = file-drop body; force-stop = endpoint shutdown body).
 cbody=$(spt adapter get-string claude-spt skills.commune 2>&1)
 case "$cbody" in "# /sptc:commune"*) ok "file-backed string resolves: skills.commune -> body" ;; *) bad "skills.commune not resolved to file body: '$(printf %.40s "$cbody")'" ;; esac
@@ -62,11 +62,11 @@ case "$lbody" in "# /sptc:live"*) ok "file-backed string resolves: skills.live -
 # 4c. UPS skill-injection end-to-end: the hook helper resolves a /sptc:<skill> prompt to the wrapped
 #     operative body via get-string (REQ-UPS-INJECTION impl, on the registered adapter).
 ( . "$ROOT/plugin/sptc/hooks/_common.sh"
-  inj=$(sptc_inject_skill "$(sptc_skill_key '/sptc:whoami report me')")
+  inj=$(sptc_inject_skill "$(sptc_skill_key '/sptc:ready listen up')")
   case "$inj" in
-    '<sptc_skill name="whoami">'*'# /sptc:whoami'*'</sptc_skill>'*) exit 0 ;;
+    '<sptc_skill name="ready">'*'# /sptc:ready'*'</sptc_skill>'*) exit 0 ;;
     *) printf 'inject got: %.60s\n' "$inj"; exit 1 ;;
-  esac ) && ok "UPS skill-injection: /sptc:whoami -> wrapped body" || bad "skill-injection did not emit wrapped body"
+  esac ) && ok "UPS skill-injection: /sptc:ready -> wrapped body" || bad "skill-injection did not emit wrapped body"
 
 # 4d. The spt-hosted bringup blocks ([session.self] + [env.SPT_ENDPOINT_ID]) cross-field-validate:
 #     `adapter add` (step 1) is manifest-first ("an invalid manifest registers nothing"), so the

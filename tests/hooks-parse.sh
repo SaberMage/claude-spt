@@ -47,13 +47,13 @@ check "render no-from" "$(printf '<sptc_messages>\nsys note\n</sptc_messages>')"
 check "render empty" "" "$(render_frames '')"
 
 # --- sptc_skill_key: detect /sptc:<skill> in a slash-command prompt --- [unit->REQ-UPS-INJECTION]
-check "skill_key bare"        "whoami" "$(sptc_skill_key '/sptc:whoami')"
+check "skill_key bare"        "ready"  "$(sptc_skill_key '/sptc:ready')"
 check "skill_key with args"   "send"   "$(sptc_skill_key '/sptc:send doyle hi')"
 check "skill_key leading ws"  "setup"  "$(sptc_skill_key '   /sptc:setup')"
 check "skill_key hyphenated"  "list-agents" "$(sptc_skill_key '/sptc:list-agents')"
-check "skill_key mid-prose"   ""       "$(sptc_skill_key 'please run /sptc:whoami for me')"
-check "skill_key other ns"    ""       "$(sptc_skill_key '/other:whoami')"
-check "skill_key not a cmd"   ""       "$(sptc_skill_key 'whoami am i')"
+check "skill_key mid-prose"   ""       "$(sptc_skill_key 'please run /sptc:ready for me')"
+check "skill_key other ns"    ""       "$(sptc_skill_key '/other:ready')"
+check "skill_key not a cmd"   ""       "$(sptc_skill_key 'ready set go')"
 check "skill_key empty"       ""       "$(sptc_skill_key '')"
 
 # --- sptc_register_verb: SessionStart bind/seed/boundary branch --- [unit->REQ-DIST-SHORTCUT-BASENAME]
