@@ -569,5 +569,14 @@ missing feature.
 - **Two acceptance gotchas** (doyle folding into the how-to-live docs): anchor on the **Windows** pid,
   not git-bash `$$` (else `STALE_SEED`); `bind <id>` before `send` (else `NO_PERCH`, no queue).
 
-**Status:** **RESOLVED to a docs gap (Bucket 2). Live int SHIPPED. Awaiting only the post-M11
-how-to-live topic (doyle) to re-point /sptc:live step 2 at the canonical guidance.**
+**v0.8.0 marker-model change (doyle heads-up 2026-06-16, M11 restructure).** At v0.8.0 the Psyche is
+no longer spawned in-process by `api listen` (which then emits only `BOUND`/`READY` + marks the perch
+online); the **daemon livehost** hosts it off that online status (`LIVEHOST_PSYCHE:{id}` on the daemon
++ the `{id}-psyche` perch comes online). `live-relay-int.sh` now version-branches the psyche assertion
+(<0.8.0 = `PSYCHE_SPAWNED` off the child; >=0.8.0 = the `{id}-psyche` perch online, **provisional** —
+finalized at the v0.8.0 publish ping). Relay leg unchanged. The `how-to live` topic ships in v0.8.0
+(todlando @672b928) → re-point `/sptc:live` step 2 at `spt how-to live` then.
+
+**Status:** **RESOLVED to a docs gap (Bucket 2). Live int SHIPPED (0.7.3 green; v0.8.0 psyche-marker
+branch pre-staged provisionally). Awaiting the v0.8.0 publish ping to finalize the >=0.8.0 leg +
+re-point /sptc:live step 2 at the shipped how-to-live topic.**

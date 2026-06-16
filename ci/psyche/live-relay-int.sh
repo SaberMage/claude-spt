@@ -8,11 +8,14 @@
 # `--adapter <name>` is just a name → without it LiveHost is None and no Psyche spawns), capture its
 # stdout/stderr, send a probe, and assert the bringup markers. The LLM is never judged. [int->REQ-SKILL-LIVE]
 #
-# Covers BOTH legs of REQ-SKILL-LIVE int: (1) PSYCHE-SPAWN — the daemon/host spawns the Psyche on the
-# in-process listen path when the merged manifest declares psyche_init (startup.rs spawn_psyche, pre
-# once/loop split — doyle 2026-06-16); (2) RELAY — the resident listen pipe delivers the probe. The
-# per-pulse runner command construction is additionally covered by claude-spt-psyche unit tests
-# (ci/psyche/build.sh).
+# Covers BOTH legs of REQ-SKILL-LIVE int: (1) PSYCHE-SPAWN — version-dependent marker (M11 restructure,
+# doyle 2026-06-16): on <0.8.0 `api listen` spawns the Psyche IN-PROCESS (`PSYCHE_SPAWNED:{id}-psyche`
+# off the listen child, startup.rs spawn_psyche pre once/loop split); on >=0.8.0 the DAEMON livehost
+# hosts it off the perch's online status (`LIVEHOST_PSYCHE:{id}` on the daemon + the `{id}-psyche` perch
+# comes online) — the >=0.8.0 leg is PROVISIONAL, finalized against the merged tree at the v0.8.0 publish
+# ping. (2) RELAY — the resident listen pipe delivers the probe (BOUND/READY/<EVENT> off the child,
+# unchanged across versions). The per-pulse runner command construction is additionally covered by
+# claude-spt-psyche unit tests (ci/psyche/build.sh).
 #
 # PSYCHE-SPAWN binary resolution: the psyche_init command invokes `claude-spt-psyche` by bare name.
 # On v0.8.0+ (Feature B / REQ-INSTALL-11) spt resolves it against the --manifest file's dir. On 0.7.3
@@ -83,14 +86,34 @@ i=0; while [ "$i" -lt 25 ]; do grep -q "READY:$ID" "$LF" 2>/dev/null && break; s
 grep -q "BOUND:$ID" "$LF" 2>/dev/null && ok "live perch bound" || bad "no BOUND:$ID; log=[$(cat "$LF")]"
 # 2. The live listen path announces readiness (the relay heartbeat is up).
 grep -q "READY:$ID" "$LF" 2>/dev/null && ok "live listen READY:$ID" || bad "no READY:$ID; log=[$(cat "$LF")]"
-# 3. PSYCHE-SPAWN: the merged manifest's [session.psyche_init] made spt spawn the Psyche.
-if grep -q "PSYCHE_SPAWNED:$ID-psyche pid=" "$LF" 2>/dev/null; then
-  ok "Psyche spawned ($(grep -oE "PSYCHE_SPAWNED:$ID-psyche pid=[0-9]+" "$LF" | head -1))"
-elif grep -q "PSYCHE_SPAWN_FAIL:" "$LF" 2>/dev/null && ! psyche_resolvable; then
-  skip "psyche-spawn: runner unresolvable on spt $ver without the F-006 PATH interim (Feature B/REQ-INSTALL-11 lands v0.8.0) — $(grep -oE 'PSYCHE_SPAWN_FAIL:[^]]*' "$LF" | head -1)"
-else
-  bad "no PSYCHE_SPAWNED marker (manifest declares psyche_init? runner resolvable?); log=[$(cat "$LF")]"
-fi
+# 3. PSYCHE-SPAWN — the marker model differs by version (M11 restructure; doyle 2026-06-16):
+case "$ver" in
+  0.7.*)
+    # <0.8.0: `api listen` spawns the Psyche IN-PROCESS → `PSYCHE_SPAWNED:{id}-psyche pid=` off the
+    # listen child's stderr. The bare `claude-spt-psyche` resolves via the F-006 PATH interim here.
+    if grep -q "PSYCHE_SPAWNED:$ID-psyche pid=" "$LF" 2>/dev/null; then
+      ok "Psyche spawned in-process ($(grep -oE "PSYCHE_SPAWNED:$ID-psyche pid=[0-9]+" "$LF" | head -1))"
+    elif grep -q "PSYCHE_SPAWN_FAIL:" "$LF" 2>/dev/null && ! psyche_resolvable; then
+      skip "psyche-spawn: runner unresolvable on spt $ver without the F-006 PATH interim (Feature B/REQ-INSTALL-11 lands v0.8.0) — $(grep -oE 'PSYCHE_SPAWN_FAIL:[^]]*' "$LF" | head -1)"
+    else
+      bad "no PSYCHE_SPAWNED marker (manifest declares psyche_init? runner resolvable?); log=[$(cat "$LF")]"
+    fi
+    ;;
+  *)
+    # >=0.8.0 (PROVISIONAL — finalize markers against the merged tree at the v0.8.0 publish ping;
+    # doyle/todlando @672b928): `api listen` no longer spawns the Psyche in-process — it emits only
+    # BOUND/READY and marks the perch online. The DAEMON livehost then hosts the Psyche off that
+    # online status (marker `LIVEHOST_PSYCHE:{id}` on the DAEMON's stderr, not the listen child) and
+    # the `{id}-psyche` perch comes online as a live_agent. So assert the daemon-hosted psyche perch is
+    # ONLINE (give the daemon a moment to host), NOT a child-side PSYCHE_SPAWNED.
+    j=0; while [ "$j" -lt 15 ]; do spt endpoint list 2>/dev/null | grep -qi "$ID-psyche" && break; sleep 1; j=$((j+1)); done
+    if spt endpoint list 2>&1 | grep -qi "$ID-psyche"; then
+      ok "Psyche daemon-hosted: $ID-psyche perch online (v0.8.0 livehost)"
+    else
+      bad "no $ID-psyche perch online (v0.8.0 daemon-hosted psyche — PROVISIONAL marker, confirm at v0.8.0 publish); endpoints=[$(spt endpoint list 2>&1 | tr '\n' ';')]"
+    fi
+    ;;
+esac
 
 # Deliver a probe with body specials; the resident relay streams it live to the child's stdout.
 printf 'live relay probe <a> & "b"' | spt send "$ID" --from relay-probe >/dev/null 2>&1
