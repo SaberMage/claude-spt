@@ -80,6 +80,18 @@ The single most important design rule:
   verbatim; over it spill the **full** text to an agent-readable file and inject only a short
   pointer. Never a mid-`<EVENT>`/mid-record head-cut — that splits an envelope and drops a message.
   (Any harness injection channel with a size limit wants the same pattern.)
+- **Skill-instruction injection rides the same prompt hook — but inject BEFORE the perch gate.**
+  **[CC]** The UserPromptSubmit hook also detects `/<plugin>:<skill>` in the prompt (leading-token
+  match, so prose merely mentioning it mid-sentence does not fire) and injects that skill's `[strings]`
+  body. Run the injection **before** the perch/listen check, then drain: skills like `whoami`/`setup`
+  are valid with **no readied perch**, so gating injection on a bound perch silently breaks them. The
+  message-drain stays perch-gated; the skill-body inject does not.
+- **The installer/`setup` skill must be self-contained in its stub — it cannot depend on injection.**
+  Injection resolves a body via `spt adapter get-string`, but the setup skill runs precisely when the
+  binary may be **absent** (installing it is the whole job) — a skill whose precondition is "spt
+  missing" cannot source its instructions from spt. Carry its operative steps in the harness-native
+  skill stub (the floor); let the file-backed body only **mirror** them for the present-binary repair
+  path. (The bootstrap paradox: the one skill that most needs delivery is the one delivery can't reach.)
 
 ## `[strings]`: inline or file-backed pointers
 
@@ -91,6 +103,12 @@ The single most important design rule:
   the `strings/` dir fail the add (manifest-first: nothing registers on an invalid manifest).
 - Use this to keep skill-instruction bodies out of the manifest (`[strings.skills].<x> =
   { file = "skills/<x>.md" }`) — the body is the UPS-injection source, the manifest stays thin.
+- **Delegate volatile guidance to `spt how-to <topic>` rather than hand-copying it.** spt-core ships
+  task-oriented agent guidance as a first-class surface: `spt how-to` lists topics (`ready` + `send`
+  exist today), each a canonical write-up of the verbs, flags, and result codes. A messaging skill
+  body that says "run `spt how-to send` and follow it" tracks the published contract automatically
+  instead of drifting from a copied summary. (`how-to` is also a fast way to learn the surface while
+  authoring — the binary self-documents.)
 
 ## `[digest]`: the transcript→record extractor seam
 
