@@ -314,4 +314,11 @@ running `spt how-to subnet` hits a dead end. **Disposition:** mint a `how-to sub
 spt-core (cross-machine pairing is the highest-value first-run flow; it deserves the same guided
 prose as messaging). Carried as a parity finding — NOT a blocker for `/sptc:subnet`.
 
-**Reported:** 2026-06-15 to doyle (explicit `$OWL send`). **Status:** open — doyle owns the topic mint.
+**Reported:** 2026-06-15 to doyle (explicit `$OWL send`). **Status:** **ACCEPTED 2026-06-15
+(doyle).** Confirmed against spt-core source: `HOW_TO_TOPICS` (cli.rs:4692) ships exactly
+`["ready","send"]` (v1 topics, M7 plan decision 12, test-locked) → `spt how-to subnet` →
+`NO_SUCH_TOPIC` (exit 2). Classified as a genuine spt-core **content gap under existing REQ-DOCS-6**
+(in-binary agent guidance, single-source) — NOT a published-docs gap, NOT a docs-read miss.
+**Disposition (doyle):** mint a `how-to subnet` topic (HOW_TO_SUBNET text + registry entry + bump
+the v1-lock test); **scheduled into M11-W5** (the rig + docs wave). No new REQ (REQ-DOCS-6 owns it).
+Tracked, not a mid-flight interrupt. NOT a blocker for `/sptc:subnet` (wraps `spt subnet --help`).
