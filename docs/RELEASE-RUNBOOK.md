@@ -125,6 +125,31 @@ the seamless binary handoff (owl Phase 18.4/18.5) · `DEPLOY.ps1`'s build/handof
 > cplugs `spt` plugin in the same coordinated move — two plugins cannot share the `spt` name. The
 > flip is a single substitution `s/sptc/spt/` (plugin dir, `plugin.json` name, marketplace path).
 
+## adapter manifest publish — the `adapter.spt` release asset
+
+<!-- [doc->REQ-DIST-ADAPTER-RELEASE] -->
+The CC adapter manifest (publish target #2) ships to end users as an **`adapter.spt`** GitHub
+**release asset** on this monorepo, acquired with **`spt adapter add --release SaberMage/spt-claude-code`**
+(doyle's `--release` source; needs **spt v0.7.3+ / counter 15** — not in 0.7.2). No dedicated
+adapter repo: the asset is packed straight from `adapter/`.
+
+- **Pack:** `sh ci/publish/package-adapter.sh` (DRY-RUN) → `--apply` writes `dist/adapter.spt`. It
+  validates the manifest, requires the built tool binaries (`sh ci/digest/build.sh && sh
+  ci/psyche/build.sh`), and tars the archive **ROOT** = `manifest.toml` (renamed from
+  `claude-spt.toml` — `adapter add` is root-only + exact-name), `strings/`, and the two binaries.
+  Never uploads (operator's step).
+- **Publish:** attach `dist/adapter.spt` to a GitHub release on `SaberMage/spt-claude-code`, then
+  end users `spt adapter add --release SaberMage/spt-claude-code` (or `--tag <ver>` to pin).
+- **Binaries (copy-mode caveat):** registration copies `manifest.toml` + `strings/` only — **not**
+  the binaries. The command templates use **bare names** (`claude-spt-digest`, `claude-spt-psyche`)
+  ⇒ resolved from **PATH**; the installer must place them on PATH (or use absolute/home-relative
+  paths). The archive carries them so the installer has a source.
+- **Platform:** the asset is **platform-specific** (native binaries). Multi-OS = per-OS assets
+  (a follow-on); the current packer emits the host platform's build.
+- **Acquisition only:** `--release` does **not** establish an `[update]` self-update route (our
+  manifest declares no `[update]` → COPY-mode registration). Re-acquire a newer version by re-running
+  `--release --tag <newer>`. The signed `file_pull` self-update channel is a separate, later concern.
+
 ## Update path (dual, kept in sync)
 
 Users receive updates two ways, and both must stay consistent:
