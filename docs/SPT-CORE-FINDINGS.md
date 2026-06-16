@@ -14,7 +14,7 @@
 | F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
 | F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --release <repo>`** | End-user adapter activation step (`adapter add [--github/--release]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
 | F-006 | 2026-06-15 | **CONFIRMED via dogfood; doyle scoping REQ-INSTALL-9; interim shipped** — proper fix (spt-core resolves adapter binaries against the install dir before PATH) rides v0.7.4/counter-16 (deployah) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
-| F-007 | 2026-06-16 | **OPEN — reported to doyle** — adapter-side hardened (live.md no longer instructs the dead command); awaiting a `how-to live` topic on the published surface | `spt how-to live` returns `NO_SUCH_TOPIC` though spt advertises "live-agent lifecycle" as a top-level concern and `ready`/`send` both have how-to topics — no canonical published live-bringup guidance to defer to |
+| F-007 | 2026-06-16 | **RESOLVED to docs-gap (Bucket 2), not a missing feature** — live int SHIPPED via `--manifest` + persistent-child `api listen`; doyle folding the recipe + a `how-to live` topic into post-M11 docs | `spt how-to live` is `NO_SUCH_TOPIC`, and the non-interactive live-bringup for acceptance was undiscoverable — turned out to be `--manifest` + persistent-child `api listen` (the Monitor surrogate), now proven |
 
 ---
 
@@ -547,12 +547,27 @@ keep it alive while a probe is sent + the relay EVENT is asserted, then tear the
 That heavier harness has no published non-interactive entrypoint to build against (the missing
 `how-to live` would be where such an "acceptance/headless live bringup" path is documented).
 
-**Ask (doyle).** (1) Add a `how-to live` topic covering the canonical live-bringup + the relay/poll
-reconcile. (2) Clarify whether there is (or should be) a **non-interactive live bringup** for
-acceptance harnesses — i.e. `endpoint run` (or a flag) that brings the session up *already listening*
-as a LiveAgent (perch bound, Psyche spawned) without an interactive `/sptc:live` drive. Until then
-the REQ-SKILL-LIVE `int` stays **deferred** (it requires the persistent-driven-session tier), and the
-adapter's inline live recipe stands as the floor.
+**RESOLUTION (2026-06-16, doyle ruling + perri validated).** Both items = docs gap (Bucket 2), NOT a
+missing feature.
+- **Item 1 (`how-to live`):** accepted = REQ-DOCS-6; doyle adds the topic as a post-M11 fast-follow
+  (mechanism exists — the twin `how-to subnet` just landed). live.md hardened meanwhile (inline floor).
+- **Item 2 (non-interactive bringup):** the primitive EXISTS and is public — it's NOT `endpoint run`
+  and NOT `--once`. CC has the Monitor tool, so the live bringup is a **persistent** `spt api
+  --adapter claude-spt:live --manifest <manifest> listen <id>` run as a **child process** (the Monitor
+  surrogate; heir to legacy `$LIVE start <id>`). The earlier dead-ends were two omissions, both mine:
+  - `endpoint run --start` only brings up the harness PTY; the *session inside* must fire the listen.
+  - the Psyche spawns ONLY when the manifest is loaded, and the manifest loads ONLY via **`--manifest`**
+    (`--adapter <name>` is just a name string → `LiveHost` None → no spawn). With `--manifest`, spt's
+    in-process listen path spawns the Psyche (startup.rs `spawn_psyche`, *before* the once/loop split —
+    so `--once` was a red herring). Proven 2026-06-16: `BOUND` / `PSYCHE_SPAWNED:{id}-psyche pid=…` /
+    `READY` / the probe relayed as `<EVENT>`. Shipped as `ci/psyche/live-relay-int.sh`
+    (REQ-SKILL-LIVE int green).
+  - Binary resolution: the psyche_init command's bare `claude-spt-psyche` resolves via the F-006 PATH
+    interim on 0.7.3; on **v0.7.4 (Feature B / REQ-INSTALL-11)** spt resolves it against the
+    `--manifest` file's dir → still `PSYCHE_SPAWNED` after the interim is dropped. Independent confirm
+    Feature B was the right call.
+- **Two acceptance gotchas** (doyle folding into the how-to-live docs): anchor on the **Windows** pid,
+  not git-bash `$$` (else `STALE_SEED`); `bind <id>` before `send` (else `NO_PERCH`, no queue).
 
-**Status:** **OPEN — reported to doyle 2026-06-16; adapter hardened so nothing dangles; live int
-deferred on the non-interactive-bringup gap.**
+**Status:** **RESOLVED to a docs gap (Bucket 2). Live int SHIPPED. Awaiting only the post-M11
+how-to-live topic (doyle) to re-point /sptc:live step 2 at the canonical guidance.**
