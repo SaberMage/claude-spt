@@ -135,3 +135,21 @@ Staged, not built now (JIT). From `SCOPE.md` §"/spt:setup" LOCKED {1,2,3,4,5,6,
   OQ2 (binary resolution) decided there. Local-dir activation is dogfoolable now.
 - **Carry-over:** cplugs republish (the published skeleton still has the pre-activation setup body) +
   optional bootstrap auto-activate.
+- **PRE-POSITIONED + GATE LIFTED (2026-06-15):** monorepo pushed (origin/main); GitHub **release
+  `v0.1.0`** cut with the `adapter.spt` asset
+  (https://github.com/SaberMage/spt-claude-code/releases/tag/v0.1.0). **spt `v0.7.3` PUBLIC** —
+  `adapter add --release` in the binary.
+- **✅ DOGFOOD PROVEN END-TO-END (2026-06-15) — A IS FULFILLED via the real end-user path.**
+  `spt update fetch`→`apply` (0.7.2→0.7.3, exe hash = signed `d867…0794`, seamless) →
+  `adapter add --release SaberMage/spt-claude-code --tag v0.1.0` → fetched `adapter.spt` → registered
+  → **`claude-spt` ACTIVE** (Harness Copy, from `…/adapters/_github/SaberMage-spt-claude-code`).
+  One gap found + interim-fixed + logged: bundled binaries extract beside the manifest but bare-name
+  templates resolve from PATH only (**F-006**); interim = `/sptc:setup` copies them onto a PATH dir
+  (now wired into both setup bodies); proper fix = doyle's **REQ-INSTALL-9** (v0.7.4/counter-16).
+- **Remaining:** the live relay int (REQ-SKILL-LIVE, heavy/hazard-sensitive) · int scripts to flip
+  REQ-SETUP-ACTIVATE/REQ-DIST-ADAPTER-RELEASE int stages green · cplugs republish (ship the
+  activation setup floor) · per-OS `adapter.spt` assets · LOCKED v1 setup {1..7} later waves.
+- **PRE-POSITIONED (2026-06-15):** monorepo pushed (origin/main); GitHub **release `v0.1.0`** cut with
+  the `adapter.spt` asset (https://github.com/SaberMage/spt-claude-code/releases/tag/v0.1.0).
+  `spt adapter add --release SaberMage/spt-claude-code` is ready to run **the moment spt v0.7.3
+  publishes** (doyle pings). Asset is Windows-only (native binaries) — per-OS assets a follow-on.

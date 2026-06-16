@@ -42,12 +42,20 @@ nothing to source. Setup must leave the adapter **active**.
    `deregistered`). Spot-check a profile resolves: `spt adapter get-string claude-spt:live adapter_label`
    (any shipped profile). Report the active state.
 
-4. **Tools on PATH (feature prerequisite).** The `[digest]` extractor (`claude-spt-digest`) and the
-   Psyche runner (`claude-spt-psyche`) are invoked by **bare name** → resolved from PATH at runtime.
-   Activation registers the manifest, but session-digest + LiveAgent Psyche only **function** once
-   those two binaries are on PATH (they ride the installer / the dedicated adapter repo). If either
-   is missing from PATH, note it — registration succeeds but those features stay inert until they
-   resolve.
+4. **Tool binaries on PATH (feature prerequisite + interim copy-mode fix).** The `[digest]` extractor
+   (`claude-spt-digest`) and the Psyche runner (`claude-spt-psyche`) are invoked by **bare name** →
+   resolved from PATH at runtime. Activation registers the manifest, but session-digest + LiveAgent
+   Psyche only **function** once those two binaries resolve. Check: `command -v claude-spt-digest`
+   and `command -v claude-spt-psyche`.
+   - If both resolve → done.
+   - If they MISS **after an `--release` activation**: the binaries shipped in the `adapter.spt` and
+     extracted **beside the manifest** in the adapter's install dir, but `--release` copy-mode does
+     not place them on PATH. **Interim fix:** find the extract dir (the `from …` path in
+     `spt adapter list`, e.g. `…/adapters/_github/<safe>/`) and copy `claude-spt-digest` +
+     `claude-spt-psyche` from there into a directory already on PATH (the spt bin dir — same dir as
+     `spt` itself — works). Re-check `command -v`.
+   - *(This interim step retires once spt-core resolves adapter binaries against the install dir
+     before PATH — REQ-INSTALL-9, doyle. Until then, place them on PATH.)*
 
 After this initial bootstrap + activation, `spt update` handles signed self-updates automatically —
 the user does not run setup again. The whole flow is idempotent and safe to re-run.

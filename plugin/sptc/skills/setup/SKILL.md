@@ -41,9 +41,15 @@ present binary is not enough: an unregistered/`deregistered` adapter has no prof
        <ver>` pins a version. Recommended (ships from the monorepo, no dedicated repo); needs the spt
        release carrying `--release`.
 
-3. **Verify.** Re-run `spt adapter list` — `claude-spt` must read **active** (no `deregistered`).
-   The `[digest]` extractor (`claude-spt-digest`) and Psyche runner (`claude-spt-psyche`) resolve by
-   **bare name from PATH**; if either is missing, registration still succeeds but session-digest /
-   LiveAgent Psyche stay inert until those binaries are on PATH. Note any that are missing.
+3. **Verify + place tool binaries.** Re-run `spt adapter list` — `claude-spt` must read **active**
+   (no `deregistered`). Then check `command -v claude-spt-digest` and `command -v claude-spt-psyche`
+   (the `[digest]`/`[session]` templates invoke them by **bare name from PATH**).
+   - Both resolve → done.
+   - MISS after an `--release` activation → the binaries shipped in `adapter.spt` and extracted
+     **beside the manifest** (the `from …/adapters/_github/<safe>/` path in `spt adapter list`), but
+     copy-mode doesn't put them on PATH. **Interim:** copy `claude-spt-digest` + `claude-spt-psyche`
+     from that extract dir into a PATH dir (the `spt` bin dir works); re-check `command -v`.
+     *(Retires once spt-core resolves adapter binaries against the install dir before PATH —
+     REQ-INSTALL-9.)*
 
 Idempotent and safe to re-run — the same bootstrap + activation the SessionStart hook performs.

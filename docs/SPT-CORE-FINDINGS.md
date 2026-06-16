@@ -12,7 +12,8 @@
 | F-002 | 2026-06-15 | **RESOLVED-SHIPPED (v0.7.1)** — `<EVENT>` verified on the published `api poll` surface; F-002 dissolved; int flipped | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
 | F-003 | 2026-06-15 | **RESOLVED + docs CLOSED (v0.7.1)** — capability shipped; the file-pointer syntax is now on the published surface | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
 | F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
-| F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --github <repo>`** | End-user adapter activation step (`adapter add [--github]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
+| F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --release <repo>`** | End-user adapter activation step (`adapter add [--github/--release]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
+| F-006 | 2026-06-15 | **CONFIRMED via dogfood; doyle scoping REQ-INSTALL-9; interim shipped** — proper fix (spt-core resolves adapter binaries against the install dir before PATH) rides v0.7.4/counter-16 (deployah) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
 
 ---
 
@@ -442,3 +443,44 @@ the `adapter.spt` release-asset packer (`SETUP-SLICE-PLAN.md` Wave C′) + OQ2 (
 home-relative paths). **The `[update]`/self-update channel itself stays unauthored** (our manifest
 declares no `[update]` → COPY-mode registration; the signed file_pull self-update is the later,
 separate concern — REQ-UPD-1/M4 roadmap + the Ed25519 provisioning doc).
+
+---
+
+## F-006 — `--release` bundles adapter binaries but bare-name templates don't resolve them (copy-mode)
+
+**Surfaced:** 2026-06-15, the first real end-to-end `--release` dogfood (spt v0.7.3, counter 15).
+
+**Chain proven first (all green on the win node):** `spt update fetch` → `apply` (0.7.2→0.7.3, exe
+hash flipped to the signed `d867…0794`, seamless no-bounce) → `spt adapter add --release
+SaberMage/spt-claude-code --tag v0.1.0` → fetched `adapter.spt` from the release →
+`ADAPTER_ADD:claude-spt:Harness:Copy (registered)` + `ADAPTER_INSTALL_SKIP: no [update] avenue
+(manifest-only adapter)` → `claude-spt` **ACTIVE**. The end-user activation path works.
+
+**The gap (doyle predicted it; dogfood confirmed).** `--release` extracts the bundled binaries to the
+adapter install dir —
+`C:\Users\decid\AppData\Local\spt-core\adapters\_github\SaberMage-spt-claude-code\claude-spt-digest.exe`
++ `…\claude-spt-psyche.exe` (note: the `_github/<safe>` dir even for `--release`). But the registered
+manifest's command templates invoke them **by bare name**:
+
+```
+extractor = "claude-spt-digest --session {session_id} --in {source}"
+command   = "claude-spt-psyche --id {id} --session-id {session_id} --prompt {psyche_prompt}"
+```
+
+Bare names resolve from **PATH** only, and the extract dir is **not** on PATH → `command -v
+claude-spt-digest` / `-psyche` both **MISS**. Registration/activation succeed, but runtime
+session-digest + LiveAgent Psyche can't find the bundled binaries. Copy-mode copies `manifest.toml` +
+`strings/` only — the binaries extract but aren't placed on PATH.
+
+**Interim (shipped, adapter-side).** `/sptc:setup` now, after an `--release` activation, copies the
+two binaries from the extract dir (the `from …` path in `spt adapter list`) onto a PATH dir (the
+`spt` bin dir — already on PATH). Verified: copying them there makes `command -v` resolve both and
+`claude-spt-digest --help` run. Unblocks runtime today.
+
+**Proper (doyle, REQ-INSTALL-9).** spt-core resolves `[digest]`/`[session]` program paths against the
+adapter's own install dir (the `_github/<safe>` extract home / `adapters/<name>/`) **before** PATH —
+so a bundled `.spt` binary resolves with zero PATH placement (truly self-contained `--release`
+delivery). Rides **v0.7.4 / counter 16** (deployah's leg). The interim retires when it lands.
+
+**Status:** **CONFIRMED + interim shipped; proper fix scoped by doyle (REQ-INSTALL-9, v0.7.4).**
+Reported to doyle + deployah 2026-06-15 with the concrete paths + templates above.
