@@ -55,4 +55,14 @@ present binary is not enough: an unregistered/`deregistered` adapter has no prof
      *(Retires once spt-core resolves adapter binaries against the install dir before PATH —
      REQ-INSTALL-9.)*
 
+4. **ccs wiring (optional — SCOPE setup #7).** Detect `~/.ccs`:
+   - Present → ccs is installed. The shipped `claude-spt:ccs` profile leaf-replaces the session
+     command with `ccs` (drop-in for `claude`) → run live/ready agents on ccs backends
+     (glm/kimi/custom) via `--adapter claude-spt:ccs` (e.g. `/sptc:live`, `/sptc:ready`,
+     `spt endpoint run --adapter claude-spt:ccs`). Check `command -v ccs`; if `~/.ccs` exists but `ccs`
+     isn't on PATH, point the user at their ccs bin dir. No action needed if unwanted (base
+     `claude-spt` is unaffected).
+   - Absent → ccs is an optional CLI router for driving alternate model backends (glm/kimi/custom) in
+     place of `claude`. To enable: install ccs (its docs), then re-run `/sptc:setup`. Skip if unwanted.
+
 Idempotent and safe to re-run — the same bootstrap + activation the SessionStart hook performs.

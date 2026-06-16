@@ -64,5 +64,19 @@ nothing to source. Setup must leave the adapter **active**.
    - *(This interim step retires once spt-core resolves adapter binaries against the install dir
      before PATH — REQ-INSTALL-9, doyle. Until then, place them on PATH.)*
 
+5. **ccs wiring (optional — SCOPE setup #7).** Detect `~/.ccs`:
+   - **Present** → ccs is installed. The shipped **`claude-spt:ccs`** profile leaf-replaces the live
+     session command with `ccs` (a drop-in for `claude`), so live/ready agents can run on ccs's
+     configured backends (glm/kimi/custom from `~/.ccs/config.json`) instead of `claude`. Use it by
+     selecting the `:ccs` composite: e.g. `/sptc:live` / `/sptc:ready` under `--adapter claude-spt:ccs`,
+     or `spt endpoint run --adapter claude-spt:ccs`. Sanity-check `command -v ccs`; if `~/.ccs` exists
+     but `ccs` is not on PATH, point the user at their ccs install's bin dir. (No action needed if
+     they don't want ccs — base `claude-spt` is unaffected.)
+   - **Absent** → ccs is an optional CLI router that lets your spt sessions drive alternate model
+     backends (glm/kimi/custom) in place of `claude`. To enable: install ccs (see its docs), then
+     re-run `/sptc:setup`. Skip if not wanted.
+
+   <!-- [doc->REQ-SETUP-CCS] -->
+
 After this initial bootstrap + activation, `spt update` handles signed self-updates automatically —
 the user does not run setup again. The whole flow is idempotent and safe to re-run.
