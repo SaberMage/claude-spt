@@ -39,23 +39,34 @@ the LOCKED v1 `{1..7}` scope.
   templates are **opaque, resolved from PATH at runtime** — so for the adapter to *function* (digest
   + Psyche), those binaries must be **built and on PATH**, independent of manifest registration.
 
-## Open questions (resolve before wiring the blocked parts)
+## Open questions
 
-1. **[BLOCKER — doyle, asked 2026-06-15 owl Q1–Q3] End-user `--github` target topology.**
-   `adapter add --github` looks for `manifest.toml` at the **clone root**, no subpath. Our dev repo
-   is a monorepo (manifest in `adapter/`). So `--github SaberMage/spt-claude-code` would miss.
-   Need doyle's ruling: monorepo subpath support? or dedicated adapter repo (root = `manifest.toml`
-   + `strings/`)? or a published orphan-branch/release-artifact whose root is the manifest? **This
-   decides repo topology + what string the setup `--github` branch uses.** Local-dir activation is
-   unblocked regardless.
-2. **End-user binary delivery for `claude-spt-digest` / `claude-spt-psyche`.** Command templates
-   resolve from PATH; a casual end-user has neither binary. How do they install (ride `install.sh`?
-   ship in the `--github` adapter repo per doyle's "manifest + extractor/runner binaries"? a
-   `cargo install`?). Affects whether an activated adapter actually *functions* end-to-end. (Tied to
-   C — the published adapter repo.)
-3. **Setup context detection.** How does the skill tell "operator dogfooding from a repo checkout"
-   (→ local-dir form) from "casual end-user, plugin only" (→ `--github` form)? Likely: probe for a
-   local `adapter/claude-spt.toml` relative to a known root; else `--github`.
+1. **[RESOLVED — doyle, owl 2026-06-15, from source] End-user `--github` target topology.**
+   `adapter add` is **ROOT-ONLY, code-confirmed** (`source_manifest_file`): a dir source resolves to
+   `<dir>/manifest.toml` **exactly** (exact filename, no scan, no subpath); `--github user/repo`
+   reads `<clone-root>/manifest.toml`. Our `adapter/claude-spt.toml` misses on both counts → a
+   **doc-gap** (it's in spt-core source, not the published docs; doyle is patching the activation
+   docs). **Ruling:**
+   - **Local dev** keeps the monorepo `adapter/claude-spt.toml`; activate via the **file-form**
+     `spt adapter add ./adapter/claude-spt.toml` (takes any path + any filename).
+   - **End-user `--github`** needs a **DEDICATED published adapter repo** (Wave C) whose **root** is
+     `manifest.toml` (named exactly) + `strings/` + the binaries the manifest references.
+   - **Copy-vs-pointer by `[update]` avenue:** claude-spt's avenue is `delegated`
+     (`claude plugin update spt`) → **POINTER mode**: spt-core copies **nothing** into
+     `adapters/<name>/`; it reads `manifest.toml` + `strings/` **live from the durable
+     `adapters/_github/<safe>` clone**, for life. (`file_pull`/no-`[update]` = COPY mode instead.)
+     Root-only holds in both modes.
+2. **[RESOLVED via Q3 ruling] End-user binary delivery for `claude-spt-digest` / `claude-spt-psyche`.**
+   doyle: the manifest-referenced **binaries are NOT auto-copied** in either mode (only `strings/`
+   is). So they must be **resolvable on the target**: absolute path, on PATH, or — in our pointer
+   mode — **shipped in the `--github` repo at the manifest's referenced paths** so they resolve from
+   the durable `_github` clone. **Action:** our command templates reference the binaries by **bare
+   name** (`claude-spt-digest …`, `claude-spt-psyche …`) ⇒ resolved from **PATH**. So end-user
+   delivery must put both on PATH (ride the installer) OR we switch the manifest to clone-relative
+   paths + ship the binaries in the Wave-C repo. **Decide in Wave C** (lean: ship on PATH via the
+   installer — keeps templates portable). Folded into Wave C.
+3. **Setup context detection.** Skill probes for a local `adapter/claude-spt.toml` (operator
+   dogfooding from a checkout → file-form) else uses `--github <Wave-C repo>` (casual end-user).
 
 ## Waves
 
@@ -79,6 +90,19 @@ the LOCKED v1 `{1..7}` scope.
 - **Note the binary-on-PATH caveat (OQ2)** in the body: activation registers the manifest;
   digest/Psyche need the tool binaries present (built + on PATH) to *function*.
 
+### Wave C — the dedicated published adapter repo (the end-user `--github` target) — **on A's critical path**
+**Why:** the operator's A-fulfilling dogfood is "install the **plugin**" (the end-user path) → setup
+runs `adapter add --github <repo>` → so that repo must EXIST and be correctly shaped. The monorepo
+`SaberMage/spt-claude-code` **cannot** be it (root-only rule). **Decision needed (operator):** repo
+name + creation (SaberMage org credentials) + the binary-delivery choice (OQ2: on-PATH-via-installer
+vs clone-relative-paths-in-repo).
+- Lay out repo **root** = `manifest.toml` (the monorepo's `adapter/claude-spt.toml`, renamed) +
+  `strings/` (copied) + (per OQ2 decision) the built `claude-spt-digest` + `claude-spt-psyche`.
+- A `ci/publish/` step that **generates** this repo from the monorepo `adapter/` (rename + copy +
+  drop binaries) so the two never drift — mirrors `package-skeleton.sh` for the cplugs side.
+- Verify end-to-end: a clean machine `spt adapter add --github <repo>` → active + a profile resolves
+  + digest/Psyche binaries resolve. New REQ (`REQ-DIST-ADAPTER-REPO`) when this wave starts.
+
 ### Later waves — LOCKED v1 setup paths {1..7} (each its own slice + REQ; deps flagged)
 Staged, not built now (JIT). From `SCOPE.md` §"/spt:setup" LOCKED {1,2,3,4,5,6,7}:
 - **#4 already-installed branch** (new subnet / join=add-this-machine / show-code / just-add-endpoint)
@@ -98,6 +122,8 @@ Staged, not built now (JIT). From `SCOPE.md` §"/spt:setup" LOCKED {1,2,3,4,5,6,
 `sh ci/run-gates.sh` PASS + `traceable-reqs check` green. Commit `Co-authored by: perri`.
 
 ## Status
-- **Plan + `REQ-SETUP-ACTIVATE` seeded (this commit).** Wave-1 build **HELD on OQ1** (doyle topology
-  ruling) for the end-user `--github` branch; the **local-dir activation path is buildable now** and
-  is what the operator's dogfood exercises. Resume Wave 1 on doyle's reply.
+- **OQ1/OQ2 RESOLVED (doyle, owl 2026-06-15).** Repo topology decided: monorepo file-form for dev;
+  dedicated root-`manifest.toml` repo for `--github` (pointer mode, binaries on PATH). Wave 1 is now
+  **fully unblocked** — authoring both activation branches.
+- **Wave C is on A's critical path:** the operator's "dogfood the plugin" = end-user path = needs the
+  dedicated `--github` repo to exist. Surfaced to operator (repo name + creation + OQ2 binary choice).

@@ -403,6 +403,16 @@ is the bridge. "Binary present ≠ adapter active" confirmed correct.
 provisioning · an explicit "zero-touch `file_pull` auto-distribution is roadmap (REQ-UPD-1)" note so
 no author builds expecting it.
 
+**Follow-up doc-gap (doyle, 2026-06-15) — `adapter add` is ROOT-ONLY, code-confirmed.**
+`source_manifest_file` resolves a dir source to `<dir>/manifest.toml` **exactly** (exact filename,
+no scan, no subpath); `--github user/repo` reads `<clone-root>/manifest.toml`. Undocumented (in
+source, not published) → doyle adding the distribution-repo topology to the activation docs (root
+`manifest.toml` requirement, `--github` root-only, copy-vs-pointer by `[update]` avenue, where the
+manifest-referenced **binaries** live — NOT auto-copied, only `strings/` is). **Our consequence:**
+the end-user `--github` target must be a **dedicated repo** (root = `manifest.toml` + `strings/` +
+binaries), distinct from the monorepo; local dev uses the file-form `adapter add
+./adapter/claude-spt.toml`. Drives `SETUP-SLICE-PLAN.md` Wave C.
+
 **Our action items (ours, not doyle's):** (i) wire `spt adapter add --github <repo>` into
 `/sptc:setup`'s binary-present branch (the activation bridge — folds into the setup-slice below);
 (ii) the manifest needs its own **published github repo target** for the `--github` end-user path
