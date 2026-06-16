@@ -10,7 +10,6 @@ docs-site/book/
 
 # Rust build artifacts for the claude-spt-digest extractor crate (Cargo.lock is tracked, bin crate)
 tools/**/target/
-
 # generated launchers (capsule-style cc / cc-<id>)
 /cc
 /cc.bat

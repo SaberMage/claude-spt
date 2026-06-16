@@ -17,10 +17,11 @@ auto-pick per-OS. So WE name per-OS assets and WE select on the host.
   arm64/aarch64→aarch64, else x86_64). Overridable via `SPTC_OS`/`SPTC_ARCH` (CI cross-builds).
 - **No reliance on the bare `adapter.spt` default** — setup always passes an explicit `--asset`
   (unambiguous across OSes). The runbook attaches every per-OS asset to the one release.
-- **Linux binary build is NOT runnable on the win dev host** (`cargo build --target
-  x86_64-unknown-linux-gnu` → `error: linker 'cc' not found`; the crate compiles, only the link needs
-  a Linux toolchain). The Linux asset is built ON a Linux host/runner. Packer + setup + runbook are
-  OS-agnostic and verifiable here against the Windows asset; the Linux leg is a build-env step.
+- **Linux binary build — RESOLVED via cargo-zigbuild (2026-06-16).** Bare `cargo build --target
+  x86_64-unknown-linux-gnu` fails (`error: linker 'cc' not found`), but **`cargo-zigbuild`** (zig
+  supplies the cross-linker) cross-builds Linux ELF binaries from the Windows dev host. `SPTC_TARGET`
+  points the packer at `target/<triple>/release`. `dist/adapter-linux-x86_64.spt` now packs locally
+  with verified `ELF x86-64 GNU/Linux` binaries. (A native Linux host/runner also works unchanged.)
 
 ## Tasks
 

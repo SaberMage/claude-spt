@@ -147,14 +147,28 @@ adapter repo: the asset is packed straight from `adapter/`.
   v1 ships **windows + linux**. spt's `--release` takes a caller-named `--asset` (default
   `adapter.spt`) — it does NOT auto-pick per-OS, so we name + select. Naming: `adapter-<os>-<arch>.spt`
   (os ∈ windows|linux|macos, arch ∈ x86_64|aarch64), host-derived from `uname`, overridable with
-  `SPTC_OS` / `SPTC_ARCH`. **Build each OS's binaries ON that OS** — a Windows dev host CANNOT
-  cross-link Linux (`cargo build --target x86_64-unknown-linux-gnu` → `error: linker 'cc' not found`;
-  the crate compiles, only the link needs a Linux toolchain). Per-OS publish:
-  - **Windows:** on Windows, `sh ci/digest/build.sh && sh ci/psyche/build.sh && sh
+  `SPTC_OS` / `SPTC_ARCH` (+ `SPTC_TARGET` = the cargo target triple for a cross build). Per-OS publish:
+  - **Windows (native):** `sh ci/digest/build.sh && sh ci/psyche/build.sh && sh
     ci/publish/package-adapter.sh --apply` → `dist/adapter-windows-x86_64.spt`.
-  - **Linux:** on a Linux host/runner (same repo), the identical commands (the build scripts are
-    portable — cargo, no `.exe`) → `dist/adapter-linux-x86_64.spt`. (Or set `SPTC_OS`/`SPTC_ARCH` for
-    a cross build once a cross-linker / `cross` + Docker is available.)
+  - **Linux on a Linux host/runner (native):** the identical commands (the build scripts are portable
+    — cargo, no `.exe`) → `dist/adapter-linux-x86_64.spt`.
+  - **Linux cross-built FROM Windows (proven 2026-06-16):** bare `cargo build --target
+    x86_64-unknown-linux-gnu` fails (`error: linker 'cc' not found` — the crate compiles, only the
+    link needs a Linux linker), so use **`cargo-zigbuild`** (zig supplies the cross-linker):
+    ```sh
+    # one-time: install zig (a self-contained binary) + cargo-zigbuild
+    cargo install cargo-zigbuild
+    # download zig (e.g. 0.14.1) to a dir OUTSIDE the repo (do NOT keep it under tools/ — it's a
+    # traceable-reqs scan root and zig's bundled libc C-headers trip the scanner), put zig.exe on PATH:
+    #   e.g. ~/.sptc-zig/zig-x86_64-windows-0.14.1/zig.exe  →  export PATH="$HOME/.sptc-zig/...:$PATH"
+    rustup target add x86_64-unknown-linux-gnu
+    # cross-build both tool crates with zig as the linker
+    cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/claude-spt-digest/Cargo.toml
+    cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/claude-spt-psyche/Cargo.toml
+    # pack the linux asset (SPTC_TARGET points the packer at target/<triple>/release)
+    SPTC_OS=linux SPTC_ARCH=x86_64 SPTC_TARGET=x86_64-unknown-linux-gnu sh ci/publish/package-adapter.sh --apply
+    ```
+    → `dist/adapter-linux-x86_64.spt` carrying real `ELF x86-64 GNU/Linux` binaries (verified).
   - Attach BOTH assets to the one release.
   - **Coupling (do not skew):** the os-detecting `/sptc:setup` floor (cplugs skeleton + adapter
     strings) requests `--asset adapter-<os>-<arch>.spt`, so it must ship **with** a release that

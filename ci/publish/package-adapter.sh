@@ -18,13 +18,6 @@ STRINGS="$ADAPTER/strings"
 APPLY=0
 [ "${1:-}" = "--apply" ] && APPLY=1
 
-# Native executable suffix (.exe on Windows/MSYS, bare elsewhere) — the archive carries the platform
-# binary under its native name so a bare-name command template (`claude-spt-digest …`) resolves it.
-EXE=""
-[ -f "$ROOT/tools/claude-spt-digest/target/release/claude-spt-digest.exe" ] && EXE=".exe"
-DIGEST="$ROOT/tools/claude-spt-digest/target/release/claude-spt-digest$EXE"
-PSYCHE="$ROOT/tools/claude-spt-psyche/target/release/claude-spt-psyche$EXE"
-
 # PER-OS asset name: the .spt carries native binaries, so it is platform-specific and ships as
 # `adapter-<os>-<arch>.spt`. /sptc:setup acquires the matching one via spt's caller-named `--asset`.
 # Host-derived from uname; override SPTC_OS/SPTC_ARCH for a cross build / CI. [impl->REQ-DIST-ADAPTER-PEROS]
@@ -40,12 +33,14 @@ if [ -z "$SPTC_ARCH" ]; then case "$(uname -m 2>/dev/null)" in
   arm64|aarch64) SPTC_ARCH=aarch64 ;;
   *) SPTC_ARCH="$(uname -m 2>/dev/null || echo unknown)" ;;
 esac; fi
-# Sanity: the native binary suffix must match the declared OS (windows<->.exe).
-case "$SPTC_OS:$EXE" in
-  windows:.exe|linux:|macos:) : ;;
-  windows:) echo "WARN: SPTC_OS=windows but no .exe binary present — building a non-windows asset?" >&2 ;;
-  *:.exe)   echo "WARN: SPTC_OS=$SPTC_OS but a .exe binary is present — cross-OS mismatch?" >&2 ;;
-esac
+# Native executable suffix, keyed off the DECLARED os (windows → .exe, else bare) — the archive
+# carries the binary under its native name so a bare-name template (`claude-spt-digest …`) resolves.
+case "$SPTC_OS" in windows) EXE=".exe" ;; *) EXE="" ;; esac
+# Binary location: a cross build sets SPTC_TARGET (e.g. x86_64-unknown-linux-gnu → cargo-zigbuild) and
+# the binaries land under target/<triple>/release; a native build uses target/release.
+if [ -n "${SPTC_TARGET:-}" ]; then RELSUB="$SPTC_TARGET/release"; else RELSUB="release"; fi
+DIGEST="$ROOT/tools/claude-spt-digest/target/$RELSUB/claude-spt-digest$EXE"
+PSYCHE="$ROOT/tools/claude-spt-psyche/target/$RELSUB/claude-spt-psyche$EXE"
 ASSET="adapter-${SPTC_OS}-${SPTC_ARCH}.spt"
 OUT="${ADAPTER_SPT_OUT:-$ROOT/dist/$ASSET}"   # overridable so the unit test writes to a tmp file
 
@@ -77,9 +72,9 @@ echo "os/arch  : $SPTC_OS/$SPTC_ARCH"
 echo "asset    : $OUT  (-> $ASSET)"
 echo "NOTE: the archive is PLATFORM-SPECIFIC (native binaries: '$EXE' build) — hence the per-OS name."
 echo "      Ship one asset per OS on the same release; /sptc:setup picks the host's via --asset. Build"
-echo "      each OS's binaries ON that OS (Windows can't cross-link Linux: 'cc not found'). Binaries"
-echo "      are NOT copied beside the registered manifest (copy-mode) — they resolve via PATH/absolute"
-echo "      until v0.8.0 Feature B resolves them from the install dir (F-006)."
+echo "      each OS native, OR cross-build Linux from Windows via cargo-zigbuild + SPTC_TARGET (bare"
+echo "      'cargo build --target' fails 'cc not found'; zig provides the linker). On v0.8.0+ Feature B"
+echo "      resolves the bundled binaries from the install dir (no PATH copy); pre-0.8.0 they need PATH."
 
 if [ "$APPLY" -ne 1 ]; then
   echo
