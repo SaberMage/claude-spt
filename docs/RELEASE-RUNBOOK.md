@@ -175,11 +175,15 @@ adapter repo: the asset is packed straight from `adapter/`.
     carries those per-OS assets — never before. Sequence: cut the per-OS-asset release FIRST, then
     republish the cplugs skeleton (next `plugin.json` bump) that points at it. A skeleton bump ahead
     of the assets would 404 end-user setup.
-- **Binaries (copy-mode caveat):** registration copies `manifest.toml` + `strings/` only — **not**
-  the binaries. The command templates use **bare names** (`claude-spt-digest`, `claude-spt-psyche`)
-  ⇒ resolved from **PATH** (the `/sptc:setup` interim copies them onto PATH) until **v0.8.0 Feature B
-  / REQ-INSTALL-11** resolves them from the adapter install dir (F-006). The archive carries them so
-  the installer/Feature-B has a source.
+- **Binaries (install-dir resolution — REQ-INSTALL-11).** A `--release`/`--github` acquisition extracts
+  the `.spt` archive's `manifest.toml` + `strings/` **+ both tool binaries** into the adapter install
+  dir (`…/adapters/_github/<safe>/`). The command templates use **bare names** (`claude-spt-digest`,
+  `claude-spt-psyche`), which spt-core resolves **from that install dir** (v0.8.0 Feature B /
+  REQ-INSTALL-11) — **no PATH placement needed** (dogfood-proven on v0.8.1 for both binaries; F-006
+  RESOLVED, interim retired). The pack therefore MUST carry both binaries (the resolution source). Note:
+  a plain local-dev `spt adapter add <manifest.toml>` copies manifest + strings only (no binaries in the
+  install dir), so local-dev runtime still relies on the built binary being on PATH (e.g. the CI ints
+  prepend `target/release`); the install-dir path is the end-user `--release` story.
 - **Acquisition only:** `--release` does **not** establish an `[update]` self-update route (our
   manifest declares no `[update]` → COPY-mode registration). Re-acquire a newer version by re-running
   `--release --tag <newer>`. The signed `file_pull` self-update channel is a separate, later concern.

@@ -49,20 +49,17 @@ nothing to source. Setup must leave the adapter **active**.
    `deregistered`). Spot-check a profile resolves: `spt adapter get-string claude-spt:live adapter_label`
    (any shipped profile). Report the active state.
 
-4. **Tool binaries on PATH (feature prerequisite + interim copy-mode fix).** The `[digest]` extractor
-   (`claude-spt-digest`) and the Psyche runner (`claude-spt-psyche`) are invoked by **bare name** →
-   resolved from PATH at runtime. Activation registers the manifest, but session-digest + LiveAgent
-   Psyche only **function** once those two binaries resolve. Check: `command -v claude-spt-digest`
-   and `command -v claude-spt-psyche`.
-   - If both resolve → done.
-   - If they MISS **after an `--release` activation**: the binaries shipped in the `adapter.spt` and
-     extracted **beside the manifest** in the adapter's install dir, but `--release` copy-mode does
-     not place them on PATH. **Interim fix:** find the extract dir (the `from …` path in
-     `spt adapter list`, e.g. `…/adapters/_github/<safe>/`) and copy `claude-spt-digest` +
-     `claude-spt-psyche` from there into a directory already on PATH (the spt bin dir — same dir as
-     `spt` itself — works). Re-check `command -v`.
-   - *(This interim step retires once spt-core resolves adapter binaries against the install dir
-     before PATH — REQ-INSTALL-9, doyle. Until then, place them on PATH.)*
+4. **Tool binaries — resolved from the install dir (REQ-INSTALL-11; no PATH copy).** The `[digest]`
+   extractor (`claude-spt-digest`) and the Psyche runner (`claude-spt-psyche`) are invoked by **bare
+   name**. spt-core resolves them **from the adapter install dir** — the `from …` path in
+   `spt adapter list` (e.g. `…/adapters/_github/<safe>/`), where `--release` activation already
+   extracted them beside the manifest. **Nothing to do here:** step 2 placed them; no PATH copy is
+   needed. Verified on spt **v0.8.1** — session-digest and the daemon-hosted Psyche both resolve the
+   binary straight from the install dir with nothing on PATH.
+   - *(The legacy F-006 interim PATH-copy step is **retired**: spt-core's install-dir resolution —
+     REQ-INSTALL-11, Feature B, landed in spt v0.8.0 — supersedes it. If session-digest or the Psyche
+     ever fails to start, confirm the two `.exe`s are present in the install dir above; their absence
+     is a packaging defect, not a PATH problem.)*
 
 5. **ccs wiring (optional — SCOPE setup #7).** Detect `~/.ccs`:
    - **Present** → ccs is installed. The shipped **`claude-spt:ccs`** profile leaf-replaces the live

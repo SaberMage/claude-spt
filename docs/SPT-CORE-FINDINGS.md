@@ -13,9 +13,11 @@
 | F-003 | 2026-06-15 | **RESOLVED + docs CLOSED (v0.7.1)** — capability shipped; the file-pointer syntax is now on the published surface | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
 | F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
 | F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --release <repo>`** | End-user adapter activation step (`adapter add [--github/--release]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
-| F-006 | 2026-06-15 | **Feature B SHIPPED in v0.8.0 (REQ-INSTALL-11); interim STILL IN PLACE** — install-dir resolution can't be dogfood-proven until the daemon-hosted psyche actually spawns (blocked by the v0.8.0 psyche-spawn-via-acceptance-harness gap; keep the interim until then) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
+| F-006 | 2026-06-15 | **RESOLVED + interim RETIRED (v0.8.1 dogfood 2026-06-16)** — install-dir resolution (REQ-INSTALL-11) dogfood-proven for BOTH binaries: digest-proof + daemon-hosted Psyche resolve straight from `…/adapters/_github/<safe>/` with nothing on PATH. Interim PATH-copy step dropped from both /sptc:setup bodies; interim copies deleted | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
 | F-007 | 2026-06-16 | **RESOLVED-SHIPPED (v0.8.0)** — `spt how-to live` topic is live; /sptc:live re-pointed at it; the int's relay leg is green on 0.8.0 (psyche-spawn moved to daemon-host = real-session, see v0.8.0 dogfood note) | `spt how-to live` was `NO_SUCH_TOPIC`; the non-interactive live-bringup was `--manifest` + persistent-child `api listen` (Monitor surrogate) |
 | F-008 | 2026-06-16 | **OPEN — reported to doyle** — blocks SCOPE LOCKED v1 setup #5 (legacy migration); /sptc:setup can't author the step against the public surface | No published legacy-migration command (`spt` has no migrate/import/adopt/legacy/owl verb in any subcommand, no how-to) though spt-core CONTEXT.md commits to claude_skill_owl→spt migration as first-class |
+| F-009 | 2026-06-16 | **OPEN — PENDING DELIVERY to doyle (he's offline; report in commit ddf1965 + below)**. Adapter worked around it (greedy `--prompt`); recommend spt-core fix so it doesn't bite every adapter | `[session.psyche_init]`/extractor command templating substitutes a `{key}` into the command STRING then WHITESPACE-SPLITS → ANY multi-word fill (e.g. `{psyche_prompt}`) explodes into stray argv tokens. Survived only by single-token fills |
+| F-010 | 2026-06-16 | **OPEN — PENDING DELIVERY to doyle**. Hardening request on top of the v0.8.1 `psyche_host_error` surface | Silent-exit still maskable: `psyche_host_error` stays clear when the detached spawn() succeeds but the child exits IMMEDIATELY (e.g. arg-parse exit 2). A crash-on-startup host looks identical to a healthy one |
 
 ---
 
@@ -479,13 +481,21 @@ two binaries from the extract dir (the `from …` path in `spt adapter list`) on
 `spt` bin dir — already on PATH). Verified: copying them there makes `command -v` resolve both and
 `claude-spt-digest --help` run. Unblocks runtime today.
 
-**Proper (doyle, REQ-INSTALL-9).** spt-core resolves `[digest]`/`[session]` program paths against the
+**Proper (doyle, REQ-INSTALL-11).** spt-core resolves `[digest]`/`[session]` program paths against the
 adapter's own install dir (the `_github/<safe>` extract home / `adapters/<name>/`) **before** PATH —
 so a bundled `.spt` binary resolves with zero PATH placement (truly self-contained `--release`
-delivery). Rides **v0.8.0 / counter 16** (deployah's leg). The interim retires when it lands.
+delivery). Shipped in **v0.8.0 / counter 16** (Feature B).
 
-**Status:** **CONFIRMED + interim shipped; proper fix scoped by doyle (REQ-INSTALL-9, v0.8.0).**
-Reported to doyle + deployah 2026-06-15 with the concrete paths + templates above.
+**Status:** **RESOLVED + interim RETIRED (v0.8.1 dogfood, 2026-06-16).** Install-dir resolution is now
+dogfood-proven for BOTH binaries with nothing on PATH:
+- **digest** — `spt adapter digest-proof claude-spt --sample …` ran the extractor from the install dir
+  (`parsed 5 record(s), dropped 0`) after the interim PATH copies were moved aside and `RELDIR` was
+  off PATH.
+- **psyche** — the daemon-hosted Psyche resolved + spawned `claude-spt-psyche` from the install dir
+  (resident runner, `procs=1`), again with the interim off PATH. (This only became provable once the
+  Psyche actually stayed resident — see **F-009**, the prompt-split bug that was masking it.)
+The interim PATH-copy step is **dropped** from both `/sptc:setup` bodies and the interim copies under
+`…/spt-core/bin/` are deleted. Reported to doyle + deployah 2026-06-15; resolution dogfood-confirmed.
 
 ---
 
@@ -630,18 +640,80 @@ Upgraded spt 0.7.3 → **0.8.0** (hash `10ff8166…`, daemon restarted). Results
 - **Relay leg ✓** — `ci/psyche/live-relay-int.sh` green on 0.8.0: BOUND/READY + a probe relayed as the
   escaped `<EVENT>` off the listen child + live_agent kind. No `--manifest` needed.
 
-- **OPEN — daemon-hosted psyche-spawn: a reconcile/brain gap (spt v0.8.1 fix).** how-to live says
-  "the daemon hosts the Psyche off the perch's online status." DIAGNOSED with doyle (startup.rs:283
-  live_capable guard + livehost.rs reconcile): bringing up a live id via `api seed` + `api listen
-  --manifest <local>` stamps the perch **`status="online"`** (confirmed in its info.json:
-  `{"state":"live_agent","status":"online","adapter":"claude-spt:live"}`) — so `live_capable` fired
-  and the `:live` manifest's `[session.psyche_init]` DID surface at the guard (same manifest spawned
-  the psyche in-process on 0.7.3). The manifest/profile is correct. **Yet** the daemon reconcile does
-  not host the Psyche: no `{id}-psyche` perch in `spt endpoint list`, no `claude-spt-psyche` proc,
-  nothing in `daemon-effects.log` (only `net-send`). Per doyle's branch, status=online + no
-  `LIVEHOST_PSYCHE` = `reconcile_once` not hosting → **a reconcile/brain-not-running gap on spt's side,
-  fixed in v0.8.1.** Possible correlate: `spt daemon status` reports "peer pump STALLED" right after
-  every restart (the brain/reconcile loop may share that lifecycle). **Consequence:** (1) the int's
-  ≥0.8.0 psyche leg is skip-with-note (auto-flips to assert once v0.8.1 hosts); (2) **REQ-INSTALL-11
-  install-dir binary resolution rides the same fix** (the psyche must spawn to exercise it) — the
-  F-006 PATH interim STAYS until v0.8.1. doyle pings on v0.8.1 → re-run the proof.
+- **RESOLVED (v0.8.1 dogfood, 2026-06-16) — daemon-hosted psyche-spawn.** Two layered bugs, not the
+  net-race we first suspected. (1) spt-core v0.8.0 livehost did not reconcile/host at all (doyle's
+  v0.8.1 fix addressed this — the daemon now reaches the spawn). (2) The spawn then SILENTLY failed:
+  the daemon spawned `claude-spt-psyche` but it exited instantly (phantom pid, `status=online`, no
+  `psyche_host_error`). Root cause = **F-009** (spt-core whitespace-splits the substituted
+  `{psyche_prompt}`, so the runner's non-greedy `--prompt` rejected the 2nd word and exited 2).
+  **Confirmed via argv-capture instrumentation:** the daemon passed `--prompt PSYCHE REVIVAL time:
+  epoch-ms:… incoming event: (none)` as 7 separate argv tokens. Fixed adapter-side (greedy `--prompt`,
+  commit ddf1965); the Psyche now stays resident, `ci/psyche/live-relay-int.sh` psyche leg flips
+  skip→ASSERT green, and **REQ-INSTALL-11 / F-006** is proven in the same run. The "peer pump STALLED"
+  correlate recurs ~7-8 min after every daemon start but did NOT block hosting (a Psyche hosted fine
+  with the pump stalled) — flagged to doyle as **F-010**-adjacent, separate from the host path.
+
+---
+
+## F-009 — command templating substitutes a `{key}` into the command STRING then whitespace-splits
+
+**Surfaced:** 2026-06-16, v0.8.1 dogfood of the daemon-hosted Psyche (the F-006/REQ-INSTALL-11 proof).
+
+**The gap.** The `[session.psyche_init]` (and `[digest]`) command is authored as a single template
+string with `{key}` placeholders:
+
+```
+command = "claude-spt-psyche --id {id} --session-id {session_id} --prompt {psyche_prompt}"
+```
+
+spt-core substitutes the daemon-filled values **into the string** and then **splits the result on
+whitespace** to build argv. So a multi-word fill does not arrive as one argument — it explodes.
+`{psyche_prompt}` is always a sentence; argv-capture (instrumented `claude-spt-psyche` dumping its raw
+argv to a file when daemon-spawned) showed exactly this:
+
+```
+--id  sptc-argv-cap-psyche
+--session-id  sptc-argv-cap-sess
+--prompt  PSYCHE  REVIVAL  time:  epoch-ms:1781652607426  incoming  event:  (none)   <- 7 tokens
+```
+
+**Consequence.** Any adapter whose command has a multi-word fill is broken unless its receiving binary
+slurps the stray tokens. The published `[digest]` extractor survives only by accident — its fills
+(`{session_id}`, `{source}`) are single-token. The Psyche runner's strict `--prompt` parser took
+`PSYCHE`, rejected `REVIVAL` as "unknown arg", and exited 2 — which the detached host masked (F-010).
+
+**Adapter workaround (shipped, ddf1965).** `claude-spt-psyche` parses `--prompt` **greedily/terminally**
+— it consumes every remaining token and rejoins with spaces (the manifest keeps `--prompt` last).
+Robust whether spt-core splits or passes one arg.
+
+**Recommended spt-core fix.** Split the command template into argv **first**, then fill each
+placeholder slot as exactly **one** argv element (no post-substitution whitespace split). This makes
+multi-word fills usable without every adapter hand-rolling a slurp. Alternatively, document the
+constraint loudly (fills must be single-token) — but that effectively forbids prompt-like keys.
+
+**Status:** **OPEN — PENDING DELIVERY to doyle** (offline at fix time; full report in commit ddf1965
+and queued to retry `spt send doyle`). Adapter unblocked via the greedy workaround.
+
+---
+
+## F-010 — `psyche_host_error` still masks a host that spawns then exits immediately
+
+**Surfaced:** 2026-06-16, same v0.8.1 dogfood. **Builds on** doyle's v0.8.1 `psyche_host_error`
+surface (the additive `info.json` field + `spt endpoint list`/`whoami` rendering).
+
+**The gap.** v0.8.1 makes a *spawn* failure harness-reachable, but the failure mode we actually hit
+was a spawn *success* followed by an immediate child exit. Because the daemon's detached `spawn()`
+returned `Ok`, `psyche_host_error` stayed **clear** while the hosted process was already gone — nested
+`{id}-psyche` `info.json` read `status=online` with a real-looking (already-dead) pid, and `spt
+endpoint list`/`whoami` showed no error line. A crash-on-startup host is indistinguishable from a
+healthy one. (Here the child exited 2 from F-009; arg-parse is just one way a host can die fast.)
+
+**Recommended spt-core fix.** Treat a non-resident host as a host failure: e.g. confirm the child is
+still alive a short interval after spawn (or that the `{id}-psyche` perch actually re-registers /
+comes online) before clearing/omitting `psyche_host_error`, and record `{reason: "host exited <code>
+within <n>s"}` otherwise. This closes the last masking gap so "online + no Psyche + no cause" cannot
+recur.
+
+**Status:** **OPEN — PENDING DELIVERY to doyle** (offline; report in commit ddf1965 + queued send).
+Lower urgency than F-009 (the adapter fix removes our trigger), but it would have surfaced the bug
+directly instead of via argv instrumentation.

@@ -44,16 +44,14 @@ present binary is not enough: an unregistered/`deregistered` adapter has no prof
        ships windows + linux. Recommended (from the monorepo, no dedicated repo); needs the spt
        release carrying `--release`.
 
-3. **Verify + place tool binaries.** Re-run `spt adapter list` — `claude-spt` must read **active**
-   (no `deregistered`). Then check `command -v claude-spt-digest` and `command -v claude-spt-psyche`
-   (the `[digest]`/`[session]` templates invoke them by **bare name from PATH**).
-   - Both resolve → done.
-   - MISS after an `--release` activation → the binaries shipped in `adapter.spt` and extracted
-     **beside the manifest** (the `from …/adapters/_github/<safe>/` path in `spt adapter list`), but
-     copy-mode doesn't put them on PATH. **Interim:** copy `claude-spt-digest` + `claude-spt-psyche`
-     from that extract dir into a PATH dir (the `spt` bin dir works); re-check `command -v`.
-     *(Retires once spt-core resolves adapter binaries against the install dir before PATH —
-     REQ-INSTALL-9.)*
+3. **Verify activation.** Re-run `spt adapter list` — `claude-spt` must read **active**
+   (no `deregistered`). The `[digest]`/`[session]` templates invoke `claude-spt-digest` +
+   `claude-spt-psyche` by **bare name**, and spt-core resolves them **from the adapter install dir**
+   (the `from …/adapters/_github/<safe>/` path in `spt adapter list`), where `--release` activation
+   already extracted them beside the manifest. **No PATH copy needed** (REQ-INSTALL-11, spt v0.8.0
+   Feature B; verified live on v0.8.1 — digest + daemon-hosted Psyche both resolve from the install
+   dir). If either ever fails to start, confirm both `.exe`s are present in that install dir — their
+   absence is a packaging defect, not a PATH problem. *(Legacy F-006 interim PATH-copy: retired.)*
 
 4. **ccs wiring (optional — SCOPE setup #7).** Detect `~/.ccs`:
    - Present → ccs is installed. The shipped `claude-spt:ccs` profile leaf-replaces the session
