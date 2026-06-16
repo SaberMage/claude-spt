@@ -73,6 +73,13 @@ The single most important design rule:
   Multi-message drains split cleanly on `</EVENT>`. Body decode rule: split on `<br>` → newline,
   then HTML-unescape `&lt; &gt; &quot;` and `&amp;` **last**. Route that stdout into the harness's
   injection channel (**[CC]** `additionalContext`) — that routing is adapter glue.
+- **The injection channel can have a size cap — pre-empt it.** **[CC]** CC truncates
+  `additionalContext` over ~10k chars by spilling it to a file, which *evicts it from the inline
+  context the agent sees* — a large drain (or a big skill body + drain together) silently loses
+  messages. Cap the combined hook output adapter-side under the threshold: under it pass through
+  verbatim; over it spill the **full** text to an agent-readable file and inject only a short
+  pointer. Never a mid-`<EVENT>`/mid-record head-cut — that splits an envelope and drops a message.
+  (Any harness injection channel with a size limit wants the same pattern.)
 
 ## `[strings]`: inline or file-backed pointers
 
@@ -103,13 +110,21 @@ The single most important design rule:
 - Emit **raw** records (`{role∈input|agent|tool, text?, tool?, ts?}`, one NDJSON line each);
   spt-core's renderer applies the presentation defaults (`window_turns`, `arg_truncation`,
   `sprint_collapse`). Don't pre-render.
+- **Emit UTF-8 stdout.** The NDJSON contract is UTF-8; a binary that defaults stdout to the platform
+  locale (e.g. cp1252 on Windows) mangles non-ASCII (em-dashes, smart quotes) into bytes spt-core
+  can't decode — and spt-core reads the stream as UTF-8. Pin it explicitly (native-UTF-8 languages
+  sidestep the whole class). This cross-platform encoding trap is exactly why the seam is a binary,
+  not a shell pipeline.
 
 ## Bringup / launcher seam
 
 - `[session.self].command` is the spt-hosted bringup template (`spt endpoint run` spawns it into a
   broker PTY). For a harness with no native session-id flag, mint the id internally and pass the
   endpoint id via **`[env.<VAR>]`** (`direction = "inject"`, `value = "{id}"`); the SessionStart
-  hook reads the env and self-registers (`api bind <id>`).
+  hook reads the env and self-registers (`api bind <id>`). The bind needs **no credential token** —
+  for a broker-spawned session **auth is intrinsic** (the broker parentage is the proof), so
+  `api bind <id> --set-session-id <discovered>` alone establishes it; later mutating calls prove
+  association with the session id the bind recorded.
 - `adapter.shortcut_basename` brands the `endpoint run` launcher shortcut (`<basename>-<id>`),
   **decoupled** from the adapter name.
 
