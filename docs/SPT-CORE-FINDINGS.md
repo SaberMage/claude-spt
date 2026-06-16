@@ -13,8 +13,8 @@
 | F-003 | 2026-06-15 | **RESOLVED + docs CLOSED (v0.7.1)** — capability shipped; the file-pointer syntax is now on the published surface | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
 | F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
 | F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --release <repo>`** | End-user adapter activation step (`adapter add [--github/--release]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
-| F-006 | 2026-06-15 | **CONFIRMED via dogfood; doyle scoping REQ-INSTALL-9; interim shipped** — proper fix (spt-core resolves adapter binaries against the install dir before PATH) rides v0.8.0/counter-16 (deployah) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
-| F-007 | 2026-06-16 | **RESOLVED to docs-gap (Bucket 2), not a missing feature** — live int SHIPPED via `--manifest` + persistent-child `api listen`; doyle folding the recipe + a `how-to live` topic into post-M11 docs | `spt how-to live` is `NO_SUCH_TOPIC`, and the non-interactive live-bringup for acceptance was undiscoverable — turned out to be `--manifest` + persistent-child `api listen` (the Monitor surrogate), now proven |
+| F-006 | 2026-06-15 | **Feature B SHIPPED in v0.8.0 (REQ-INSTALL-11); interim STILL IN PLACE** — install-dir resolution can't be dogfood-proven until the daemon-hosted psyche actually spawns (blocked by the v0.8.0 psyche-spawn-via-acceptance-harness gap; keep the interim until then) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
+| F-007 | 2026-06-16 | **RESOLVED-SHIPPED (v0.8.0)** — `spt how-to live` topic is live; /sptc:live re-pointed at it; the int's relay leg is green on 0.8.0 (psyche-spawn moved to daemon-host = real-session, see v0.8.0 dogfood note) | `spt how-to live` was `NO_SUCH_TOPIC`; the non-interactive live-bringup was `--manifest` + persistent-child `api listen` (Monitor surrogate) |
 | F-008 | 2026-06-16 | **OPEN — reported to doyle** — blocks SCOPE LOCKED v1 setup #5 (legacy migration); /sptc:setup can't author the step against the public surface | No published legacy-migration command (`spt` has no migrate/import/adopt/legacy/owl verb in any subcommand, no how-to) though spt-core CONTEXT.md commits to claude_skill_owl→spt migration as first-class |
 
 ---
@@ -613,3 +613,35 @@ surface exists, setup #5 stays unbuilt and SCOPE #5 should note the dependency.
 
 **Status:** **OPEN — reported to doyle 2026-06-16. Setup #5 unbuilt pending a published migration
 surface (or a scope re-mark).**
+
+---
+
+## v0.8.0 dogfood results (2026-06-16) — relay/API green; daemon-hosted psyche-spawn open
+
+Upgraded spt 0.7.3 → **0.8.0** (hash `10ff8166…`, daemon restarted). Results against the published build:
+
+- **REQ-API-4 ✓** — `spt api --adapter claude-spt:live <verb>` (capability, listen) resolves the
+  registered manifest + install-dir WITHOUT `--manifest`. The require-both-flags wart is gone.
+- **F-007 ✓ (shipped)** — `spt how-to live` is a full topic; `/sptc:live` step 2 re-pointed at it.
+- **`[update]` gh_release ✓ (declared)** — `adapter/claude-spt.toml` now declares `[update] avenue =
+  "gh_release", repo = "SaberMage/spt-claude-code"`; validates against the re-vendored v0.8.0
+  `manifest.schema.json`. Live `spt adapter update` test rides the per-OS re-release (the registered
+  adapter is still the published v0.1.0 sans `[update]`).
+- **Relay leg ✓** — `ci/psyche/live-relay-int.sh` green on 0.8.0: BOUND/READY + a probe relayed as the
+  escaped `<EVENT>` off the listen child + live_agent kind. No `--manifest` needed.
+
+- **OPEN — daemon-hosted psyche-spawn: a reconcile/brain gap (spt v0.8.1 fix).** how-to live says
+  "the daemon hosts the Psyche off the perch's online status." DIAGNOSED with doyle (startup.rs:283
+  live_capable guard + livehost.rs reconcile): bringing up a live id via `api seed` + `api listen
+  --manifest <local>` stamps the perch **`status="online"`** (confirmed in its info.json:
+  `{"state":"live_agent","status":"online","adapter":"claude-spt:live"}`) — so `live_capable` fired
+  and the `:live` manifest's `[session.psyche_init]` DID surface at the guard (same manifest spawned
+  the psyche in-process on 0.7.3). The manifest/profile is correct. **Yet** the daemon reconcile does
+  not host the Psyche: no `{id}-psyche` perch in `spt endpoint list`, no `claude-spt-psyche` proc,
+  nothing in `daemon-effects.log` (only `net-send`). Per doyle's branch, status=online + no
+  `LIVEHOST_PSYCHE` = `reconcile_once` not hosting → **a reconcile/brain-not-running gap on spt's side,
+  fixed in v0.8.1.** Possible correlate: `spt daemon status` reports "peer pump STALLED" right after
+  every restart (the brain/reconcile loop may share that lifecycle). **Consequence:** (1) the int's
+  ≥0.8.0 psyche leg is skip-with-note (auto-flips to assert once v0.8.1 hosts); (2) **REQ-INSTALL-11
+  install-dir binary resolution rides the same fix** (the psyche must spawn to exercise it) — the
+  F-006 PATH interim STAYS until v0.8.1. doyle pings on v0.8.1 → re-run the proof.

@@ -17,11 +17,11 @@
 #     claude-spt reach the Psyche layer?). [session.self] IS authored below (the endpoint-run/bind
 #     bringup that hosts a fresh CC session — the M12 `cc` launcher target).
 #   * [history]                     — transcript-access seam. Lands with [digest]'s sibling fetcher.
-#   * [update]                      — distribution self-update. `file_pull` needs (a) a published
-#     adapter-registry repo target and (b) an Ed25519 content-signing key we do not yet hold;
-#     `delegated` to `claude plugin update` needs CC to attest signature verification
-#     (`self_verifies`) — unconfirmed on the public surface. Tracked as a finding
-#     (docs/SPT-CORE-FINDINGS.md) rather than guessed here.
+#   * [update]                      — NOW DECLARED below via the `gh_release` avenue (spt v0.8.0):
+#     spt-core's `--release` machinery auto-updates the adapter from THIS repo's GitHub releases on
+#     `spt adapter update`, with NO Ed25519 signing infra (closes the F-005 parked `file_pull`/
+#     `delegated` legs). Per-OS interaction flagged to doyle (gh_release `asset` is a single name; how
+#     does auto-update pick the host's `adapter-<os>-<arch>.spt`?).
 #
 # [impl->REQ-DIST-MANIFEST-SCHEMA]
 
@@ -39,6 +39,16 @@ hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # (ADR-0001) renames the plugin, not this shortcut. Guarded by tests/manifest-shortcut.sh
 # (unit->REQ-DIST-SHORTCUT-BASENAME).
 shortcut_basename = "cc"
+
+# ── [update] ───────────────────────────────────────────────────────────────────────────────────
+# Adapter self-update via OUR GitHub releases (gh_release avenue, spt v0.8.0). `spt adapter update`
+# pulls the adapter `.spt` asset from this repo's releases through the same `--release` machinery —
+# no signing infra (closes the F-005 file_pull/delegated blockers). `asset` omitted ⇒ spt's default
+# (adapter.spt); the per-OS auto-update asset selection (REQ-DIST-ADAPTER-PEROS) is a flagged
+# question to doyle, so we do not pin a single-OS asset here. [impl->REQ-DIST-ADAPTER-RELEASE]
+[update]
+avenue = "gh_release"
+repo = "SaberMage/spt-claude-code"
 
 # ── [hooks.<event>] ──────────────────────────────────────────────────────────────────────────
 # CC hook event → the opaque `api …` command it fires. These mirror the hand-written plugin

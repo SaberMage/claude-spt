@@ -88,17 +88,17 @@
       ]
     },
     "profiles": {
-      "description": "`[profiles.<name>]` — **shipped** profile overlays: sparse leaf-replace overlays declared by the adapter dev inside the parent manifest, updating as one unit with it. Stored raw ([`toml::Value`]); [`crate::profile::resolve`] merges one onto the base and re-validates the complete manifest. A bare `adapter_name` ignores these (parent unmodified); the composite `<adapter>:<profile>` selects one. **Local** (node-local, user-authored) profiles live beside the adapter in the registry, never here. (CONTEXT.md §adapter profile.)",
+      "description": "`[profiles.<name>]` — **shipped** profile overlays: sparse leaf-replace\noverlays declared by the adapter dev inside the parent manifest, updating\nas one unit with it. Stored raw ([`toml::Value`]); [`crate::profile::resolve`]\nmerges one onto the base and re-validates the complete manifest. A bare\n`adapter_name` ignores these (parent unmodified); the composite\n`<adapter>:<profile>` selects one. **Local** (node-local, user-authored)\nprofiles live beside the adapter in the registry, never here.\n(CONTEXT.md §adapter profile.)",
       "type": "object",
       "additionalProperties": true
     },
     "strings": {
-      "description": "`[strings]` — an adapter-authored KV tree of **opaque data** (spt-core never executes a string; command templates live in their own sections behind registration). Dot-path-readable via `spt adapter get-string`, and it rides the same leaf-replace profile overlay as the rest of the manifest (a shipped or local profile may override base strings). Node-local; no cross-node sync. (CONTEXT.md §adapter strings.)",
+      "description": "`[strings]` — an adapter-authored KV tree of **opaque data** (spt-core\nnever executes a string; command templates live in their own sections\nbehind registration). Dot-path-readable via `spt adapter get-string`, and\nit rides the same leaf-replace profile overlay as the rest of the manifest\n(a shipped or local profile may override base strings). Node-local; no\ncross-node sync. (CONTEXT.md §adapter strings.)",
       "type": "object",
       "additionalProperties": true
     },
     "hints": {
-      "description": "`[[hints]]` — once-per-session keyword hints (CONTEXT.md §keyword hints). **Order is significant** (first match wins). A profile overlays this by leaf-replace like any section — the array is replaced wholesale, never spliced (override/extend = re-declare).",
+      "description": "`[[hints]]` — once-per-session keyword hints (CONTEXT.md §keyword hints).\n**Order is significant** (first match wins). A profile overlays this by\nleaf-replace like any section — the array is replaced wholesale, never\nspliced (override/extend = re-declare).",
       "type": "array",
       "items": {
         "$ref": "#/$defs/Hint"
@@ -135,7 +135,7 @@
           }
         },
         "shortcut_basename": {
-          "description": "Optional basename for the `spt endpoint run` picker's `<basename>-<id>` launcher shortcut (REQ-MANIFEST-7). Absent ⇒ the harness-agnostic default `spt` (→ `spt-<id>`); an adapter sets this to brand its shortcuts (spt-claude-code → `cc`, giving `cc-<id>`). Additive + N-1-safe (omitted from serialization when absent). The picker reads it from the RESOLVED manifest of the selected adapter.",
+          "description": "Optional basename for the `spt endpoint run` picker's `<basename>-<id>`\nlauncher shortcut (REQ-MANIFEST-7). Absent ⇒ the harness-agnostic default\n`spt` (→ `spt-<id>`); an adapter sets this to brand its shortcuts\n(spt-claude-code → `cc`, giving `cc-<id>`). Additive + N-1-safe (omitted\nfrom serialization when absent). The picker reads it from the RESOLVED\nmanifest of the selected adapter.",
           "type": [
             "string",
             "null"
@@ -149,7 +149,7 @@
       ]
     },
     "AdapterKind": {
-      "description": "The two adapter kinds. A `harness` hosts agents; a `shell` provides a driven surface (MANIFEST §Shell adapters).",
+      "description": "The two adapter kinds. A `harness` hosts agents; a `shell` provides a driven\nsurface (MANIFEST §Shell adapters).",
       "type": "string",
       "enum": [
         "harness",
@@ -157,7 +157,7 @@
       ]
     },
     "Hook": {
-      "description": "`[hooks.<event>]` — one harness event → the `api` command it fires, the stdin fields it maps, and whether it can surface context to the agent.",
+      "description": "`[hooks.<event>]` — one harness event → the `api` command it fires, the\nstdin fields it maps, and whether it can surface context to the agent.",
       "type": "object",
       "properties": {
         "fires": {
@@ -181,7 +181,7 @@
       ]
     },
     "Session": {
-      "description": "`[session]` — the watched-dir keys (`commune_dir`/`signoff_dir`) co-located with the fixed set of `[session.<role>]` command templates.",
+      "description": "`[session]` — the watched-dir keys (`commune_dir`/`signoff_dir`) co-located\nwith the fixed set of `[session.<role>]` command templates.",
       "type": "object",
       "properties": {
         "commune_dir": {
@@ -247,7 +247,7 @@
           ]
         },
         "notif": {
-          "description": "`[session.notif]` — the endpoint-native notification render (ADR-0007's `notif_command` seam, REQ-NOTIF-2): an OS toast, a GameRobot `alert-symbol`, anything the adapter can run. Spawned detached when a notif surfaces at this endpoint, combinable with the agent-surface delivery. Keys spt-core fills: `{notif_id}`, `{notif_from}`, `{notif_subnet}`, `{notif_body}`.",
+          "description": "`[session.notif]` — the endpoint-native notification render\n(ADR-0007's `notif_command` seam, REQ-NOTIF-2): an OS toast, a\nGameRobot `alert-symbol`, anything the adapter can run. Spawned\ndetached when a notif surfaces at this endpoint, combinable with the\nagent-surface delivery. Keys spt-core fills: `{notif_id}`,\n`{notif_from}`, `{notif_subnet}`, `{notif_body}`.",
           "anyOf": [
             {
               "$ref": "#/$defs/SessionRole"
@@ -260,7 +260,7 @@
       }
     },
     "SessionRole": {
-      "description": "`[session.<role>]` — one opaque outbound command template plus its spawn context. Model/tools/flags all live inside `command`, never as fields (MANIFEST §session roles). No nested tables here (keeps TOML round-trip emission scalar-before-table clean).",
+      "description": "`[session.<role>]` — one opaque outbound command template plus its spawn\ncontext. Model/tools/flags all live inside `command`, never as fields\n(MANIFEST §session roles). No nested tables here (keeps TOML round-trip\nemission scalar-before-table clean).",
       "type": "object",
       "properties": {
         "command": {
@@ -274,7 +274,7 @@
           ]
         },
         "recursion_guard_env": {
-          "description": "Env var set on summarizer children so their own hooks bail (recursion guard).",
+          "description": "Env var set on summarizer children so their own hooks bail (recursion\nguard).",
           "type": [
             "string",
             "null"
@@ -389,15 +389,15 @@
       ]
     },
     "Digest": {
-      "description": "`[digest]` — the session-digest extractor seam (ADR-0019). Reverses M9's \"no manifest seam\" stance: the digest gets its **own** adapter-declared extractor, distinct from `[history]` (which stays opaque + single-session and feeds the echo-commune verbatim). The extractor maps the harness's **native** log → the published `{role, text, tool, ts}` digest-record contract ([`spt_term::DigestRecord`]). **Imperative, not a DSL** (ADR-0019 §Decision): real harness logs are nested (one line → many entries, mixed block lists, types to filter) — a flat declarative map cannot express them, and a map powerful enough is a reinvented language. So the extractor is an opaque command spt-core never parses, exactly like every other manifest template. **Source.** By default the extractor reads the **same files as `[history]`** (the `locate_template`; DRY). An adapter may override with `source` (the own-source escape hatch). `api digest-entry` push remains the always-available fallback for a log-less adapter (which declares no `[digest]` at all). **Presentation.** `window_turns`, `arg_truncation`, and `sprint_collapse` are adapter-declared **defaults** any consumer may override at pull/subscribe; spt-core ships fallback defaults ([`spt_term::DigestConfig`]) when absent. The fixed \"~3 turns\" is no longer an spt-core requirement (ADR-0019).",
+      "description": "`[digest]` — the session-digest extractor seam (ADR-0019). Reverses M9's\n\"no manifest seam\" stance: the digest gets its **own** adapter-declared\nextractor, distinct from `[history]` (which stays opaque + single-session and\nfeeds the echo-commune verbatim). The extractor maps the harness's **native**\nlog → the published `{role, text, tool, ts}` digest-record contract\n([`spt_term::DigestRecord`]).\n\n**Imperative, not a DSL** (ADR-0019 §Decision): real harness logs are nested\n(one line → many entries, mixed block lists, types to filter) — a flat\ndeclarative map cannot express them, and a map powerful enough is a reinvented\nlanguage. So the extractor is an opaque command spt-core never parses, exactly\nlike every other manifest template.\n\n**Source.** By default the extractor reads the **same files as `[history]`**\n(the `locate_template`; DRY). An adapter may override with `source` (the\nown-source escape hatch). `api digest-entry` push remains the always-available\nfallback for a log-less adapter (which declares no `[digest]` at all).\n\n**Presentation.** `window_turns`, `arg_truncation`, and `sprint_collapse` are\nadapter-declared **defaults** any consumer may override at pull/subscribe;\nspt-core ships fallback defaults ([`spt_term::DigestConfig`]) when absent. The\nfixed \"~3 turns\" is no longer an spt-core requirement (ADR-0019).",
       "type": "object",
       "properties": {
         "extractor": {
-          "description": "Opaque extractor command: native harness log → the `{role,text,tool,ts}` contract (one JSON record per output line). `{key}` substitution applies (e.g. `{session_id}`, and `{source}` for the resolved log path).",
+          "description": "Opaque extractor command: native harness log → the `{role,text,tool,ts}`\ncontract (one JSON record per output line). `{key}` substitution applies\n(e.g. `{session_id}`, and `{source}` for the resolved log path).",
           "type": "string"
         },
         "source": {
-          "description": "Own-source escape hatch: a `locate_template` for the log file(s) the extractor reads. Absent ⇒ reuse `[history].locate_template` (DRY).",
+          "description": "Own-source escape hatch: a `locate_template` for the log file(s) the\nextractor reads. Absent ⇒ reuse `[history].locate_template` (DRY).",
           "type": [
             "string",
             "null"
@@ -422,7 +422,7 @@
           "minimum": 0
         },
         "sprint_collapse": {
-          "description": "Adapter-default for collapsing consecutive tool records into one sprint. Absent ⇒ spt-core fallback (collapse on).",
+          "description": "Adapter-default for collapsing consecutive tool records into one sprint.\nAbsent ⇒ spt-core fallback (collapse on).",
           "type": [
             "boolean",
             "null"
@@ -508,7 +508,7 @@
           ]
         },
         "repo": {
-          "description": "`file_pull` avenue: source repo.",
+          "description": "`file_pull` / `gh_release` avenue: source repo. For `gh_release` this is\nthe `user/repo` whose **GitHub releases** the adapter ships updates from.",
           "type": [
             "string",
             "null"
@@ -521,15 +521,22 @@
             "null"
           ]
         },
+        "asset": {
+          "description": "`gh_release` avenue: the release **asset** name to fetch (the adapter\n`.spt` archive). Absent ⇒ the default `adapter.spt`, matching the\n`spt adapter add --release` acquisition primitive (REQ-INSTALL-9). Not\napplicable to `delegated` / `file_pull`.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "signing_key": {
-          "description": "`file_pull` avenue: the adapter's Ed25519 **content-signing public key** (64 hex chars / 32 bytes). spt-core verifies a pulled payload against this per-adapter key before applying it (REQ-UPD-5 adapter content signing, ADR-0004 §D) — the adapter author signs their own releases; spt-core's release key stays scoped to spt-core. **Required for `file_pull`** (there are bytes to verify); not applicable to `delegated` (opaque updater).",
+          "description": "The adapter's Ed25519 **content-signing public key** (64 hex chars / 32\nbytes). spt-core verifies a pulled payload against this per-adapter key\nbefore applying it (REQ-UPD-5 adapter content signing, ADR-0004 §D) — the\nadapter author signs their own releases; spt-core's release key stays\nscoped to spt-core. **Required for `file_pull`** (there are bytes to\nverify); **optional for `gh_release`** (absent ⇒ HTTPS+GitHub\nfirst-acquisition trust, the same trust `spt adapter add --release` and\nthe installer first-fetch place; present ⇒ the fetched `.spt` is verified\nfail-closed against this key, REQ-UPD-9); not applicable to `delegated`\n(opaque updater).",
           "type": [
             "string",
             "null"
           ]
         },
         "self_verifies": {
-          "description": "`delegated` avenue: the adapter attests its own updater verifies the content it installs (e.g. `claude.exe plugin update` checks its own signatures). spt-core cannot see a delegated updater's bytes, so it delegates the trust **only** when this is set; an unattested delegated update is skipped as unverifiable (REQ-UPD-5).",
+          "description": "`delegated` avenue: the adapter attests its own updater verifies the\ncontent it installs (e.g. `claude.exe plugin update` checks its own\nsignatures). spt-core cannot see a delegated updater's bytes, so it\ndelegates the trust **only** when this is set; an unattested delegated\nupdate is skipped as unverifiable (REQ-UPD-5).",
           "type": "boolean",
           "default": false
         },
@@ -539,7 +546,7 @@
           "default": false
         },
         "uninstall": {
-          "description": "Optional inverse of install — run by `spt adapter remove` once the adapter is quiesced (the mirror of `spt adapter add`, which reuses this section as the install mechanism). Absent ⇒ spt-core's default cleanup. (Modeled in M2a; conducted with adapter-registration later.)",
+          "description": "Optional inverse of install — run by `spt adapter remove` once the adapter\nis quiesced (the mirror of `spt adapter add`, which reuses this section as\nthe install mechanism). Absent ⇒ spt-core's default cleanup. (Modeled in\nM2a; conducted with adapter-registration later.)",
           "type": [
             "string",
             "null"
@@ -561,6 +568,11 @@
           "description": "spt-core pulls files from a repo.",
           "type": "string",
           "const": "file_pull"
+        },
+        {
+          "description": "spt-core ships updates from the adapter's own **GitHub releases**\n(REQ-UPD-9): compare the repo's latest release version against the\ninstalled adapter version and, when newer, fetch the release `.spt`\narchive (the REQ-INSTALL-9 `--release` primitive), verify it against an\noptional `signing_key` (else HTTPS+GitHub trust), and re-register. No\nsigning tooling or plugin coupling required of the adapter author.",
+          "type": "string",
+          "const": "gh_release"
         }
       ]
     },
@@ -632,11 +644,11 @@
           "default": false
         },
         "require_approval": {
-          "description": "Per-spawn user approval gate (floor; a node/endpoint setting may tighten). Absent ⇒ `none`. (Modeled now; conducted when shells land.)",
+          "description": "Per-spawn user approval gate (floor; a node/endpoint setting may tighten).\nAbsent ⇒ `none`. (Modeled now; conducted when shells land.)",
           "$ref": "#/$defs/ShellApproval"
         },
         "max_instances_per_owner": {
-          "description": "Optional ceiling on concurrent-existing instances per owner endpoint (online + offline both count). Absent ⇒ unlimited.",
+          "description": "Optional ceiling on concurrent-existing instances per owner endpoint\n(online + offline both count). Absent ⇒ unlimited.",
           "type": [
             "integer",
             "null"
@@ -645,7 +657,7 @@
           "minimum": 0
         },
         "over_cap": {
-          "description": "What happens at the cap: `reject` (default) or `approve` (per-spawn approval beyond the cap; does not raise it). Only meaningful with a cap.",
+          "description": "What happens at the cap: `reject` (default) or `approve` (per-spawn\napproval beyond the cap; does not raise it). Only meaningful with a cap.",
           "$ref": "#/$defs/OverCap"
         },
         "capabilities": {
@@ -658,6 +670,14 @@
         "sensory": {
           "description": "`[shell.sensory]` — the sensory vocabulary (shell→agent).",
           "$ref": "#/$defs/Sensory"
+        },
+        "drive": {
+          "description": "`[shell.drive]` — the drive vocabulary (agent→shell, REST-only ephemeral\ncontrol; M11-W2, REQ-SHELL-3). The owner→shell mirror of `[shell.sensory]`.",
+          "$ref": "#/$defs/Drive"
+        },
+        "tunnel": {
+          "description": "`[shell.tunnel]` — opt-in for the opaque reliable-ordered byte tunnel\n(M11-W3, REQ-SHELL-4). Absent ⇒ no tunnel.",
+          "$ref": "#/$defs/Tunnel"
         }
       },
       "required": [
@@ -681,7 +701,7 @@
       ]
     },
     "ShellApproval": {
-      "description": "Per-shell instantiation-approval mode (`require_approval`). Reuses the consent plumbing: `remembered` lets allow-always write a persistent grant; `always` suppresses allow-always (prompt every spawn).",
+      "description": "Per-shell instantiation-approval mode (`require_approval`). Reuses the consent\nplumbing: `remembered` lets allow-always write a persistent grant; `always`\nsuppresses allow-always (prompt every spawn).",
       "oneOf": [
         {
           "description": "No approval (default — matches the system's everything-opt-in posture).",
@@ -716,7 +736,7 @@
       ]
     },
     "ShellCapability": {
-      "description": "One entry in `[shell.capabilities]` — a command and its argument names.",
+      "description": "One entry in `[shell.capabilities]` — a command and its argument names.\n\nA capability may carry its own **act-gate** (M11, REQ-CONSENT-3): the same\n`require_approval` enum the spawn gate uses, riding the individual op so the\n*dangerous act* is gated, not just the spawn. An optional `class_key` scopes\nthe written grant finer than the op id — granted per `(owner × class × node)`\n(the usbip `attach`'s device class), so a remembered HID-class grant never\nauthorizes a storage-class act. Spawn gates govern existence; capability\ngates govern acts (CONTEXT §\"per-capability approval gates\").",
       "type": "object",
       "properties": {
         "args": {
@@ -724,6 +744,17 @@
           "items": {
             "type": "string"
           }
+        },
+        "require_approval": {
+          "description": "Per-act approval gate (floor; a node/endpoint setting may tighten).\nAbsent ⇒ `none` (ungated).",
+          "$ref": "#/$defs/ShellApproval"
+        },
+        "class_key": {
+          "description": "Optional grant-qualifier class so a grant scopes finer than the op id\n(`(owner × class × node)`). Only meaningful with a gated `require_approval`.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },
@@ -739,12 +770,42 @@
         }
       }
     },
+    "Drive": {
+      "description": "`[shell.drive]` — the drive payload types an agent may push to a shell\n(M11-W2, REQ-SHELL-3). The owner→shell mirror of [`Sensory`]: REST-only,\nephemeral latest-wins, never spooled.",
+      "type": "object",
+      "properties": {
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Tunnel": {
+      "description": "`[shell.tunnel]` — the opt-in for the opaque reliable-ordered byte tunnel\n(M11-W3, REQ-SHELL-4): a dedicated QUIC stream pair bound to the owner↔shell\nlink, carrying wire protocol traffic the channel taxonomy must NOT reinterpret\n(first consumer: USB/IP URB traffic). Not enveloped, not MAC-framed, not\nspooled; the link lifecycle governs it (a link-break closes the tunnel).\nReliable-ordered ⇒ congestion surfaces as lag never loss ⇒ on-LAN posture.",
+      "type": "object",
+      "properties": {
+        "enable": {
+          "description": "Whether this shell opens the opaque tunnel on link-up.",
+          "type": "boolean",
+          "default": false
+        },
+        "protocol": {
+          "description": "Optional diagnostic label for the opaque wire protocol (e.g. `usbip-urb`).\nInformational only — the substrate never interprets tunnel bytes.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "Hint": {
-      "description": "`[[hints]]` — one once-per-session keyword hint (CONTEXT.md §keyword hints). The adapter's user-prompt hook pipes the full user message to `spt api hint`; a matching keyword surfaces `text` to the agent's context channel, at most once per session and once per message.",
+      "description": "`[[hints]]` — one once-per-session keyword hint (CONTEXT.md §keyword hints).\nThe adapter's user-prompt hook pipes the full user message to `spt api hint`;\na matching keyword surfaces `text` to the agent's context channel, at most\nonce per session and once per message.",
       "type": "object",
       "properties": {
         "keywords": {
-          "description": "Keywords that fire the hint — literal **case-insensitive substrings** by default; compiled as **regex** patterns when `regex = true`.",
+          "description": "Keywords that fire the hint — literal **case-insensitive substrings** by\ndefault; compiled as **regex** patterns when `regex = true`.",
           "type": "array",
           "items": {
             "type": "string"

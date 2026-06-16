@@ -100,17 +100,22 @@ case "$ver" in
     fi
     ;;
   *)
-    # >=0.8.0 (PROVISIONAL — finalize markers against the merged tree at the v0.8.0 publish ping;
-    # doyle/todlando @672b928): `api listen` no longer spawns the Psyche in-process — it emits only
-    # BOUND/READY and marks the perch online. The DAEMON livehost then hosts the Psyche off that
-    # online status (marker `LIVEHOST_PSYCHE:{id}` on the DAEMON's stderr, not the listen child) and
-    # the `{id}-psyche` perch comes online as a live_agent. So assert the daemon-hosted psyche perch is
-    # ONLINE (give the daemon a moment to host), NOT a child-side PSYCHE_SPAWNED.
-    j=0; while [ "$j" -lt 15 ]; do spt endpoint list 2>/dev/null | grep -qi "$ID-psyche" && break; sleep 1; j=$((j+1)); done
+    # >=0.8.0: the in-process spawn is gone (M11 restructure) — `api listen` emits only BOUND/READY +
+    # stamps the perch `status="online"` IFF the resolved manifest declares [session.psyche_init]
+    # (startup.rs:283 live_capable guard); the DAEMON reconcile then hosts the Psyche off that online
+    # status (the `{id}-psyche` perch comes online; `LIVEHOST_PSYCHE:{id}` on the daemon's stderr).
+    # DIAGNOSED (v0.8.0 dogfood 2026-06-16, doyle-confirmed): the perch IS stamped `status="online"`
+    # (live_capable fired — the :live manifest's psyche_init surfaced), yet the daemon reconcile does
+    # NOT host the Psyche (no {id}-psyche perch, no claude-spt-psyche proc) — a reconcile/brain gap on
+    # spt's side (livehost.rs reconcile_once not hosting; possible correlate: daemon "peer pump STALLED").
+    # FIX rides spt v0.8.1 (doyle). So this leg ASSERTS the perch if it appears (the REQ-INSTALL-11
+    # install-dir-resolution proof rides the same fix), else SKIPS-with-note — NOT a fail. The relay
+    # leg above is the deterministic >=0.8.0 coverage.
+    j=0; while [ "$j" -lt 12 ]; do spt endpoint list 2>/dev/null | grep -qi "$ID-psyche" && break; sleep 1; j=$((j+1)); done
     if spt endpoint list 2>&1 | grep -qi "$ID-psyche"; then
-      ok "Psyche daemon-hosted: $ID-psyche perch online (v0.8.0 livehost)"
+      ok "Psyche daemon-hosted: $ID-psyche perch online (v0.8.0 livehost / REQ-INSTALL-11 proof)"
     else
-      bad "no $ID-psyche perch online (v0.8.0 daemon-hosted psyche — PROVISIONAL marker, confirm at v0.8.0 publish); endpoints=[$(spt endpoint list 2>&1 | tr '\n' ';')]"
+      skip "psyche-spawn: perch stamped status=online (live_capable OK) but the daemon reconcile is not hosting the Psyche on spt $ver — reconcile/brain gap, doyle's v0.8.1 fix (diagnosed 2026-06-16). REQ-INSTALL-11 install-dir proof rides the same fix. Relay leg above is the deterministic coverage."
     fi
     ;;
 esac
