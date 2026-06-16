@@ -30,9 +30,13 @@ nothing to source. Setup must leave the adapter **active**.
      - **Local dev / dogfooding from a repo checkout** (an `adapter/claude-spt.toml` is present near
        cwd): `spt adapter add ./adapter/claude-spt.toml` (the file-form takes any path + filename).
      - **End-user (plugin only, no repo checkout):**
-       `spt adapter add --github SaberMage/claude-spt` — the dedicated adapter repo whose root holds
-       `manifest.toml` + `strings/` + the tool binaries. `adapter add` is manifest-first (an invalid
-       manifest registers nothing) and conducts the declared `[update]` avenue once.
+       `spt adapter add --release SaberMage/spt-claude-code` — fetches the published `adapter.spt`
+       release asset (a tar whose **root** holds `manifest.toml` + `strings/` + the tool binaries)
+       from the repo's GitHub release, extracts it to the durable adapter home, and registers it.
+       Add `--tag <ver>` to pin a version (omit for latest). Re-running with a newer `--tag` is a
+       manual re-acquire. `adapter add` is manifest-first (an invalid manifest registers nothing).
+       (Recommended path — ships straight from the monorepo, no dedicated repo. Needs the spt
+       release that carries `--release`; the older `--github <root-manifest-repo>` is the alternative.)
 
 3. **Verify activation.** Re-run `spt adapter list`: `claude-spt` must now appear **active** (no
    `deregistered`). Spot-check a profile resolves: `spt adapter get-string claude-spt:live adapter_label`

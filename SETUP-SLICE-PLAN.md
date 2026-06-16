@@ -41,30 +41,31 @@ the LOCKED v1 `{1..7}` scope.
 
 ## Open questions
 
-1. **[RESOLVED — doyle, owl 2026-06-15, from source] End-user `--github` target topology.**
-   `adapter add` is **ROOT-ONLY, code-confirmed** (`source_manifest_file`): a dir source resolves to
-   `<dir>/manifest.toml` **exactly** (exact filename, no scan, no subpath); `--github user/repo`
-   reads `<clone-root>/manifest.toml`. Our `adapter/claude-spt.toml` misses on both counts → a
-   **doc-gap** (it's in spt-core source, not the published docs; doyle is patching the activation
-   docs). **Ruling:**
-   - **Local dev** keeps the monorepo `adapter/claude-spt.toml`; activate via the **file-form**
-     `spt adapter add ./adapter/claude-spt.toml` (takes any path + any filename).
-   - **End-user `--github`** needs a **DEDICATED published adapter repo** (Wave C) whose **root** is
-     `manifest.toml` (named exactly) + `strings/` + the binaries the manifest references.
-   - **Copy-vs-pointer by `[update]` avenue:** claude-spt's avenue is `delegated`
-     (`claude plugin update spt`) → **POINTER mode**: spt-core copies **nothing** into
-     `adapters/<name>/`; it reads `manifest.toml` + `strings/` **live from the durable
-     `adapters/_github/<safe>` clone**, for life. (`file_pull`/no-`[update]` = COPY mode instead.)
-     Root-only holds in both modes.
-2. **[RESOLVED via Q3 ruling] End-user binary delivery for `claude-spt-digest` / `claude-spt-psyche`.**
-   doyle: the manifest-referenced **binaries are NOT auto-copied** in either mode (only `strings/`
-   is). So they must be **resolvable on the target**: absolute path, on PATH, or — in our pointer
-   mode — **shipped in the `--github` repo at the manifest's referenced paths** so they resolve from
-   the durable `_github` clone. **Action:** our command templates reference the binaries by **bare
-   name** (`claude-spt-digest …`, `claude-spt-psyche …`) ⇒ resolved from **PATH**. So end-user
-   delivery must put both on PATH (ride the installer) OR we switch the manifest to clone-relative
-   paths + ship the binaries in the Wave-C repo. **Decide in Wave C** (lean: ship on PATH via the
-   installer — keeps templates portable). Folded into Wave C.
+1. **[RESOLVED — doyle shipped `--release`, owl 2026-06-15] End-user acquisition. NO dedicated repo.**
+   doyle shipped a new acquisition source — **`spt adapter add --release <user/repo> [--tag <ver>]`**
+   — that fetches a published **`adapter.spt`** release asset (a tar whose **root** holds
+   `manifest.toml` + `strings/` + the binaries) from the repo's GitHub **release**, extracts to the
+   durable home, and registers the root. **So we ship straight from THIS monorepo — no dedicated
+   root-manifest repo needed** (operator: "no separate repo"). First-acquisition trusts HTTPS+GitHub
+   like the install one-liner; it's **acquisition only** (does NOT change the `[update]` route;
+   re-running `--release --tag <newer>` is a manual re-acquire). Recommended over `--github`.
+   Docs (revised): `install-on-demand.html#activate-the-adapter--register-your-manifest`.
+   - **Local dev:** file-form `spt adapter add ./adapter/claude-spt.toml` (any path/filename).
+   - **End-user:** `spt adapter add --release SaberMage/spt-claude-code` (latest) / `--tag <ver>`.
+   - ⚠ **Version gate:** local spt is 0.7.2, which has only `--github` + local path — `--release`
+     ships in a **newer** spt release. Authoring is unblocked; the int/dogfood waits on the upgrade.
+   - **Superseded:** the root-only `--github`/`source_manifest_file` constraint (dir → exact
+     `<dir>/manifest.toml`, no subpath — code-confirmed, a doc-gap doyle patched) still holds, but
+     `--release` routes around it. The old "dedicated repo" plan (former Wave C) is **dropped**.
+2. **[OPEN — fold into Wave C′ packaging] Binary resolution for `claude-spt-digest` / `claude-spt-psyche`.**
+   The `--release` `adapter.spt` tar **includes** the binaries at the archive root (extracted to the
+   durable home). BUT our command templates reference them by **bare name** ⇒ resolved from **PATH**,
+   not the durable home. So packing them only helps if spt-core runs templates with the adapter home
+   on PATH / cwd — **unverified**. Two clean options: **(a)** ship both binaries **on PATH** via the
+   installer (keeps bare-name templates portable; lean), or **(b)** reference them by a path relative
+   to the adapter home in the manifest + rely on the archive extraction. **Decide when building the
+   release-asset packaging (Wave C′).** Activation/registration does NOT need the binaries — only
+   runtime digest/Psyche do — so this never blocks the activation step.
 3. **Setup context detection.** Skill probes for a local `adapter/claude-spt.toml` (operator
    dogfooding from a checkout → file-form) else uses `--github <Wave-C repo>` (casual end-user).
 
@@ -90,18 +91,19 @@ the LOCKED v1 `{1..7}` scope.
 - **Note the binary-on-PATH caveat (OQ2)** in the body: activation registers the manifest;
   digest/Psyche need the tool binaries present (built + on PATH) to *function*.
 
-### Wave C — the dedicated published adapter repo (the end-user `--github` target) — **on A's critical path**
-**Why:** the operator's A-fulfilling dogfood is "install the **plugin**" (the end-user path) → setup
-runs `adapter add --github <repo>` → so that repo must EXIST and be correctly shaped. The monorepo
-`SaberMage/spt-claude-code` **cannot** be it (root-only rule). **Decision needed (operator):** repo
-name + creation (SaberMage org credentials) + the binary-delivery choice (OQ2: on-PATH-via-installer
-vs clone-relative-paths-in-repo).
-- Lay out repo **root** = `manifest.toml` (the monorepo's `adapter/claude-spt.toml`, renamed) +
-  `strings/` (copied) + (per OQ2 decision) the built `claude-spt-digest` + `claude-spt-psyche`.
-- A `ci/publish/` step that **generates** this repo from the monorepo `adapter/` (rename + copy +
-  drop binaries) so the two never drift — mirrors `package-skeleton.sh` for the cplugs side.
-- Verify end-to-end: a clean machine `spt adapter add --github <repo>` → active + a profile resolves
-  + digest/Psyche binaries resolve. New REQ (`REQ-DIST-ADAPTER-REPO`) when this wave starts.
+### Wave C′ — release-asset packaging (`adapter.spt`) — the end-user `--release` target — **on A's critical path**
+**Replaces the dropped "dedicated repo" Wave C.** doyle's `--release` ships the adapter from THIS
+monorepo as a GitHub **release asset** — no separate repo.
+- A `ci/publish/` step (mirrors `package-skeleton.sh`) that **packs** `adapter.spt`:
+  `tar -czf adapter.spt -C adapter manifest.toml strings/ …` — **but** our manifest is
+  `adapter/claude-spt.toml`, and the tar **root must hold `manifest.toml` named exactly that**. So
+  the packer renames `claude-spt.toml → manifest.toml` inside the archive + adds the built
+  `claude-spt-digest` + `claude-spt-psyche` (release builds) + (per OQ2) lays them where they
+  resolve. Default asset name `adapter.spt` (override `--asset`).
+- Upload `adapter.spt` as a GitHub release asset on the monorepo (operator: release/tag + push).
+- Verify end-to-end (version-gated on the spt release carrying `--release`): a clean machine
+  `spt adapter add --release SaberMage/spt-claude-code` → active + a profile resolves + digest/Psyche
+  binaries resolve. New REQ (`REQ-DIST-ADAPTER-RELEASE`) when this wave starts.
 
 ### Later waves — LOCKED v1 setup paths {1..7} (each its own slice + REQ; deps flagged)
 Staged, not built now (JIT). From `SCOPE.md` §"/spt:setup" LOCKED {1,2,3,4,5,6,7}:
@@ -122,8 +124,14 @@ Staged, not built now (JIT). From `SCOPE.md` §"/spt:setup" LOCKED {1,2,3,4,5,6,
 `sh ci/run-gates.sh` PASS + `traceable-reqs check` green. Commit `Co-authored by: perri`.
 
 ## Status
-- **OQ1/OQ2 RESOLVED (doyle, owl 2026-06-15).** Repo topology decided: monorepo file-form for dev;
-  dedicated root-`manifest.toml` repo for `--github` (pointer mode, binaries on PATH). Wave 1 is now
-  **fully unblocked** — authoring both activation branches.
-- **Wave C is on A's critical path:** the operator's "dogfood the plugin" = end-user path = needs the
-  dedicated `--github` repo to exist. Surfaced to operator (repo name + creation + OQ2 binary choice).
+- **OQ1 RESOLVED via `--release` (doyle shipped it, owl 2026-06-15).** End-user acquisition ships
+  from THIS monorepo as an `adapter.spt` release asset — **no dedicated repo** (operator-aligned).
+  Wave 1 bodies updated to the `--release` path.
+- **Wave 1 (activation logic) DONE** (`REQ-SETUP-ACTIVATE` doc green) — correct regardless of the
+  acquisition source; only the end-user target string changed (`--github` → `--release`).
+- **Version gate:** `--release` needs a spt release newer than local 0.7.2 → int/dogfood waits on the
+  upgrade. Same gate-pattern as the live relay int.
+- **Wave C′ (release-asset packaging) is on A's critical path** for the plugin-dogfood end-user path;
+  OQ2 (binary resolution) decided there. Local-dir activation is dogfoolable now.
+- **Carry-over:** cplugs republish (the published skeleton still has the pre-activation setup body) +
+  optional bootstrap auto-activate.

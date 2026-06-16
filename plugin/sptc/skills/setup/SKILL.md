@@ -35,9 +35,11 @@ present binary is not enough: an unregistered/`deregistered` adapter has no prof
    - Missing or `deregistered` → activate it:
      - **Local dev / dogfooding a repo checkout** (an `adapter/claude-spt.toml` is present near cwd):
        `spt adapter add ./adapter/claude-spt.toml` (the file-form accepts any path + filename).
-     - **End-user (plugin only):** `spt adapter add --github SaberMage/claude-spt` (the dedicated
-       adapter repo: root `manifest.toml` + `strings/` + tool binaries). Manifest-first; conducts the
-       declared `[update]` avenue once.
+     - **End-user (plugin only):** `spt adapter add --release SaberMage/spt-claude-code` — fetches
+       the published `adapter.spt` release asset (tar root = `manifest.toml` + `strings/` + tool
+       binaries) from the repo's GitHub release, extracts to the durable home, registers. `--tag
+       <ver>` pins a version. Recommended (ships from the monorepo, no dedicated repo); needs the spt
+       release carrying `--release`.
 
 3. **Verify.** Re-run `spt adapter list` — `claude-spt` must read **active** (no `deregistered`).
    The `[digest]` extractor (`claude-spt-digest`) and Psyche runner (`claude-spt-psyche`) resolve by

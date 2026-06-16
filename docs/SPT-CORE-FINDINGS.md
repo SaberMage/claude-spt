@@ -419,3 +419,26 @@ binaries), distinct from the monorepo; local dev uses the file-form `adapter add
 (distinct from the cplugs skeleton repo); local dev uses `spt adapter add ./adapter`.
 
 **Status:** **TRIAGED — accepted as (a)+(b) mix.** doyle patches docs; we wire the activation step.
+
+### Resolution (2026-06-15 — doyle shipped `--release`, distribution leg CLOSED)
+
+doyle shipped + published a new acquisition source that closes F-005's end-user distribution leg
+without a dedicated repo: **`spt adapter add --release <user/repo> [--tag <ver>]`** fetches a
+published **`adapter.spt`** release asset (a tar whose **root** holds `manifest.toml` + `strings/` +
+the binaries) from the repo's GitHub release, extracts to the durable home, and registers the root.
+**We ship straight from the monorepo as a release asset — no dedicated root-manifest repo** (the old
+`--github` root-only constraint, code-confirmed + since doc-patched, is routed around). First
+acquisition trusts HTTPS+GitHub like the install one-liner; signing rides the `file_pull` `[update]`
+avenue later (this is **acquisition only** — re-running `--release --tag <newer>` is a manual
+re-acquire, it does not change the `[update]` route). Docs (revised):
+`harness-contract/install-on-demand.html#activate-the-adapter--register-your-manifest`;
+`--release` is now the **recommended** distribution, `--github` + local-dir the alternatives.
+
+**Our wiring:** `/sptc:setup` end-user branch → `spt adapter add --release SaberMage/spt-claude-code`
+(local dev stays the file-form). **Version gate:** local spt 0.7.2 has only `--github` + local path;
+`--release` lands in a newer spt release — int/dogfood waits on the upgrade. The remaining build is
+the `adapter.spt` release-asset packer (`SETUP-SLICE-PLAN.md` Wave C′) + OQ2 (binary resolution: bare
+-name templates resolve from PATH, so either ship binaries on PATH via the installer or use
+home-relative paths). **The `[update]`/self-update channel itself stays unauthored** (our manifest
+declares no `[update]` → COPY-mode registration; the signed file_pull self-update is the later,
+separate concern — REQ-UPD-1/M4 roadmap + the Ed25519 provisioning doc).
