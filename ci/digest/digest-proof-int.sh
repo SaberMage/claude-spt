@@ -6,13 +6,11 @@
 # Gated behind SPTC_ACCEPTANCE=1 (mutates the node-local adapter registry: add + soft-remove) and a
 # present spt>=0.7 + a built extractor. Idempotent. Run: SPTC_ACCEPTANCE=1 sh ci/digest/digest-proof-int.sh
 #
-# KNOWN-BLOCKED (F-004, doyle-confirmed spt-core impl bug, fix in progress): the production-correct
-# extractor command references {session_id} (CC's cwd-slug forces projects-root + a --session locate
-# the extractor resolves itself). `digest-proof --sample` passes an EMPTY substitution-key map
-# (cli.rs:5135) vs the runtime daemon which fills {id}+{session_id} — so it hard-fails {session_id}.
-# Until doyle's fix lands (digest-proof will fill the runtime keys), this SKIPs on that exact error.
-# The extractor itself is proven: cargo tests (ci/digest/build.sh) + a source-only digest-proof run
-# returned DIGEST_PROOF_OK (5 parsed / 0 dropped, correct render — F-004 "Variant A").
+# GREEN since spt v0.7.2 (doyle's F-004 fix, release counter 14): `digest-proof --sample` now fills
+# the runtime substitution keys ({id}+{session_id}, + an optional --session) matching the daemon, so
+# the published-shape extractor command (`--session {session_id} --in {source}`) proofs instead of
+# hard-failing {session_id}. Was F-004-blocked on <=0.7.1 (empty key map, cli.rs:5135) — the legacy
+# SKIP branch below stays as a guard so an OLD binary announces the version gap rather than failing.
 set -u
 ROOT=$(CDPATH= cd "$(dirname "$0")/../.." && pwd)
 MANIFEST="$ROOT/adapter/claude-spt.toml"
@@ -36,8 +34,8 @@ case "$out" in
     printf '%s\n' "$out" | grep -E 'parsed|dropped' | sed 's/^/    /'
     echo "DIGEST-PROOF-INT OK"; exit 0 ;;
   *"no value for substitution key {session_id}"*)
-    echo "SKIP: blocked on F-004 — digest-proof --sample does not yet fill {session_id} (doyle's spt-core fix pending)."
-    echo "      extractor proven via cargo tests + source-only Variant A (DIGEST_PROOF_OK). Flip on the carrying release."
+    echo "SKIP: spt < v0.7.2 — digest-proof --sample doesn't fill {session_id} (pre-F-004-fix binary)."
+    echo "      upgrade to spt >= 0.7.2 (release counter 14) to run this int. Extractor itself: cargo tests green."
     exit 0 ;;
   *)
     echo "FAIL: unexpected digest-proof output:"; printf '%s\n' "$out"; exit 1 ;;
