@@ -15,7 +15,6 @@ ROOT=$(CDPATH= cd "$HERE/../.." && pwd)
 ADAPTER="$ROOT/adapter"
 MANIFEST="$ADAPTER/claude-spt.toml"   # renamed to manifest.toml INSIDE the archive (root-only rule)
 STRINGS="$ADAPTER/strings"
-OUT="${ADAPTER_SPT_OUT:-$ROOT/dist/adapter.spt}"   # overridable so the unit test writes to a tmp file
 APPLY=0
 [ "${1:-}" = "--apply" ] && APPLY=1
 
@@ -25,6 +24,30 @@ EXE=""
 [ -f "$ROOT/tools/claude-spt-digest/target/release/claude-spt-digest.exe" ] && EXE=".exe"
 DIGEST="$ROOT/tools/claude-spt-digest/target/release/claude-spt-digest$EXE"
 PSYCHE="$ROOT/tools/claude-spt-psyche/target/release/claude-spt-psyche$EXE"
+
+# PER-OS asset name: the .spt carries native binaries, so it is platform-specific and ships as
+# `adapter-<os>-<arch>.spt`. /sptc:setup acquires the matching one via spt's caller-named `--asset`.
+# Host-derived from uname; override SPTC_OS/SPTC_ARCH for a cross build / CI. [impl->REQ-DIST-ADAPTER-PEROS]
+SPTC_OS="${SPTC_OS:-}"; SPTC_ARCH="${SPTC_ARCH:-}"
+if [ -z "$SPTC_OS" ]; then case "$(uname -s 2>/dev/null)" in
+  MINGW*|MSYS*|CYGWIN*|Windows*) SPTC_OS=windows ;;
+  Linux) SPTC_OS=linux ;;
+  Darwin) SPTC_OS=macos ;;
+  *) SPTC_OS=unknown ;;
+esac; fi
+if [ -z "$SPTC_ARCH" ]; then case "$(uname -m 2>/dev/null)" in
+  x86_64|amd64) SPTC_ARCH=x86_64 ;;
+  arm64|aarch64) SPTC_ARCH=aarch64 ;;
+  *) SPTC_ARCH="$(uname -m 2>/dev/null || echo unknown)" ;;
+esac; fi
+# Sanity: the native binary suffix must match the declared OS (windows<->.exe).
+case "$SPTC_OS:$EXE" in
+  windows:.exe|linux:|macos:) : ;;
+  windows:) echo "WARN: SPTC_OS=windows but no .exe binary present — building a non-windows asset?" >&2 ;;
+  *:.exe)   echo "WARN: SPTC_OS=$SPTC_OS but a .exe binary is present — cross-OS mismatch?" >&2 ;;
+esac
+ASSET="adapter-${SPTC_OS}-${SPTC_ARCH}.spt"
+OUT="${ADAPTER_SPT_OUT:-$ROOT/dist/$ASSET}"   # overridable so the unit test writes to a tmp file
 
 # Validate the manifest first — refuse to ship an invalid adapter.
 echo "== validate manifest =="
@@ -50,16 +73,19 @@ echo "== plan ($([ "$APPLY" -eq 1 ] && echo APPLY || echo DRY-RUN)) =="
 echo "manifest : $MANIFEST  ->  (archive root) manifest.toml"
 echo "strings  : $STRINGS/  ->  (archive root) strings/"
 echo "binaries : claude-spt-digest$EXE, claude-spt-psyche$EXE  ->  (archive root)"
-echo "asset    : $OUT"
-echo "NOTE: the archive is PLATFORM-SPECIFIC (native binaries: '$EXE' build). Multi-OS = per-OS"
-echo "      assets, a follow-on. Binaries are NOT copied beside the registered manifest (copy-mode);"
-echo "      they must resolve on the target via PATH/absolute (the installer places them)."
+echo "os/arch  : $SPTC_OS/$SPTC_ARCH"
+echo "asset    : $OUT  (-> $ASSET)"
+echo "NOTE: the archive is PLATFORM-SPECIFIC (native binaries: '$EXE' build) — hence the per-OS name."
+echo "      Ship one asset per OS on the same release; /sptc:setup picks the host's via --asset. Build"
+echo "      each OS's binaries ON that OS (Windows can't cross-link Linux: 'cc not found'). Binaries"
+echo "      are NOT copied beside the registered manifest (copy-mode) — they resolve via PATH/absolute"
+echo "      until v0.8.0 Feature B resolves them from the install dir (F-006)."
 
 if [ "$APPLY" -ne 1 ]; then
   echo
   echo "DRY-RUN: nothing written. Re-run with --apply to write $OUT, then attach it to a GitHub"
-  echo "release on the monorepo and 'spt adapter add --release SaberMage/spt-claude-code' (see"
-  echo "docs/RELEASE-RUNBOOK.md). Acquisition needs spt v0.7.3+ (counter 15)."
+  echo "release on the monorepo. End users acquire it with 'spt adapter add --release"
+  echo "SaberMage/spt-claude-code --asset $ASSET' (see docs/RELEASE-RUNBOOK.md). Needs spt v0.7.3+."
   exit 0
 fi
 
@@ -86,6 +112,7 @@ else
 fi
 
 echo
-echo "WROTE $OUT. Next (operator): attach to a GitHub release on SaberMage/spt-claude-code, then"
-echo "'spt adapter add --release SaberMage/spt-claude-code' (needs spt v0.7.3+). /reload as needed."
+echo "WROTE $OUT. Next (operator): attach to a GitHub release on SaberMage/spt-claude-code (alongside"
+echo "the other per-OS assets), then end users 'spt adapter add --release SaberMage/spt-claude-code"
+echo "--asset $ASSET' (needs spt v0.7.3+). /reload as needed."
 exit 0

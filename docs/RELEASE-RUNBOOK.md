@@ -133,19 +133,39 @@ The CC adapter manifest (publish target #2) ships to end users as an **`adapter.
 (doyle's `--release` source; needs **spt v0.7.3+ / counter 15** — not in 0.7.2). No dedicated
 adapter repo: the asset is packed straight from `adapter/`.
 
-- **Pack:** `sh ci/publish/package-adapter.sh` (DRY-RUN) → `--apply` writes `dist/adapter.spt`. It
-  validates the manifest, requires the built tool binaries (`sh ci/digest/build.sh && sh
-  ci/psyche/build.sh`), and tars the archive **ROOT** = `manifest.toml` (renamed from
-  `claude-spt.toml` — `adapter add` is root-only + exact-name), `strings/`, and the two binaries.
-  Never uploads (operator's step).
-- **Publish:** attach `dist/adapter.spt` to a GitHub release on `SaberMage/spt-claude-code`, then
-  end users `spt adapter add --release SaberMage/spt-claude-code` (or `--tag <ver>` to pin).
+- **Pack:** `sh ci/publish/package-adapter.sh` (DRY-RUN) → `--apply` writes
+  `dist/adapter-<os>-<arch>.spt`. It validates the manifest, requires the built tool binaries (`sh
+  ci/digest/build.sh && sh ci/psyche/build.sh`), and tars the archive **ROOT** = `manifest.toml`
+  (renamed from `claude-spt.toml` — `adapter add` is root-only + exact-name), `strings/`, and the two
+  binaries. Never uploads (operator's step).
+- **Publish:** attach every per-OS `adapter-<os>-<arch>.spt` to the SAME GitHub release on
+  `SaberMage/spt-claude-code`. End users `spt adapter add --release SaberMage/spt-claude-code --asset
+  adapter-<os>-<arch>.spt` (or `--tag <ver>` to pin). `/sptc:setup` derives the host's os/arch and
+  passes the matching `--asset` automatically.
+<!-- [doc->REQ-DIST-ADAPTER-PEROS] -->
+- **Per-OS (REQ-DIST-ADAPTER-PEROS) — the asset carries native binaries, so it is platform-specific.**
+  v1 ships **windows + linux**. spt's `--release` takes a caller-named `--asset` (default
+  `adapter.spt`) — it does NOT auto-pick per-OS, so we name + select. Naming: `adapter-<os>-<arch>.spt`
+  (os ∈ windows|linux|macos, arch ∈ x86_64|aarch64), host-derived from `uname`, overridable with
+  `SPTC_OS` / `SPTC_ARCH`. **Build each OS's binaries ON that OS** — a Windows dev host CANNOT
+  cross-link Linux (`cargo build --target x86_64-unknown-linux-gnu` → `error: linker 'cc' not found`;
+  the crate compiles, only the link needs a Linux toolchain). Per-OS publish:
+  - **Windows:** on Windows, `sh ci/digest/build.sh && sh ci/psyche/build.sh && sh
+    ci/publish/package-adapter.sh --apply` → `dist/adapter-windows-x86_64.spt`.
+  - **Linux:** on a Linux host/runner (same repo), the identical commands (the build scripts are
+    portable — cargo, no `.exe`) → `dist/adapter-linux-x86_64.spt`. (Or set `SPTC_OS`/`SPTC_ARCH` for
+    a cross build once a cross-linker / `cross` + Docker is available.)
+  - Attach BOTH assets to the one release.
+  - **Coupling (do not skew):** the os-detecting `/sptc:setup` floor (cplugs skeleton + adapter
+    strings) requests `--asset adapter-<os>-<arch>.spt`, so it must ship **with** a release that
+    carries those per-OS assets — never before. Sequence: cut the per-OS-asset release FIRST, then
+    republish the cplugs skeleton (next `plugin.json` bump) that points at it. A skeleton bump ahead
+    of the assets would 404 end-user setup.
 - **Binaries (copy-mode caveat):** registration copies `manifest.toml` + `strings/` only — **not**
   the binaries. The command templates use **bare names** (`claude-spt-digest`, `claude-spt-psyche`)
-  ⇒ resolved from **PATH**; the installer must place them on PATH (or use absolute/home-relative
-  paths). The archive carries them so the installer has a source.
-- **Platform:** the asset is **platform-specific** (native binaries). Multi-OS = per-OS assets
-  (a follow-on); the current packer emits the host platform's build.
+  ⇒ resolved from **PATH** (the `/sptc:setup` interim copies them onto PATH) until **v0.8.0 Feature B
+  / REQ-INSTALL-11** resolves them from the adapter install dir (F-006). The archive carries them so
+  the installer/Feature-B has a source.
 - **Acquisition only:** `--release` does **not** establish an `[update]` self-update route (our
   manifest declares no `[update]` → COPY-mode registration). Re-acquire a newer version by re-running
   `--release --tag <newer>`. The signed `file_pull` self-update channel is a separate, later concern.

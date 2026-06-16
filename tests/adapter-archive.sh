@@ -63,5 +63,21 @@ else
   echo "ok   no nested manifest.toml"
 fi
 
+# Per-OS asset NAMING (REQ-DIST-ADAPTER-PEROS): the default asset is adapter-<os>-<arch>.spt and the
+# name follows SPTC_OS/SPTC_ARCH overrides; the dry-run plan advertises the matching end-user
+# `--asset`. (Dry-run = no write; the cross-OS WARN to stderr on a mismatched host is non-fatal.)
+# [unit->REQ-DIST-ADAPTER-PEROS]
+plan=$(SPTC_OS=linux SPTC_ARCH=aarch64 sh "$PACKER" 2>&1)
+echo "$plan" | grep -q "adapter-linux-aarch64\.spt" \
+  && echo "ok   per-OS asset name honors SPTC_OS/SPTC_ARCH (adapter-linux-aarch64.spt)" \
+  || fail "per-OS override name wrong; plan=[$plan]"
+echo "$plan" | grep -q -- "--asset adapter-linux-aarch64\.spt" \
+  && echo "ok   dry-run advertises the end-user --asset for that OS" \
+  || fail "dry-run missing '--asset adapter-linux-aarch64.spt'; plan=[$plan]"
+hostplan=$(sh "$PACKER" 2>&1)
+echo "$hostplan" | grep -qE "adapter-(windows|linux|macos|unknown)-[A-Za-z0-9_]+\.spt" \
+  && echo "ok   host default asset name matches adapter-<os>-<arch>.spt" \
+  || fail "host default asset name not adapter-<os>-<arch>.spt; plan=[$hostplan]"
+
 [ "$rc" -eq 0 ] && echo "PASS: adapter-archive"
 exit "$rc"

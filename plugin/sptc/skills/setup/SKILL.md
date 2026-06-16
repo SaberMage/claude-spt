@@ -35,10 +35,13 @@ present binary is not enough: an unregistered/`deregistered` adapter has no prof
    - Missing or `deregistered` → activate it:
      - **Local dev / dogfooding a repo checkout** (an `adapter/claude-spt.toml` is present near cwd):
        `spt adapter add ./adapter/claude-spt.toml` (the file-form accepts any path + filename).
-     - **End-user (plugin only):** `spt adapter add --release SaberMage/spt-claude-code` — fetches
-       the published `adapter.spt` release asset (tar root = `manifest.toml` + `strings/` + tool
-       binaries) from the repo's GitHub release, extracts to the durable home, registers. `--tag
-       <ver>` pins a version. Recommended (ships from the monorepo, no dedicated repo); needs the spt
+     - **End-user (plugin only):** the `.spt` carries native binaries, so it ships **per-OS** —
+       pick the host's. Detect: `os=$(uname -s)` → MINGW*/MSYS*/CYGWIN*=windows, Linux=linux,
+       Darwin=macos; `arch=$(uname -m)` → x86_64/amd64=x86_64, arm64/aarch64=aarch64. Then
+       `spt adapter add --release SaberMage/spt-claude-code --asset adapter-$os-$arch.spt` — fetches
+       the per-OS `adapter-<os>-<arch>.spt` asset (tar root = `manifest.toml` + `strings/` + native
+       tool binaries), extracts to the durable home, registers. `--tag <ver>` pins a version. v1
+       ships windows + linux. Recommended (from the monorepo, no dedicated repo); needs the spt
        release carrying `--release`.
 
 3. **Verify + place tool binaries.** Re-run `spt adapter list` — `claude-spt` must read **active**

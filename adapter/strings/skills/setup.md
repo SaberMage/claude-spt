@@ -29,14 +29,21 @@ nothing to source. Setup must leave the adapter **active**.
    - If `claude-spt` is **missing or `deregistered`** → **activate** it. Pick the source:
      - **Local dev / dogfooding from a repo checkout** (an `adapter/claude-spt.toml` is present near
        cwd): `spt adapter add ./adapter/claude-spt.toml` (the file-form takes any path + filename).
-     - **End-user (plugin only, no repo checkout):**
-       `spt adapter add --release SaberMage/spt-claude-code` — fetches the published `adapter.spt`
-       release asset (a tar whose **root** holds `manifest.toml` + `strings/` + the tool binaries)
-       from the repo's GitHub release, extracts it to the durable adapter home, and registers it.
-       Add `--tag <ver>` to pin a version (omit for latest). Re-running with a newer `--tag` is a
-       manual re-acquire. `adapter add` is manifest-first (an invalid manifest registers nothing).
-       (Recommended path — ships straight from the monorepo, no dedicated repo. Needs the spt
-       release that carries `--release`; the older `--github <root-manifest-repo>` is the alternative.)
+     - **End-user (plugin only, no repo checkout):** the `.spt` asset carries native binaries, so it
+       ships **per-OS** — select the one matching this host. Detect os + arch:
+       ```sh
+       os=$(uname -s);  case "$os" in MINGW*|MSYS*|CYGWIN*|Windows*) os=windows;; Linux) os=linux;; Darwin) os=macos;; esac
+       arch=$(uname -m); case "$arch" in x86_64|amd64) arch=x86_64;; arm64|aarch64) arch=aarch64;; esac
+       ```
+       then `spt adapter add --release SaberMage/spt-claude-code --asset adapter-$os-$arch.spt` —
+       fetches the per-OS `adapter-<os>-<arch>.spt` release asset (a tar whose **root** holds
+       `manifest.toml` + `strings/` + the native tool binaries) from the repo's GitHub release,
+       extracts it to the durable adapter home, and registers it. Add `--tag <ver>` to pin a version
+       (omit for latest). Re-running with a newer `--tag` is a manual re-acquire. `adapter add` is
+       manifest-first (an invalid manifest registers nothing). (v1 ships **windows + linux** assets.
+       Recommended path — straight from the monorepo, no dedicated repo. Needs the spt release that
+       carries `--release`; the older `--github <root-manifest-repo>` is the alternative.)
+       <!-- [doc->REQ-DIST-ADAPTER-PEROS] -->
 
 3. **Verify activation.** Re-run `spt adapter list`: `claude-spt` must now appear **active** (no
    `deregistered`). Spot-check a profile resolves: `spt adapter get-string claude-spt:live adapter_label`
