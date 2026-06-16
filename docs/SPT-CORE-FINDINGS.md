@@ -297,3 +297,19 @@ the tool is catching up. **Our posture:** the extractor is built to the publishe
 proven (cargo unit tests + Variant A `DIGEST_PROOF_OK`); the digest-proof `int`
 (`ci/digest/digest-proof-int.sh`, `REQ-DIST-DIGEST-EXTRACTOR`) **skips on the exact substitution
 error** until doyle's fix ships, then flips green on the carrying release.
+
+---
+
+## Finding: no `spt how-to subnet` topic (published-guidance gap, minor)
+
+**Surface:** `spt how-to <topic>` ships canonical, always-current guidance for `ready` and `send`
+(the messaging hot path) — the claude-spt `ready`/`send` skills lean on it (`spt how-to ready`).
+But there is **no `subnet` topic** (`spt how-to subnet` → `NO_SUCH_TOPIC`), despite `spt subnet`
+being a multi-verb, pairing-flow-heavy command (create/show-code/join, 6-digit codes, QR) — exactly
+the kind of thing a how-to topic serves well.
+
+**Impact (low):** the `/sptc:subnet` skill wraps `spt subnet --help` as its canonical reference
+instead. Works, but inconsistent with ready/send (which get richer how-to prose), and a casual user
+running `spt how-to subnet` hits a dead end. **Disposition:** mint a `how-to subnet` topic in
+spt-core (cross-machine pairing is the highest-value first-run flow; it deserves the same guided
+prose as messaging). Carried as a parity finding — NOT a blocker for `/sptc:subnet`.

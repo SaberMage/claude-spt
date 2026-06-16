@@ -58,6 +58,9 @@ case "$fbody" in "# /sptc:force-stop"*) ok "file-backed string resolves: skills.
 # :live profile + claude-spt-psyche runner landed — REQ-SKILL-LIVE).
 lbody=$(spt adapter get-string claude-spt skills.live 2>&1)
 case "$lbody" in "# /sptc:live"*) ok "file-backed string resolves: skills.live -> body" ;; *) bad "skills.live not resolved to file body: '$(printf %.40s "$lbody")'" ;; esac
+# subnet (LOCKED-ADD cross-machine membership skill — wraps `spt subnet`). [int->REQ-SKILL-SUBNET]
+sbody=$(spt adapter get-string claude-spt skills.subnet 2>&1)
+case "$sbody" in "# /sptc:subnet"*) ok "file-backed string resolves: skills.subnet -> body" ;; *) bad "skills.subnet not resolved to file body: '$(printf %.40s "$sbody")'" ;; esac
 
 # 4c. UPS skill-injection end-to-end: the hook helper resolves a /sptc:<skill> prompt to the wrapped
 #     operative body via get-string (REQ-UPS-INJECTION impl, on the registered adapter).

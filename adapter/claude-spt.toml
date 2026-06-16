@@ -215,6 +215,7 @@ signoff = { file = "skills/signoff.md" }       # -> spt endpoint shutdown (grace
 list-agents = { file = "skills/list-agents.md" } # -> spt endpoint list (the roster)
 commune = { file = "skills/commune.md" }       # -> file-drop <id>-commune.md into [session].commune_dir
 force-stop = { file = "skills/force-stop.md" } # -> spt endpoint shutdown (graceful, tears down Psyche)
+subnet = { file = "skills/subnet.md" }         # -> spt subnet {status,create,show-code,join} (cross-machine); REQ-SKILL-SUBNET
 # `live` -> upgrade THIS session to a LiveAgent via the `claude-spt:live` profile (overlays
 # [session.psyche_init] -> daemon spawns the Psyche) + a resident Monitor relay as the delivery pipe.
 # Profile propagation CONFIRMED in spt-core code (doyle 2026-06-15: api seed stores the composite ->
@@ -239,3 +240,7 @@ text = "Tip: run `spt whoami` to see this session's spt endpoint id."
 [[hints]]
 keywords = ["message another agent", "send to agent", "tell the other agent"]
 text = "Tip: /sptc:send messages another spt agent; /sptc:ready first to receive replies."
+
+[[hints]]
+keywords = ["another machine", "pair machine", "across machines", "subnet", "join my network"]
+text = "Tip: /sptc:subnet pairs machines into a private network so agents reach each other across nodes."
