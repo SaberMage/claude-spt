@@ -12,6 +12,7 @@
 | F-002 | 2026-06-15 | **RESOLVED-SHIPPED (v0.7.1)** — `<EVENT>` verified on the published `api poll` surface; F-002 dissolved; int flipped | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
 | F-003 | 2026-06-15 | **RESOLVED + docs CLOSED (v0.7.1)** — capability shipped; the file-pointer syntax is now on the published surface | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
 | F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
+| F-005 | 2026-06-15 | **OPEN — reported to doyle** | End-user adapter **distribution/activation** is undocumented: public surface covers local `spt adapter add <dir>` but no published path from "binary installed" → "adapter registered & active" on an end-user machine (the spt-core-conducted file-pull / registry channel ADR-0001 leans on) |
 
 ---
 
@@ -322,3 +323,52 @@ prose as messaging). Carried as a parity finding — NOT a blocker for `/sptc:su
 **Disposition (doyle):** mint a `how-to subnet` topic (HOW_TO_SUBNET text + registry entry + bump
 the v1-lock test); **scheduled into M11-W5** (the rig + docs wave). No new REQ (REQ-DOCS-6 owns it).
 Tracked, not a mid-flight interrupt. NOT a blocker for `/sptc:subnet` (wraps `spt subnet --help`).
+
+---
+
+## F-005 — End-user adapter distribution/activation is undocumented on the public surface
+
+**Surfaced:** 2026-06-15, dogfooding the first cplugs publish (an agent ran `/sptc:setup` on a fresh
+install). The binary was present (`spt 0.7.2`), setup reported "No install needed" and stopped — but
+`spt adapter list` showed **`claude-spt: ... deregistered`**. The harness adapter surface
+(profiles / strings / hints / `[digest]`) was inert; `/sptc:*` skill-body UPS-injection had nothing
+to source from. Binary present ≠ adapter active.
+
+**The gap (public surface).** The published `harness-contract/integration-checklist` documents only
+the **local single-machine** registration verb:
+> `spt adapter add <dir>` — "Parses + schema-validates + records the manifest; a bad field is
+> rejected here, nothing half-registers."
+It documents **no distribution/activation path** for the medium-churn manifest layer the whole
+distribution split (ADR-0001) leans on — i.e. how an **end-user machine that installed only the
+plugin + binary** ever acquires and registers the `claude-spt` manifest. After the bootstrap installs
+the binary, there is no published "… → adapter registered & active" step. Concretely undocumented:
+
+1. **`[update] file_pull`** — the spt-core-conducted "file-pull / adapter registry" channel
+   (ADR-0001's medium-churn delivery) has **no published adapter-registry repo-target shape** and
+   **no documented path to obtain/provision the Ed25519 content-signing key** an author needs to
+   publish a signed adapter. Author-side it is currently un-buildable from the public surface.
+2. **`[update] delegated`** — whether the `claude plugin update` fallback requires CC to attest
+   signature verification (`self_verifies`) is **unconfirmed** on the public surface.
+3. **No end-user activation step is documented at all.** The plugin ships **no manifest** (ADR-0001:
+   "no binary, no manifest, no embedded logic"), so the registry/file-pull channel is the *only* way
+   the manifest can reach a user — yet that channel is undocumented. Net: the "install the plugin,
+   get spt-core **and the adapter** for free" invisible-installer story has an undocumented hole at
+   the adapter-activation step.
+
+**Note — this is the finding the manifest header already promised but was never filed.**
+`adapter/claude-spt.toml` header (lines 20-24) says `[update] file_pull` needs "(a) a published
+adapter-registry repo target and (b) an Ed25519 content-signing key we do not yet hold … Tracked as
+a finding (docs/SPT-CORE-FINDINGS.md)" — but no entry existed until now. F-005 makes it real.
+
+**Impact / our handling (non-blocking, dev-side).** For local dev + this session, re-activate with
+`spt adapter add ./adapter` (the adapter dir is known to the registry; it reads `deregistered`
+because the Phase-D int tests register→clean-up by design). This does **not** solve the *end-user*
+flow, which has no published path.
+
+**Ask for doyle.** Is end-user adapter distribution (a) an undocumented-but-shipped capability
+(publish the `[update] file_pull` registry-target + signing-key provisioning + the post-install
+"adapter add/activate" step to the docs-site), (b) a roadmap item not yet shipped, or (c) a deliberate
+design where the adapter is expected to ride a different layer for casual users? Any of the three
+closes F-005 — but the public contract currently leaves the casual-end-user activation step blank.
+
+**Reported:** 2026-06-15 to doyle (explicit `$OWL send`). **Status:** OPEN — awaiting ruling.
