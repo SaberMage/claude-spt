@@ -151,12 +151,16 @@ Staged, not built now (JIT). From `SCOPE.md` §"/spt:setup" LOCKED {1,2,3,4,5,6,
   file-form, F-005 bridge); `ci/publish/release-acquire-int.sh` = real `adapter add --release` acquire
   (active + `_github` source + .spt-shipped profiles/strings resolve). Both slow-lane
   (SPTC_ACCEPTANCE=1), both PASS live on spt 0.7.3; `traceable-reqs check` green.
-- **Remaining:** the live relay int (REQ-SKILL-LIVE, heavy/hazard-sensitive — run the SUT under a
-  throwaway `sptc-ci-<n>` id, **overriding BOTH identity env vars**; perches are name-keyed
-  last-establish-wins, so a nested `claude` as `perri` displaces this perch + steals its stream —
-  REQ-HAZARD-PERCH-COLLISION; doyle confirmed 2026-06-15; the disposable-identity harness already
-  exists at `ci/acceptance/lib.sh` — `sptc_ci_identity`) · cplugs republish (ship the
-  activation setup floor) · per-OS `adapter.spt` assets · LOCKED v1 setup {1..7} later waves.
+- **Remaining:** the live relay int (REQ-SKILL-LIVE) — **DEFERRED on a re-scoped blocker (2026-06-16,
+  F-007).** Bringup recipe is known (`spt endpoint run --adapter claude-spt:live --id sptc-ci-<n>
+  --start`, disposable-identity guard at `ci/acceptance/lib.sh::sptc_ci_identity`,
+  REQ-HAZARD-PERCH-COLLISION). The daemon Psyche loop now ships (v0.7.3). The blocker is the harness
+  tier: `endpoint run` brings the SUT up in a broker PTY but it never binds a live perch (SessionStart
+  seeds, doesn't listen; the perch binds only when the session runs the *blocking* `/sptc:live`).
+  Proven empirically (probe `sptc-ci-liveprobe`: alive, `address unregistered`). A deterministic int
+  needs a PERSISTENT DRIVEN session + clean teardown, and there is no published non-interactive
+  live-bringup to build against (held on doyle — `how-to live` + an already-listening bringup path).
+  · per-OS `adapter.spt` assets · LOCKED v1 setup {1..7} later waves.
 - **PRE-POSITIONED (2026-06-15):** monorepo pushed (origin/main); GitHub **release `v0.1.0`** cut with
   the `adapter.spt` asset (https://github.com/SaberMage/spt-claude-code/releases/tag/v0.1.0).
   `spt adapter add --release SaberMage/spt-claude-code` is ready to run **the moment spt v0.7.3

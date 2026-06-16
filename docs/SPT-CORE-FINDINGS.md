@@ -14,6 +14,7 @@
 | F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
 | F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --release <repo>`** | End-user adapter activation step (`adapter add [--github/--release]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
 | F-006 | 2026-06-15 | **CONFIRMED via dogfood; doyle scoping REQ-INSTALL-9; interim shipped** — proper fix (spt-core resolves adapter binaries against the install dir before PATH) rides v0.7.4/counter-16 (deployah) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
+| F-007 | 2026-06-16 | **OPEN — reported to doyle** — adapter-side hardened (live.md no longer instructs the dead command); awaiting a `how-to live` topic on the published surface | `spt how-to live` returns `NO_SUCH_TOPIC` though spt advertises "live-agent lifecycle" as a top-level concern and `ready`/`send` both have how-to topics — no canonical published live-bringup guidance to defer to |
 
 ---
 
@@ -484,3 +485,74 @@ delivery). Rides **v0.7.4 / counter 16** (deployah's leg). The interim retires w
 
 **Status:** **CONFIRMED + interim shipped; proper fix scoped by doyle (REQ-INSTALL-9, v0.7.4).**
 Reported to doyle + deployah 2026-06-15 with the concrete paths + templates above.
+
+---
+
+## F-007 — no `spt how-to live` topic, though live-agent lifecycle is a first-class advertised concern
+
+**Surfaced:** 2026-06-16, building the REQ-SKILL-LIVE relay int (spt v0.7.3, counter 15).
+
+**The gap.** `spt --help` lists "live-agent lifecycle" among the core concerns, and the task-oriented
+`spt how-to <topic>` surface is the contract's canonical, always-current agent guidance. But only two
+topics exist:
+
+```
+$ spt how-to
+Topics (`spt how-to <topic>`):
+  ready  receive messages: listener guidance + the --once fallback loop
+  send   deliver messages: send vs ring, replies, SENT vs QUEUED
+
+$ spt how-to live
+NO_SUCH_TOPIC:live — topics:
+  ready  ...
+  send   ...
+```
+
+`ready` (becoming reachable) has a how-to; `live` (becoming a LiveAgent — a strictly larger, more
+hazard-laden lifecycle: `[session.psyche_init]`, daemon-spawned Psyche, the `:live` composite, the
+Monitor relay-vs-poll reconcile) does **not**. There is no published, canonical bringup recipe for a
+live agent to defer to.
+
+**Why it matters for the adapter.** Our `/sptc:live` body (`adapter/strings/skills/live.md`) was
+written to *defer* to `spt how-to live` as "the canonical, always-current guidance" and follow it —
+the same pattern `/sptc:ready` uses for `spt how-to ready`. With no such topic, that step dangles on
+a dead command, and the adapter must instead **inline** the live-bringup recipe (perch id → seed the
+`:live` composite so the daemon resolves `[session.psyche_init]` → run `spt api --adapter
+claude-spt:live listen <id>` as the resident relay → poll/relay reconcile). Inlined steps can **drift**
+from spt-core's actual live contract with no canonical source to reconcile against — exactly the
+divergence the how-to surface exists to prevent.
+
+**Adapter-side hardening (shipped this session).** `live.md` no longer instructs `spt how-to live`
+unconditionally; it carries the inline operative recipe as the floor and references `spt how-to live`
+only as "if/when the topic lands." So the skill never points at a dead command.
+
+**Empirical addendum (2026-06-16, same session) — no non-interactive live-bringup for acceptance.**
+Building the REQ-SKILL-LIVE relay int surfaced a concrete consequence. A live agent was brought up
+under a disposable id:
+
+```
+$ spt endpoint run --adapter claude-spt:live --id sptc-ci-liveprobe --create --start
+ENDPOINT_RUN:sptc-ci-liveprobe adapter=claude-spt:live pid=Some(155916) session=… (harness binds its perch on startup)
+ENDPOINT_RUN_STARTED:sptc-ci-liveprobe (attach with `spt rc sptc-ci-liveprobe`)
+```
+
+The `claude` SUT spawns and is alive in the broker PTY (`spt rc sptc-ci-liveprobe` attaches), **but it
+never binds a live perch** — `spt endpoint list` / `spt daemon status` never show it, and teardown
+confirms it never registered (`STOPPED:… no ready marker; address unregistered`). This is **by
+design**: `SessionStart` *seeds* but must not *listen* (a listen blocks — F-001 resolution); a live
+perch is bound only when the session explicitly runs `/sptc:live`, whose body runs the **blocking**
+`spt api --adapter claude-spt:live listen <id>`. So a deterministic live-relay acceptance test cannot
+just `endpoint run --start` and assert — it must **drive a persistent session** (submit `/sptc:live`,
+keep it alive while a probe is sent + the relay EVENT is asserted, then tear the Psyche+perch down).
+That heavier harness has no published non-interactive entrypoint to build against (the missing
+`how-to live` would be where such an "acceptance/headless live bringup" path is documented).
+
+**Ask (doyle).** (1) Add a `how-to live` topic covering the canonical live-bringup + the relay/poll
+reconcile. (2) Clarify whether there is (or should be) a **non-interactive live bringup** for
+acceptance harnesses — i.e. `endpoint run` (or a flag) that brings the session up *already listening*
+as a LiveAgent (perch bound, Psyche spawned) without an interactive `/sptc:live` drive. Until then
+the REQ-SKILL-LIVE `int` stays **deferred** (it requires the persistent-driven-session tier), and the
+adapter's inline live recipe stands as the floor.
+
+**Status:** **OPEN — reported to doyle 2026-06-16; adapter hardened so nothing dangles; live int
+deferred on the non-interactive-bringup gap.**

@@ -19,8 +19,10 @@ poll, or tear down the Psyche yourself; the daemon owns its whole lifecycle.
 **Do this:**
 
 1. If `spt` is not on `PATH`, run `/sptc:setup` first.
-2. Read the canonical, always-current guidance: run `spt how-to live` and follow it.
-3. Operative summary (from that guidance):
+2. If `spt how-to live` exists (run it; today it returns `NO_SUCH_TOPIC` — there is no published
+   live topic yet, **F-007**), prefer that canonical, always-current guidance. Until it lands, the
+   operative summary below is the floor — follow it directly.
+3. Operative summary:
    - Pick a short lowercase perch id, or reuse this session's id from `spt whoami`. Call it `<id>`.
    - Seed/select the LiveAgent profile so the daemon resolves `[session.psyche_init]` and spawns the
      Psyche: bring the perch up under the **`claude-spt:live`** composite adapter (the `:live` overlay),
