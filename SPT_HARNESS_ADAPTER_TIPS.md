@@ -185,6 +185,28 @@ The single most important design rule:
   `[session].commune_dir` / `signoff_dir`; spt-core's daemon watcher ingests then deletes it
   (daemon is the single writer). The filenames are contract-fixed; only the dir is adapter-declared.
 
+## Testing with real harness sessions: perches are name-keyed — isolate identity
+
+The only way to prove hook wiring actually fires in a real harness is an acceptance test that
+**spawns a real harness session as the system-under-test**. Doing so trips a framework property:
+
+- A perch's identity is **resolved from the environment** — `$OWL_SESSION_ID` / `$SPT_AGENT_ID`,
+  exactly what `spt whoami` reads — and perches are **name-keyed, last-establish-wins**. A second
+  session that establishes a perch under an identity already held **displaces** the first, taking
+  its active poll/listen stream with it. (Observed as a live agent's poll stream dying the moment a
+  nested same-identity session came up under it.)
+- So a spawned SUT that loads the adapter (whose SessionStart seeds/binds a perch) and **inherits
+  the identity of the agent running the tests** tears that agent's perch out from under it.
+- Guard: give every spawned SUT a **disposable identity distinct from any live agent** — override
+  **both** env vars before the spawn (a throwaway `<adapter>-ci-<n>`), never inherit the operator's.
+  Verified: under a distinct identity the nested session and the operator's perch coexist —
+  **identity is the key, so identity isolation is the whole guard.** (The flip side of the
+  broker-intrinsic auth above: the framework keys association on identity.)
+- Keep the orchestration deterministic and **assert on a hook side-effect** (a marker/digest file,
+  `spt` state) — the harness is the system-under-test, never the test runner. **[CC]** A bare
+  `claude -p <probe>` in an isolated temp project (its own `.claude/settings.json` wiring the hook)
+  is a clean SUT; assert the hook wrote its marker, not on model output.
+
 ## Validate against the live binary — registration is a second gate
 
 - JSON-schema validity is necessary but **not sufficient**. `spt adapter add` runs cross-field
