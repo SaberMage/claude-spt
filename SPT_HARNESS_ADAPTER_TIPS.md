@@ -113,6 +113,33 @@ The single most important design rule:
 - `adapter.shortcut_basename` brands the `endpoint run` launcher shortcut (`<basename>-<id>`),
   **decoupled** from the adapter name.
 
+## Live-agent seam: `[session.psyche_init]` + the companion runner
+
+- An endpoint is a **live agent** iff the *resolved* manifest declares `[session.psyche_init]` (no
+  go-live verb exists). Base manifest without it = ready agent; a `:live` profile overlay that adds
+  it = live agent. The daemon checks this on the **merged** view, so a profile selected at **seed
+  time** (`spt api --adapter <adapter>:live seed`) propagates all the way to the spawn decision —
+  the bound profile drives runtime lifecycle, not just bringup argv.
+- `psyche_init` fills exactly four keys: **`{id, session_id, psyche_dir, psyche_prompt}`**. `{id}`
+  is **overridden** by spt-core to `<parent>-psyche` before substitution — the companion gets its
+  own derived perch id, not the parent's. (`{session_name}` is a `[session.self]` fill, not a psyche
+  key; a first spawn has no `{psyche_context}` — that is the resume/preload key, a different seam.)
+- The companion is launched **detached, fire-and-forget**: `detach = true`, `cwd = "{psyche_dir}"`,
+  stdio null, handle dropped, **unsupervised** — liveness is daemon-authoritative via the companion's
+  perch, not its pid. It owns the `<parent>-psyche` perch, communicates by perch + commune file-drops
+  (never stdin/stdout), and exits at session end.
+- **`psyche_init.command` is adapter-authored and opaque to spt-core** — the companion runner is the
+  *harness's* to build (spt-core never dictates harness invocation). Treat the Psyche as
+  **daemon-managed**: declare the seam and build the runner, but do **not** orchestrate the
+  companion's lifecycle from the adapter — the daemon owns spawn + teardown (a graceful
+  `endpoint shutdown` tears the companion down together with the perch).
+- **[CC]** A bare one-shot headless invocation (`claude -p <prompt>`) exits after a single turn and
+  can't be re-looped by Stop hooks, so the runner is a small **resident wrapper**: seed the companion
+  session once from `{psyche_prompt}`, then drive one resume-turn per perch pulse (poll the
+  `<parent>-psyche` perch; `claude --continue -p <pulse>`), the companion authoring commune drops.
+  Build it like the `[digest]` extractor — a compiled, dependency-light binary the daemon can spawn
+  bare on any platform — not a shell script (the daemon execs the command directly, cross-platform).
+
 ## Lifecycle file-drops (not api verbs)
 
 - commune / signoff are **file-drops**, not `spt api` calls: the agent writes
@@ -128,5 +155,14 @@ The single most important design rule:
   each shipped profile composite resolves) → `get-string` (base value + each overlay diff +
   file-backed pointers resolve to body) → soft `adapter remove` (leave the registry clean). Gate it
   behind an opt-in env flag + a minimum `spt` version; it mutates the node-local registry.
+- Two more author-time acceptance tools on the public surface, no live session required:
+  - `spt api --adapter <a> --manifest <file> capability` reports the manifest's hostable types
+    **without** a full registry `add` — assert it advertises the hostable harness the bringup spawns.
+    (`adapter add` is manifest-first: an invalid manifest registers nothing, so a clean `add` already
+    proves the cross-field shape; `capability` is the lighter, non-mutating check.)
+  - `spt adapter digest-proof <a> --sample <file>` runs the real `[digest]` extractor through the
+    registry and renders the result — proving the transcript→record→render path end-to-end on a fixed
+    sample log. It fills the same runtime substitution keys the daemon does, so "passes proof" ⟺
+    "works at runtime" (confirm against a recent `spt` — older binaries passed an empty key map).
 - **Observable behavior of the public binary is itself public surface** — when prose docs lag, a
   byte-capture against the live `api`/`adapter` surface is a legitimate way to confirm a contract.
