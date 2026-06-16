@@ -12,7 +12,7 @@
 | F-002 | 2026-06-15 | **RESOLVED-SHIPPED (v0.7.1)** — `<EVENT>` verified on the published `api poll` surface; F-002 dissolved; int flipped | `api poll` agent path has no inter-frame delimiter → multi-message drains are unsplittable |
 | F-003 | 2026-06-15 | **RESOLVED + docs CLOSED (v0.7.1)** — capability shipped; the file-pointer syntax is now on the published surface | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
 | F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
-| F-005 | 2026-06-15 | **OPEN — reported to doyle** | End-user adapter **distribution/activation** is undocumented: public surface covers local `spt adapter add <dir>` but no published path from "binary installed" → "adapter registered & active" on an end-user machine (the spt-core-conducted file-pull / registry channel ADR-0001 leans on) |
+| F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --github <repo>`** | End-user adapter activation step (`adapter add [--github]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
 
 ---
 
@@ -371,4 +371,41 @@ flow, which has no published path.
 design where the adapter is expected to ride a different layer for casual users? Any of the three
 closes F-005 — but the public contract currently leaves the casual-end-user activation step blank.
 
-**Reported:** 2026-06-15 to doyle (explicit `$OWL send`). **Status:** OPEN — awaiting ruling.
+**Reported:** 2026-06-15 to doyle (explicit `$OWL send`).
+
+### Triage (2026-06-15, doyle — against spt-core source). NET: (a)+(b) mix, **nothing unbuildable**; the activation step is just undocumented. Two of my three sub-claims were **docs-read misses** — recorded honestly:
+
+1. **`self_verifies` (my #2) — READ MISS, already public.** `manifest.md [update]` documents
+   `self_verifies = true`: "attests the updater verifies its content; an unattested `delegated`
+   update is SKIPPED as unverifiable." So `delegated` does **not** require CC to silently attest —
+   the *author* sets `self_verifies=true` to assert CC verifies its own content; absent ⇒ the update
+   is **skipped (not failed)**. It is in the `[update]` section; I missed it.
+2. **`file_pull` shape + signing (my #1) — MOSTLY documented; one real residual.** `manifest.md`
+   documents `file_pull = repo + signing_key` (Ed25519, 64 hex) + "you sign your releases with your
+   own key; spt-core release keys never extend to adapter content." **GENUINE GAP:** author-side key
+   **provisioning** (how you *generate* that Ed25519 key) is undocumented → doyle: doc add.
+3. **Zero-touch auto-activation via file_pull network-pull (my #3, the substantive one) — ROADMAP,
+   not shipped (b).** `adapter_update.rs` is the DECISION+VERIFICATION layer only — "the actual byte
+   transport for `file_pull` (the network pull) is REQ-UPD-1/M4; v1 receives the payload via
+   self-fetch / out-of-band … does not itself fetch." Install-conduct emits
+   `ADAPTER_INSTALL_DEFERRED "(rides the update engine)"`. The invisible-installer's last leg is
+   genuine future work.
+
+**THE PATH THAT WORKS TODAY (the missing post-install step F-005 found).** A fresh machine registers
+the manifest via **`spt adapter add --github <author>/<repo>`** (clones under `adapters/_github/`,
+manifest-first, then conducts the `[update]` avenue once). Shipped (REQ-INSTALL-4 impl/unit; only the
+real-repo E2E is deferred, spt-core DEFERRED.md). So **`/sptc:setup`, after confirming the binary is
+present, must run `spt adapter add --github <our-adapter-repo>`** (or a local dir) to ACTIVATE — that
+is the bridge. "Binary present ≠ adapter active" confirmed correct.
+
+**doyle's doc actions (docs-site):** publish the post-install ACTIVATION step (`adapter add
+[--github]`) in `install-on-demand` + the integration checklist · author Ed25519 signing-key
+provisioning · an explicit "zero-touch `file_pull` auto-distribution is roadmap (REQ-UPD-1)" note so
+no author builds expecting it.
+
+**Our action items (ours, not doyle's):** (i) wire `spt adapter add --github <repo>` into
+`/sptc:setup`'s binary-present branch (the activation bridge — folds into the setup-slice below);
+(ii) the manifest needs its own **published github repo target** for the `--github` end-user path
+(distinct from the cplugs skeleton repo); local dev uses `spt adapter add ./adapter`.
+
+**Status:** **TRIAGED — accepted as (a)+(b) mix.** doyle patches docs; we wire the activation step.
