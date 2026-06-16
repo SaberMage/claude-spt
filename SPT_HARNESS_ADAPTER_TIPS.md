@@ -92,6 +92,15 @@ The single most important design rule:
   missing" cannot source its instructions from spt. Carry its operative steps in the harness-native
   skill stub (the floor); let the file-backed body only **mirror** them for the present-binary repair
   path. (The bootstrap paradox: the one skill that most needs delivery is the one delivery can't reach.)
+- **Source hook inputs from the stdin payload, never from a `/`-leading argv (Windows/MSYS trap).**
+  A hook receives its data (prompt, `session_id`, …) as a JSON object on **stdin** — parse that.
+  Do **not** reconstruct `/`-leading content (a `/<plugin>:<skill>` token, an absolute path) from a
+  positional argument: under Git-Bash/MSYS on Windows, any argv beginning with `/` is silently
+  rewritten to a Windows path before the command sees it (`/sptc:send` arrived as
+  `C:/Program Files/Git/send` — verified). Reading from stdin is immune; if a command genuinely must
+  take such an arg, guard it (`MSYS_NO_PATHCONV=1`, or a `--message-file`/stdin transport). Same
+  cross-platform-shell class as the UTF-8-stdout trap below: a Windows shell quirk that silently
+  corrupts data, dodged by choosing the transport that isn't subject to it.
 
 ## `[strings]`: inline or file-backed pointers
 
