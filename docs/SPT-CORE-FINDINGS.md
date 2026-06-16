@@ -13,7 +13,7 @@
 | F-003 | 2026-06-15 | **RESOLVED + docs CLOSED (v0.7.1)** — capability shipped; the file-pointer syntax is now on the published surface | File-backed `[strings]` IS shipped (value-position table pointer `key = { file = "rel" }`) but was **undocumented** on the published surface |
 | F-004 | 2026-06-15 | **CONFIRMED-IMPL-BUG (doyle); fix in progress** — `digest-proof` will fill `{id}`+`{session_id}` matching runtime; int deferred until the carrying release | `spt adapter digest-proof --sample` passes an empty substitution-key map → false-fails any extractor whose command uses `{session_id}` (incl. the published example) |
 | F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --release <repo>`** | End-user adapter activation step (`adapter add [--github/--release]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
-| F-006 | 2026-06-15 | **CONFIRMED via dogfood; doyle scoping REQ-INSTALL-9; interim shipped** — proper fix (spt-core resolves adapter binaries against the install dir before PATH) rides v0.7.4/counter-16 (deployah) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
+| F-006 | 2026-06-15 | **CONFIRMED via dogfood; doyle scoping REQ-INSTALL-9; interim shipped** — proper fix (spt-core resolves adapter binaries against the install dir before PATH) rides v0.8.0/counter-16 (deployah) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
 | F-007 | 2026-06-16 | **RESOLVED to docs-gap (Bucket 2), not a missing feature** — live int SHIPPED via `--manifest` + persistent-child `api listen`; doyle folding the recipe + a `how-to live` topic into post-M11 docs | `spt how-to live` is `NO_SUCH_TOPIC`, and the non-interactive live-bringup for acceptance was undiscoverable — turned out to be `--manifest` + persistent-child `api listen` (the Monitor surrogate), now proven |
 
 ---
@@ -481,9 +481,9 @@ two binaries from the extract dir (the `from …` path in `spt adapter list`) on
 **Proper (doyle, REQ-INSTALL-9).** spt-core resolves `[digest]`/`[session]` program paths against the
 adapter's own install dir (the `_github/<safe>` extract home / `adapters/<name>/`) **before** PATH —
 so a bundled `.spt` binary resolves with zero PATH placement (truly self-contained `--release`
-delivery). Rides **v0.7.4 / counter 16** (deployah's leg). The interim retires when it lands.
+delivery). Rides **v0.8.0 / counter 16** (deployah's leg). The interim retires when it lands.
 
-**Status:** **CONFIRMED + interim shipped; proper fix scoped by doyle (REQ-INSTALL-9, v0.7.4).**
+**Status:** **CONFIRMED + interim shipped; proper fix scoped by doyle (REQ-INSTALL-9, v0.8.0).**
 Reported to doyle + deployah 2026-06-15 with the concrete paths + templates above.
 
 ---
@@ -563,7 +563,7 @@ missing feature.
     `READY` / the probe relayed as `<EVENT>`. Shipped as `ci/psyche/live-relay-int.sh`
     (REQ-SKILL-LIVE int green).
   - Binary resolution: the psyche_init command's bare `claude-spt-psyche` resolves via the F-006 PATH
-    interim on 0.7.3; on **v0.7.4 (Feature B / REQ-INSTALL-11)** spt resolves it against the
+    interim on 0.7.3; on **v0.8.0 (Feature B / REQ-INSTALL-11)** spt resolves it against the
     `--manifest` file's dir → still `PSYCHE_SPAWNED` after the interim is dropped. Independent confirm
     Feature B was the right call.
 - **Two acceptance gotchas** (doyle folding into the how-to-live docs): anchor on the **Windows** pid,

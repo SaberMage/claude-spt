@@ -145,7 +145,7 @@ Staged, not built now (JIT). From `SCOPE.md` §"/spt:setup" LOCKED {1,2,3,4,5,6,
   → **`claude-spt` ACTIVE** (Harness Copy, from `…/adapters/_github/SaberMage-spt-claude-code`).
   One gap found + interim-fixed + logged: bundled binaries extract beside the manifest but bare-name
   templates resolve from PATH only (**F-006**); interim = `/sptc:setup` copies them onto a PATH dir
-  (now wired into both setup bodies); proper fix = doyle's **REQ-INSTALL-9** (v0.7.4/counter-16).
+  (now wired into both setup bodies); proper fix = doyle's **REQ-INSTALL-9** (v0.8.0/counter-16).
 - **DONE (2026-06-16):** int scripts flipped REQ-SETUP-ACTIVATE + REQ-DIST-ADAPTER-RELEASE int
   stages green. `ci/setup/activate-int.sh` = the deregistered→active RE-ACTIVATE assertion (local
   file-form, F-005 bridge); `ci/publish/release-acquire-int.sh` = real `adapter add --release` acquire

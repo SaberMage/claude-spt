@@ -15,7 +15,7 @@
 # (ci/psyche/build.sh).
 #
 # PSYCHE-SPAWN binary resolution: the psyche_init command invokes `claude-spt-psyche` by bare name.
-# On v0.7.4+ (Feature B / REQ-INSTALL-11) spt resolves it against the --manifest file's dir. On 0.7.3
+# On v0.8.0+ (Feature B / REQ-INSTALL-11) spt resolves it against the --manifest file's dir. On 0.7.3
 # it must be on PATH (the F-006 /sptc:setup interim copy). If neither holds, the psyche leg SKIPs with
 # a logged note (no silent cap) and the relay leg still asserts.
 #
@@ -45,10 +45,10 @@ esac
 # is already the real pid spt probes.
 ANCHOR=$(ps -p $$ 2>/dev/null | awk 'NR==2{print $4}'); case "$ANCHOR" in ''|*[!0-9]*) ANCHOR=$$;; esac
 
-# Can the psyche runner be resolved on THIS host? (PATH now, or manifest-dir on v0.7.4+ Feature B.)
+# Can the psyche runner be resolved on THIS host? (PATH now, or manifest-dir on v0.8.0+ Feature B.)
 psyche_resolvable() {
   command -v claude-spt-psyche >/dev/null 2>&1 && return 0
-  case "$ver" in 0.7.3) return 1 ;; *) return 0 ;; esac  # >=0.7.4 resolves from the manifest dir
+  case "$ver" in 0.7.*) return 1 ;; *) return 0 ;; esac  # Feature B (manifest-dir resolution) lands in v0.8.0; >=0.8.0 resolvable
 }
 
 LF=$(mktemp 2>/dev/null) || { echo "FATAL: mktemp"; exit 2; }
@@ -87,7 +87,7 @@ grep -q "READY:$ID" "$LF" 2>/dev/null && ok "live listen READY:$ID" || bad "no R
 if grep -q "PSYCHE_SPAWNED:$ID-psyche pid=" "$LF" 2>/dev/null; then
   ok "Psyche spawned ($(grep -oE "PSYCHE_SPAWNED:$ID-psyche pid=[0-9]+" "$LF" | head -1))"
 elif grep -q "PSYCHE_SPAWN_FAIL:" "$LF" 2>/dev/null && ! psyche_resolvable; then
-  skip "psyche-spawn: runner unresolvable on spt $ver without the F-006 PATH interim (Feature B/REQ-INSTALL-11 lands v0.7.4) — $(grep -oE 'PSYCHE_SPAWN_FAIL:[^]]*' "$LF" | head -1)"
+  skip "psyche-spawn: runner unresolvable on spt $ver without the F-006 PATH interim (Feature B/REQ-INSTALL-11 lands v0.8.0) — $(grep -oE 'PSYCHE_SPAWN_FAIL:[^]]*' "$LF" | head -1)"
 else
   bad "no PSYCHE_SPAWNED marker (manifest declares psyche_init? runner resolvable?); log=[$(cat "$LF")]"
 fi
