@@ -35,6 +35,17 @@ Public surface confirms the ADD gaps are buildable: `spt subnet {create,join,sho
 exists; ccs = profile overlays retargeting command templates (SCOPE §ccs, profile *templates*
 only — user supplies their own ccs config/keys).
 
+## Progress (this session)
+- ✅ **Phase A** (b1db67f) — docs/PARITY.md matrix + REQ seed (REQ-PARITY-AUDIT [doc] satisfied;
+  REQ-SKILL-SUBNET / REQ-CCS-PROFILES seeded). DROP set confirmed absent.
+- ✅ **Phase B** (0595910) — whoami skill DROPPED (manifest + body + stub + hint + test repoints);
+  dead new-alarm stub removed. Surface 11→9.
+- ✅ **Phase C** (e3382a0) — /sptc:subnet skill added (one skill wrapping `spt subnet`).
+  REQ-SKILL-SUBNET [doc,int] green on v0.7.2. how-to-subnet finding logged. Surface 9→10.
+- ⏭️ **Phase D** (ccs profiles) — NEXT. Needs research: the spawn/psyche/echo command seams a ccs
+  overlay leaf-replaces. Activate REQ-CCS-PROFILES [doc,impl] when starting.
+- ⏭️ **Phase E** (publish prep as sptc) — after D.
+
 ## Phases (sequence; one commit + green gate each)
 
 ### Phase A — Parity audit artifact + REQ seed
