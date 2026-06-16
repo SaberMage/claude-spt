@@ -16,6 +16,13 @@
 //!   `spt adapter digest-proof --sample <file>` points `--in` straight at a log file; both shapes
 //!   are handled (file -> read directly; dir -> locate the session within).
 //!
+//! ccs profile (REQ-CCS-PROFILES): a ccs-launched session relocates CC's whole state tree —
+//! including `projects/` — under `$CLAUDE_CONFIG_DIR` (e.g. `~/.ccs/instances/<account>/.claude`).
+//! That value is set by ccs at runtime per-account and is NOT expressible as a static manifest path,
+//! so the `claude-spt:ccs` overlay carries no `[digest]` leaf — instead the dir-locate branch here
+//! prefers `$CLAUDE_CONFIG_DIR/projects` over the `--in` root. Mirrors the known-good sister project
+//! claude_skill_owl (owlery::claude_projects_root). The `--sample` file path is never overridden.
+//!
 //! Mapping (CC event -> digest record):
 //!   type=user,  message.content str         -> {role:input, text}              (a real user prompt)
 //!   type=user,  content[].type=text         -> {role:input, text}
@@ -229,20 +236,37 @@ fn expand_tilde(p: &str) -> PathBuf {
     PathBuf::from(p)
 }
 
+/// ccs (and any CLAUDE_CONFIG_DIR-relocating launcher) move CC's state tree — including the
+/// `projects/` transcript root — under `$CLAUDE_CONFIG_DIR`. Returns `$CLAUDE_CONFIG_DIR/projects`
+/// when `cfg` is `Some` and non-empty, else `None` (caller falls back to the `--in` root). Pure over
+/// its input so the env read stays at the edge and this is unit-testable without env races. Mirrors
+/// the known-good claude_skill_owl resolver (owlery::claude_projects_root). [impl->REQ-CCS-PROFILES]
+fn ccs_projects_root_from(cfg: Option<&str>) -> Option<PathBuf> {
+    match cfg {
+        Some(c) if !c.is_empty() => Some(PathBuf::from(c).join("projects")),
+        _ => None,
+    }
+}
+
 fn run() -> Result<(), String> {
     let args = parse_args()?;
     let source = args.source.ok_or("missing required --in")?;
     let src = expand_tilde(&source);
-    let src = src.as_path();
 
-    // --in may be the projects ROOT (dir) or a direct log file (digest-proof --sample).
+    // --in may be a direct log FILE (digest-proof --sample) -> read it as-is, no env override.
     let path: Option<PathBuf> = if src.is_file() {
-        Some(src.to_path_buf())
-    } else if src.is_dir() {
-        let session = args.session.ok_or("--in is a directory but no --session to locate")?;
-        locate(src, &session)
+        Some(src)
     } else {
-        None
+        // Directory ("projects root") branch. Honor a ccs-relocated config tree: prefer
+        // $CLAUDE_CONFIG_DIR/projects over the manifest `--in` root (REQ-CCS-PROFILES).
+        let env_cfg = std::env::var("CLAUDE_CONFIG_DIR").ok();
+        let root = ccs_projects_root_from(env_cfg.as_deref()).unwrap_or(src);
+        if root.is_dir() {
+            let session = args.session.ok_or("--in is a directory but no --session to locate")?;
+            locate(&root, &session)
+        } else {
+            None
+        }
     };
 
     let path = match path {
@@ -361,6 +385,27 @@ mod tests {
         assert_eq!(expand_tilde("~/.claude/projects"), Path::new("/home/test").join(".claude/projects"));
         assert_eq!(expand_tilde("/abs/path"), PathBuf::from("/abs/path"));
         assert_eq!(expand_tilde("rel/path"), PathBuf::from("rel/path"));
+    }
+
+    // [unit->REQ-CCS-PROFILES] ccs CLAUDE_CONFIG_DIR-aware projects-root resolution. Pure helper so
+    // no env mutation / no test races (owl parity: set -> $CFG/projects; unset/empty -> fall back).
+    #[test]
+    fn ccs_root_honors_config_dir() {
+        assert_eq!(
+            ccs_projects_root_from(Some("/tmp/ccs-acct/.claude")),
+            Some(Path::new("/tmp/ccs-acct/.claude").join("projects"))
+        );
+    }
+
+    #[test]
+    fn ccs_root_none_when_unset() {
+        assert_eq!(ccs_projects_root_from(None), None);
+    }
+
+    #[test]
+    fn ccs_root_ignores_empty() {
+        // Empty env var must NOT shadow the --in fallback (owl: `!cfg.is_empty()` guard).
+        assert_eq!(ccs_projects_root_from(Some("")), None);
     }
 
     #[test]

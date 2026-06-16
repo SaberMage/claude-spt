@@ -188,6 +188,32 @@ cwd = "{psyche_dir}"
 detach = true
 keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
 
+# `ccs` — the LOCKED-ADD ccs profile template. Selected as `claude-spt:ccs`. ccs is the model/billing
+# multiplexer (kaitranntt/ccs): structurally Claude Code, only the launch binary + backend differ —
+# exactly the profile seam (SCOPE §ccs, LOCKED). This overlay leaf-replaces ONE leaf: the spawn
+# command. `ccs` (bare) is a DROP-IN for `claude` and launches the user's ccs *default* account
+# (set via `ccs auth default <name>`); SPT_ENDPOINT_ID rides the inherited env through the wrapper
+# exactly as for bare `claude`. Validated against the known-good sister project claude_skill_owl,
+# which latches `cli_binary = "ccs"` as a same-argv `claude` substitute (live/wrapper/claude.rs).
+# This profile IS the worked example of adapter-profile authoring + the operator's own SPT-ecosystem
+# hook; a user wanting a *specific* ccs profile clones it with `command = "ccs glm"` etc.
+#
+# NO `[profiles.ccs.digest]` leaf by design: ccs relocates Claude Code's transcript tree via the
+# CLAUDE_CONFIG_DIR env var (e.g. ~/.ccs/instances/<account>/.claude), whose value is set by ccs at
+# runtime per-account and is NOT expressible as a static catalog path. The "per-profile ~/.ccs log
+# dir" SCOPE requirement is therefore honored IN THE EXTRACTOR (claude-spt-digest prefers
+# $CLAUDE_CONFIG_DIR/projects over the base ~/.claude/projects on its dir-locate branch — the
+# owl-validated owlery::claude_projects_root pattern), so the base [digest] config serves both base
+# and ccs sessions transparently. That env-aware resolver is REQ-CCS-PROFILES's impl evidence.
+# (REQ-CCS-PROFILES doc evidence lives in docs/PARITY.md; int = registration-int :ccs assertions.)
+[profiles.ccs.session.self]
+command = "ccs"
+
+# Observability leaf (mirrors :deep): makes the overlay visible via `spt adapter get-string
+# claude-spt:ccs adapter_label` (differs from base) — the registration-int resolve proof.
+[profiles.ccs.strings]
+adapter_label = "Claude Code (spt, ccs)"
+
 # ── [strings] ──────────────────────────────────────────────────────────────────────────────
 # Opaque adapter data (spt-core never executes it), dot-path-readable via `spt adapter get-string`.
 # Seed only this slice — the file-backed skill-instruction BODIES (UPS-injection source) land in

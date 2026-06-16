@@ -167,8 +167,18 @@ required_stages = ["doc", "int"]  # doc: adapter/strings/skills/subnet.md (one /
 
 [[requirements]]
 id = "REQ-CCS-PROFILES"
-title = "The adapter ships ccs profile template(s) (claude-spt:glm …) — LOCKED-ADD overlays that retarget the spawn/psyche/echo command templates through `ccs <profile>` with a per-profile ~/.ccs log dir; templates only (user supplies their own ccs config/keys)"
-required_stages = []  # activate [doc,impl] when Phase D starts. impl: [profiles.<glm>] overlay(s) in claude-spt.toml. int: registration-int profile-resolves assertion (mirrors :deep/:live).
+title = "The adapter ships a ccs profile template (claude-spt:ccs) — LOCKED-ADD overlay that retargets the spawn command template through `ccs` (a drop-in for the `claude` binary) and honors ccs's relocated CLAUDE_CONFIG_DIR transcript root in the digest extractor; templates only (user supplies their own ccs config/keys)"
+# Scoped to the default-profile shape the operator actually runs: `ccs` (bare), the account set via
+# `ccs auth default <name>`, NOT glm/kimi (those were SCOPE *examples*; this profile IS the example +
+# the operator's own SPT use). Validated against the known-good sister project claude_skill_owl:
+# (1) ccs is a drop-in for the `claude` binary, same argv (live/wrapper/claude.rs Tier-2 latch);
+# (2) ccs relocates Claude Code's state tree via CLAUDE_CONFIG_DIR, resolved IN-BINARY by
+# owlery::claude_projects_root ($CLAUDE_CONFIG_DIR/projects || $HOME/.claude/projects).
+# impl/unit = the CLAUDE_CONFIG_DIR-aware projects-root resolver in claude-spt-digest (a .toml
+# profile leaf does NOT register as impl evidence; the real impl is the env-aware extractor).
+# doc = manifest [profiles.ccs] overlay + docs/PARITY.md. int = registration-int profile-resolves
+# assertion (claude-spt:ccs resolves + adapter_label overlay observable; mirrors :deep/:live).
+required_stages = ["doc", "impl", "unit", "int"]
 
 [[requirements]]
 id = "REQ-SKILL-VERSION"

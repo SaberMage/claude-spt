@@ -36,6 +36,9 @@ case "$list" in *claude-spt:deep*) ok "shipped profile resolves: claude-spt:deep
 # The LiveAgent overlay (:live adds [session.psyche_init]) — proves a profile [session] overlay
 # validates + resolves on the live binary (the /sptc:live seam; doyle-grounded propagation).
 case "$list" in *claude-spt:live*) ok "shipped profile resolves: claude-spt:live (LiveAgent overlay)" ;; *) bad "live profile not resolved" ;; esac
+# The ccs overlay (:ccs leaf-replaces [session.self].command -> `ccs`, a drop-in for `claude`) —
+# the LOCKED-ADD ccs profile template (REQ-CCS-PROFILES; validated vs sister project claude_skill_owl).
+case "$list" in *claude-spt:ccs*) ok "shipped profile resolves: claude-spt:ccs (ccs overlay)" ;; *) bad "ccs profile not resolved" ;; esac
 
 # 3. [strings] read through the registry (base value).
 base=$(spt adapter get-string claude-spt adapter_label 2>&1)
@@ -44,6 +47,9 @@ base=$(spt adapter get-string claude-spt adapter_label 2>&1)
 # 4. Profile overlay is observable: :deep leaf-replaces the base string.
 deep=$(spt adapter get-string claude-spt:deep adapter_label 2>&1)
 [ "$deep" = "Claude Code (spt, deep)" ] && ok "overlay observable: :deep adapter_label differs" || bad "deep adapter_label='$deep'"
+# :ccs overlay observable the same way (leaf-replaced adapter_label). [int->REQ-CCS-PROFILES]
+ccs=$(spt adapter get-string claude-spt:ccs adapter_label 2>&1)
+[ "$ccs" = "Claude Code (spt, ccs)" ] && ok "overlay observable: :ccs adapter_label differs" || bad "ccs adapter_label='$ccs'"
 
 # 4b. File-backed [strings] pointer resolves to FILE CONTENTS (not the table, not raw); an inline
 #     sibling still prints as-is. Proves `{ file = "skills/<x>.md" }` over adapter/strings/ (F-003).

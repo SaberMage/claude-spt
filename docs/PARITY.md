@@ -25,9 +25,9 @@
 | `/spt:setup` | ADD | operative — `skills/setup.md` | ✅ parity |
 | `/spt:version` | ADD | operative — `skills/version.md` | ✅ parity |
 | profiles + strings + hints | ADD | wired (`:deep`, `:live`, `[strings]`, `[[hints]]`) | ✅ parity |
-| **subnet skills (create/join/show-code)** | ADD (LOCKED) | **absent** | 🔨 BUILD (REQ-SKILL-SUBNET) |
-| **ccs profiles (`claude-spt:glm` …)** | ADD (LOCKED) | **absent** | 🔨 BUILD (REQ-CCS-PROFILES) |
-| `/whoami` skill | **DROP** (core `spt whoami` stays → M12 `endpoint list` alias) | operative (carry-over) | ⛔ REMOVE |
+| subnet skill (status/create/show-code/join) | ADD (LOCKED) | operative — `skills/subnet.md` (wraps `spt subnet`) | ✅ parity (REQ-SKILL-SUBNET) |
+| ccs profile (`claude-spt:ccs`) | ADD (LOCKED) | operative — `[profiles.ccs]` overlay + CLAUDE_CONFIG_DIR-aware extractor | ✅ parity (REQ-CCS-PROFILES) |
+| `/whoami` skill | **DROP** (core `spt whoami` stays → M12 `endpoint list` alias) | removed (was carry-over) | ✅ dropped |
 | `/new-alarm` | accepted gap | dead stub, no manifest entry | ⏸️ DEFER + remove stub |
 | `/fork` | DROP | absent | ✅ confirmed absent |
 | `/amend-signoff` | DROP | absent | ✅ confirmed absent |
@@ -45,10 +45,31 @@ The published surface carries the verbs (`spt subnet {create,join,show-code,stat
 topology scope is **mandatory** (operator vetoed harness-hosted-only — cross-subnet/PTY proof is
 spt-core's central value prop, SCOPE). So this is a real gap to fill, not defer. → `REQ-SKILL-SUBNET`.
 
-### ccs profiles — LOCKED-ADD gap → BUILD
-SCOPE §ccs (LOCKED): ccs ships as **profile templates** under the adapter (`claude-spt:glm`, …)
-that retarget the spawn/psyche/echo command templates through `ccs <profile>`, with a per-profile
-`~/.ccs` log dir. Templates only — the user supplies their own ccs config/keys. → `REQ-CCS-PROFILES`.
+### ccs profile — LOCKED-ADD gap → BUILT ✅
+<!-- [doc->REQ-CCS-PROFILES] -->
+SCOPE §ccs (LOCKED): ccs ships as a **profile template** under the adapter that retargets the spawn
+command template through `ccs`, with ccs's relocated log dir honored. Templates only — the user
+supplies their own ccs config/keys. **Operator ruling (2026-06-15):** the shipped profile is
+`claude-spt:ccs` invoking **bare `ccs`** (the account set via `ccs auth default <name>`), NOT
+`glm`/`kimi` — those were SCOPE *examples*; this profile IS the worked example of adapter-profile
+authoring **and** the operator's own SPT-ecosystem hook. Built + validated against the known-good
+sister project **claude_skill_owl**:
+- **Spawn seam.** `[profiles.ccs.session.self].command = "ccs"` leaf-replaces the base `claude`.
+  owl proves ccs is a drop-in for the `claude` binary on the same argv (`live/wrapper/claude.rs`
+  Tier-2 PULSE recovery latches `cli_binary = "ccs"`); `SPT_ENDPOINT_ID` rides inherited env through
+  the wrapper unchanged.
+- **Log-dir seam → in the extractor, not a manifest leaf.** ccs relocates CC's whole state tree
+  (incl. `projects/`) via the **`CLAUDE_CONFIG_DIR`** env var (`~/.ccs/instances/<account>/.claude`),
+  a per-account runtime value with no static catalog path. SCOPE's "per-profile `~/.ccs` log dir"
+  is therefore honored **in `claude-spt-digest`** (dir-locate branch prefers `$CLAUDE_CONFIG_DIR/
+  projects` over the `--in` root) — the owl-validated `owlery::claude_projects_root` pattern. The
+  base `[digest]` config thus serves base **and** ccs sessions transparently; no `[profiles.ccs.
+  digest]` leaf. This env-aware resolver is REQ-CCS-PROFILES's `impl`/`unit` evidence (a `.toml`
+  profile leaf alone does not register as `impl`).
+- **Finding (refines SCOPE's model).** SCOPE conflated ccs *profiles* (glm/kimi = API-provider
+  env-swap, NO transcript relocation) with ccs *accounts* (isolated instances that DO relocate via
+  `CLAUDE_CONFIG_DIR`). The operator runs the account/default path, which relocates — so the digest
+  seam is real, but its mechanism is `CLAUDE_CONFIG_DIR`, not a fixed `~/.ccs` path. → `REQ-CCS-PROFILES`.
 
 ### `/whoami` skill — DROP (honoring LOCKED)
 SCOPE DROPs the whoami **skill**; core `spt whoami` stays in the hot path (and becomes the
@@ -71,7 +92,12 @@ adapter-side stopgap timer** (throwaway vs the coming model); **no REQ minted**;
 me when the arrangement design surfaces.
 
 ## Parity verdict
-**Not yet proven.** Two LOCKED-ADD surfaces (subnet skills, ccs profiles) are unbuilt and one DROP
-(whoami skill) is unhonored. Parity is proven — and the succession flip unlocked — once those three
-close (this slice) with the rest already ✅. `/new-alarm` is an accepted, documented gap and does
-**not** block the parity verdict.
+**PROVEN (adapter surface).** All three open divergences are closed this slice: subnet skill added
+(`skills/subnet.md`, REQ-SKILL-SUBNET), ccs profile added (`[profiles.ccs]` + CLAUDE_CONFIG_DIR-aware
+extractor, REQ-CCS-PROFILES), whoami skill dropped. The full KEEP/ADD set is ✅ and the DROP set is
+confirmed absent. `/new-alarm` is an accepted, documented gap (deferred-pending-arrangement-system)
+and does **not** block the verdict.
+
+The `sptc`→`spt` succession flip remains separately gated (NOT unblocked by this verdict alone):
+it also requires **legacy owl retired** (KNOWN-HAZARDS / RELEASE-RUNBOOK) and rides the live-relay
+int held for spt-core M11 counter-15. This audit clears only the parity precondition.
