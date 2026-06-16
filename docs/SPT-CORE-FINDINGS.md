@@ -15,6 +15,7 @@
 | F-005 | 2026-06-15 | **TRIAGED (doyle) — (a)+(b) mix, nothing unbuildable** — 2 of 3 sub-claims were docs-read misses; residuals = author Ed25519 key-provisioning doc + zero-touch auto-activation roadmap (REQ-UPD-1/M4). **Bridge that works today: `spt adapter add --release <repo>`** | End-user adapter activation step (`adapter add [--github/--release]`) was undocumented in install-on-demand/checklist; binary-present ≠ adapter-active |
 | F-006 | 2026-06-15 | **CONFIRMED via dogfood; doyle scoping REQ-INSTALL-9; interim shipped** — proper fix (spt-core resolves adapter binaries against the install dir before PATH) rides v0.8.0/counter-16 (deployah) | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
 | F-007 | 2026-06-16 | **RESOLVED to docs-gap (Bucket 2), not a missing feature** — live int SHIPPED via `--manifest` + persistent-child `api listen`; doyle folding the recipe + a `how-to live` topic into post-M11 docs | `spt how-to live` is `NO_SUCH_TOPIC`, and the non-interactive live-bringup for acceptance was undiscoverable — turned out to be `--manifest` + persistent-child `api listen` (the Monitor surrogate), now proven |
+| F-008 | 2026-06-16 | **OPEN — reported to doyle** — blocks SCOPE LOCKED v1 setup #5 (legacy migration); /sptc:setup can't author the step against the public surface | No published legacy-migration command (`spt` has no migrate/import/adopt/legacy/owl verb in any subcommand, no how-to) though spt-core CONTEXT.md commits to claude_skill_owl→spt migration as first-class |
 
 ---
 
@@ -580,3 +581,35 @@ finalized at the v0.8.0 publish ping). Relay leg unchanged. The `how-to live` to
 **Status:** **RESOLVED to a docs gap (Bucket 2). Live int SHIPPED (0.7.3 green; v0.8.0 psyche-marker
 branch pre-staged provisionally). Awaiting the v0.8.0 publish ping to finalize the >=0.8.0 leg +
 re-point /sptc:live step 2 at the shipped how-to-live topic.**
+
+---
+
+## F-008 — no published legacy-migration command, though it's a LOCKED v1 setup item
+
+**Surfaced:** 2026-06-16, scoping the LOCKED v1 `/sptc:setup` feature paths {1..7} (SCOPE.md §"/spt:setup skill").
+
+**The gap.** SCOPE item **#5** (LOCKED v1) is: *"Legacy migration — detect claude_skill_owl/owl →
+migrate identity+agents+psyche (spt-core CONTEXT.md first-class commitment)."* But there is **no
+published command** to drive it. None of `spt --help` (top-level) nor any subcommand
+(`adapter`/`daemon`/`grant`/`subnet`/`update`/`endpoint`/`api`/`notif`) exposes a
+migrate/import/adopt/legacy/owl verb, and there is no `spt how-to` topic for it:
+
+```
+$ spt --help | grep -iE 'migrat|legacy|owl|import|adopt'   # (and every subcommand) → nothing
+```
+
+**Why it matters for the adapter.** `/sptc:setup` #5 is supposed to *detect a legacy
+claude_skill_owl/owl install and migrate identity + agents + psyche into spt-core*. With no published
+command, the adapter cannot author that step against the public surface (and per the
+public-surface-only constraint we will not reverse-engineer the legacy on-disk layout or reach into
+spt-core source to hand-roll a migration). So setup #5 is **blocked**, distinct from the buildable
+items (#7 ccs — shipped; #3/#4 subnet — delegate to `spt subnet`; #6 OS-service — installer-registers
+the at-logon daemon task; #1 cc-launcher — gated on full-fat M12).
+
+**Ask (doyle).** Is legacy migration (a) a planned `spt migrate`/identity-import command (then setup
+#5 wraps it when it lands), (b) installer-handled (the install bootstrap detects + migrates, so setup
+just verifies), or (c) out of v1 scope (then SCOPE #5 should be re-marked defer)? Until a published
+surface exists, setup #5 stays unbuilt and SCOPE #5 should note the dependency.
+
+**Status:** **OPEN — reported to doyle 2026-06-16. Setup #5 unbuilt pending a published migration
+surface (or a scope re-mark).**

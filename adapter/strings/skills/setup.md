@@ -78,5 +78,24 @@ nothing to source. Setup must leave the adapter **active**.
 
    <!-- [doc->REQ-SETUP-CCS] -->
 
+6. **Subnet onboarding (optional — SCOPE setup #3/#4).** A **subnet** is the private group of paired
+   machines that makes `/sptc:send`, `/sptc:ready`, and live agents work **cross-machine** (local
+   single-machine use needs none). Check membership: `spt subnet status` (or bare `spt subnet`).
+   - **Already in a subnet** → report it. To invite another machine: `spt subnet show-code` (prints
+     the current 6-digit code + `otpauth://` URI + a terminal QR). On the joining machine run
+     `spt subnet join <name> --code <code>`.
+   - **Not in a subnet** → offer either: **create** the first one — `spt subnet create <name>` (this
+     node becomes the seed-holder; prints code/URI/QR) — or **join** an existing one —
+     `spt subnet join <name> --code <code>`. Skip if single-machine use is fine.
+   - Full verb guidance (status/create/show-code/join + lifecycle) lives in **/sptc:subnet** — route
+     there rather than re-explaining.
+   - **Elevation:** `create`/`join`/`show-code` are **OS-elevation-gated** (seed-reveal /
+     machine-enrollment). Run where elevation can be granted: **Windows** → an elevated (UAC) shell;
+     **Linux desktop** → pkexec/polkit or a sudo-capable terminal; **Linux TTY** → inline `sudo`;
+     **headless / no-TTY** → print the exact command for the user to run elevated. (Automated
+     context-aware elevation is a deeper wave; today, surface the requirement + the exact command.)
+
+   <!-- [doc->REQ-SETUP-SUBNET] -->
+
 After this initial bootstrap + activation, `spt update` handles signed self-updates automatically —
 the user does not run setup again. The whole flow is idempotent and safe to re-run.

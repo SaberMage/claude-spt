@@ -65,4 +65,15 @@ present binary is not enough: an unregistered/`deregistered` adapter has no prof
    - Absent → ccs is an optional CLI router for driving alternate model backends (glm/kimi/custom) in
      place of `claude`. To enable: install ccs (its docs), then re-run `/sptc:setup`. Skip if unwanted.
 
+5. **Subnet onboarding (optional — SCOPE setup #3/#4).** A subnet is the private group of paired
+   machines that makes `/sptc:send`, `/sptc:ready`, and live agents work cross-machine (local use
+   needs none). Check: `spt subnet status`.
+   - In a subnet → to invite a machine: `spt subnet show-code` (6-digit code + URI + QR); on the
+     joiner: `spt subnet join <name> --code <code>`.
+   - Not in one → offer create (`spt subnet create <name>` — seed-holder; prints code/URI/QR) or join
+     (`spt subnet join <name> --code <code>`). Skip if single-machine.
+   - Full verb guidance → **/sptc:subnet**. **Elevation:** create/join/show-code are
+     OS-elevation-gated — Windows: elevated (UAC) shell; Linux desktop: pkexec/polkit or sudo
+     terminal; Linux TTY: inline sudo; headless: print the command for the user to run elevated.
+
 Idempotent and safe to re-run — the same bootstrap + activation the SessionStart hook performs.
