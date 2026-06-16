@@ -313,3 +313,5 @@ instead. Works, but inconsistent with ready/send (which get richer how-to prose)
 running `spt how-to subnet` hits a dead end. **Disposition:** mint a `how-to subnet` topic in
 spt-core (cross-machine pairing is the highest-value first-run flow; it deserves the same guided
 prose as messaging). Carried as a parity finding — NOT a blocker for `/sptc:subnet`.
+
+**Reported:** 2026-06-15 to doyle (explicit `$OWL send`). **Status:** open — doyle owns the topic mint.
