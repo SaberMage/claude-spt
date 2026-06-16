@@ -103,12 +103,17 @@ The single most important design rule:
   the `strings/` dir fail the add (manifest-first: nothing registers on an invalid manifest).
 - Use this to keep skill-instruction bodies out of the manifest (`[strings.skills].<x> =
   { file = "skills/<x>.md" }`) — the body is the UPS-injection source, the manifest stays thin.
-- **Delegate volatile guidance to `spt how-to <topic>` rather than hand-copying it.** spt-core ships
-  task-oriented agent guidance as a first-class surface: `spt how-to` lists topics (`ready` + `send`
-  exist today), each a canonical write-up of the verbs, flags, and result codes. A messaging skill
-  body that says "run `spt how-to send` and follow it" tracks the published contract automatically
-  instead of drifting from a copied summary. (`how-to` is also a fast way to learn the surface while
-  authoring — the binary self-documents.)
+- **Delegate volatile guidance to the binary's self-documentation rather than hand-copying it** —
+  two tiers, both always-current:
+  - `spt how-to <topic>` is the task-oriented agent-guidance surface, but it covers only **selected**
+    topics (`ready` + `send` today), each a canonical write-up of verbs, flags, and result codes. It
+    is **not** exhaustive: a topic with no write-up returns `NO_SUCH_TOPIC:<topic>` (e.g.
+    `spt how-to subnet`) — so don't assume a `how-to` exists for every verb; probe, and fall through.
+  - For any verb without a `how-to` topic, **`spt <verb> --help` is the canonical source-of-truth**
+    (it always exists and tracks the shipped binary). A skill body that says "the verb list is
+    `spt subnet --help` — match the user's intent to a verb" stays correct across releases.
+  Either way the rule is the same: point the skill body at the live binary, never a copied summary
+  that drifts. (Both are also the fastest way to learn the surface while authoring — it self-documents.)
 
 ## `[digest]`: the transcript→record extractor seam
 
