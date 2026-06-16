@@ -18,8 +18,11 @@
 //! that claude (driven by the prompt) — this runner stays pure orchestration glue.
 //!
 //! Invoked by the daemon (detached, cwd=`{psyche_dir}`, stdio null):
-//!   claude-spt-psyche --id <parent>-psyche --session-id <session_id> --prompt <psyche_prompt>
+//!   claude-spt-psyche --id <parent>-psyche --session-id <session_id> --prompt <psyche_prompt…>
 //! ({id} is the daemon-OVERRIDDEN `<parent>-psyche`, NOT the parent endpoint id — see spawn_psyche.)
+//! NOTE: spt-core substitutes `{psyche_prompt}` into the command STRING then whitespace-splits, so the
+//! multi-word prompt reaches us as many trailing argv tokens — `--prompt` is parsed greedily (slurps
+//! the rest). Keep `--prompt` LAST in the `[session.psyche_init]` command template. [impl->REQ-SKILL-LIVE]
 //!
 //! Loop:  seed `claude -p <prompt>`  ->  forever { `spt ready <id> --once` (blocks for one pulse;
 //! its stdout is the pulse body) ; perch-closed => exit ; empty drain => next ; else feed the pulse
@@ -40,8 +43,16 @@ struct Args {
 }
 
 impl Args {
-    /// Parse `--id V --session-id V --prompt V` (order-independent). Returns the offending flag on
-    /// a missing value or an unknown/short arg, so a misfire is loud rather than a silent default.
+    /// Parse `--id V --session-id V --prompt <rest…>`. `--id`/`--session-id` are single-value and
+    /// order-independent; `--prompt` is TERMINAL and GREEDY — it slurps every remaining token as the
+    /// prompt (rejoined with single spaces). This is load-bearing: spt-core substitutes the
+    /// `{psyche_prompt}` key into the `[session.psyche_init]` command STRING and then whitespace-splits
+    /// the result, so a multi-word prompt (it always is — "PSYCHE REVIVAL time: … incoming event: …")
+    /// arrives as many argv tokens, NOT one. A non-greedy `--prompt` would read only the first word and
+    /// reject the second as "unknown arg" → instant exit 2 → the daemon records a phantom hosted Psyche
+    /// with no live process (diagnosed v0.8.1, 2026-06-16). Our manifest command places `--prompt` last,
+    /// so greedy-slurp reconstructs the prompt. Returns the offending flag on a missing value or an
+    /// unknown arg seen BEFORE `--prompt`, so a real misfire is still loud rather than a silent default.
     fn parse<I: IntoIterator<Item = String>>(argv: I) -> Result<Args, String> {
         let (mut id, mut session_id, mut prompt) = (None, None, None);
         let mut it = argv.into_iter();
@@ -52,7 +63,10 @@ impl Args {
             match flag.as_str() {
                 "--id" => id = Some(want(&mut it)?),
                 "--session-id" => session_id = Some(want(&mut it)?),
-                "--prompt" => prompt = Some(want(&mut it)?),
+                // Terminal + greedy: consume ALL remaining tokens (spt-core whitespace-split the prompt).
+                "--prompt" => {
+                    prompt = Some(it.by_ref().collect::<Vec<_>>().join(" "));
+                }
                 other => return Err(format!("unknown arg: {other}")),
             }
         }
@@ -146,9 +160,10 @@ mod tests {
     }
 
     #[test]
-    fn parses_all_three_flags_order_independent() {
+    fn id_and_session_are_order_independent_prompt_is_terminal() {
+        // --id/--session-id may precede --prompt in any order; --prompt is last and slurps the rest.
         let a = Args::parse(argv(&[
-            "--session-id", "sess-9", "--prompt", "be the psyche", "--id", "perri-psyche",
+            "--session-id", "sess-9", "--id", "perri-psyche", "--prompt", "be the psyche",
         ]))
         .unwrap();
         assert_eq!(
@@ -162,9 +177,30 @@ mod tests {
     }
 
     #[test]
+    fn prompt_slurps_whitespace_split_tokens() {
+        // spt-core whitespace-splits the substituted {psyche_prompt}; we must rejoin every trailing
+        // token, not reject the second word as "unknown arg" (the v0.8.1 phantom-Psyche bug).
+        let a = Args::parse(argv(&[
+            "--id", "p-psyche", "--session-id", "s",
+            "--prompt", "PSYCHE", "REVIVAL", "time:", "epoch-ms:123", "incoming", "event:", "(none)",
+        ]))
+        .unwrap();
+        assert_eq!(a.id, "p-psyche");
+        assert_eq!(a.session_id, "s");
+        assert_eq!(a.prompt, "PSYCHE REVIVAL time: epoch-ms:123 incoming event: (none)");
+    }
+
+    #[test]
     fn missing_flag_is_an_error_not_a_default() {
         let e = Args::parse(argv(&["--id", "x", "--session-id", "s"])).unwrap_err();
         assert!(e.contains("--prompt"), "got: {e}");
+    }
+
+    #[test]
+    fn unknown_arg_before_prompt_still_rejected() {
+        // Greedy --prompt must not mask a genuine misfire earlier in argv.
+        let e = Args::parse(argv(&["--id", "x", "--bogus", "v", "--prompt", "hi"])).unwrap_err();
+        assert!(e.contains("unknown arg: --bogus"), "got: {e}");
     }
 
     #[test]

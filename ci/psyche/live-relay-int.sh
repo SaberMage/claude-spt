@@ -11,16 +11,17 @@
 # Covers BOTH legs of REQ-SKILL-LIVE int: (1) PSYCHE-SPAWN — version-dependent marker (M11 restructure,
 # doyle 2026-06-16): on <0.8.0 `api listen` spawns the Psyche IN-PROCESS (`PSYCHE_SPAWNED:{id}-psyche`
 # off the listen child, startup.rs spawn_psyche pre once/loop split); on >=0.8.0 the DAEMON livehost
-# hosts it off the perch's online status (`LIVEHOST_PSYCHE:{id}` on the daemon + the `{id}-psyche` perch
-# comes online) — the >=0.8.0 leg is PROVISIONAL, finalized against the merged tree at the v0.8.0 publish
-# ping. (2) RELAY — the resident listen pipe delivers the probe (BOUND/READY/<EVENT> off the child,
+# hosts it by spawning claude-spt-psyche (resolved by bare name from the adapter install dir) — assert
+# the RESIDENT runner process + nested `{id}-psyche` perch dir (FINALIZED on v0.8.1 + the adapter
+# greedy-prompt fix, 2026-06-16; see the >=0.8.0 leg below). (2) RELAY — the resident listen pipe delivers the probe (BOUND/READY/<EVENT> off the child,
 # unchanged across versions). The per-pulse runner command construction is additionally covered by
 # claude-spt-psyche unit tests (ci/psyche/build.sh).
 #
 # PSYCHE-SPAWN binary resolution: the psyche_init command invokes `claude-spt-psyche` by bare name.
-# On v0.8.0+ (Feature B / REQ-INSTALL-11) spt resolves it against the --manifest file's dir. On 0.7.3
-# it must be on PATH (the F-006 /sptc:setup interim copy). If neither holds, the psyche leg SKIPs with
-# a logged note (no silent cap) and the relay leg still asserts.
+# On v0.8.0+ (Feature B / REQ-INSTALL-11) spt resolves it FROM the adapter install dir (proven: the
+# binary registration-copies into adapters/_github/<safe>/, no PATH interim needed). On 0.7.3 it must
+# be on PATH (the F-006 interim copy). The >=0.8.0 leg now ASSERTS a resident runner (was skip-with-note
+# pre-v0.8.1); the <0.8.0 leg still SKIPs when the runner is unresolvable. The relay leg asserts always.
 #
 # Spawns a real claude-spt-psyche (which launches a headless claude) + mutates node-local perch state,
 # all torn down on exit. Gated behind SPTC_ACCEPTANCE=1. Idempotent.
@@ -30,9 +31,12 @@ ROOT=$(CDPATH= cd "$(dirname "$0")/../.." && pwd)
 A=claude-spt:live
 MAN="$ROOT/adapter/claude-spt.toml"
 # Disposable perch id — NEVER a live agent's id (REQ-HAZARD-PERCH-COLLISION). Override BOTH identity
-# env vars; pin OWL_SESSION_ID for the auth-gated seed/send/listen surfaces.
-ID=sptc-ci-liverelay
-SID=sptc-ci-liverelay-sess
+# env vars; pin OWL_SESSION_ID for the auth-gated seed/send/listen surfaces. PER-RUN UNIQUE ($$ suffix):
+# the daemon hosts a Psyche at most ONCE per session_id, so a FIXED id/session would not re-host on a
+# rerun (the first run's hosted-session memory suppresses it) — each CI run must be a fresh session.
+RUN=$$
+ID=sptc-ci-liverelay-$RUN
+SID=sptc-ci-liverelay-$RUN-sess
 export SPTC_CI_ID="$ID" SPT_AGENT_ID="$ID" OWL_SESSION_ID="$ID"
 
 if [ "${SPTC_ACCEPTANCE:-0}" != "1" ]; then echo "SKIP: set SPTC_ACCEPTANCE=1 to run (spawns a Psyche + mutates perch state)"; exit 0; fi
@@ -104,18 +108,26 @@ case "$ver" in
     # stamps the perch `status="online"` IFF the resolved manifest declares [session.psyche_init]
     # (startup.rs:283 live_capable guard); the DAEMON reconcile then hosts the Psyche off that online
     # status (the `{id}-psyche` perch comes online; `LIVEHOST_PSYCHE:{id}` on the daemon's stderr).
-    # DIAGNOSED (v0.8.0 dogfood 2026-06-16, doyle-confirmed): the perch IS stamped `status="online"`
-    # (live_capable fired — the :live manifest's psyche_init surfaced), yet the daemon reconcile does
-    # NOT host the Psyche (no {id}-psyche perch, no claude-spt-psyche proc) — a reconcile/brain gap on
-    # spt's side (livehost.rs reconcile_once not hosting; possible correlate: daemon "peer pump STALLED").
-    # FIX rides spt v0.8.1 (doyle). So this leg ASSERTS the perch if it appears (the REQ-INSTALL-11
-    # install-dir-resolution proof rides the same fix), else SKIPS-with-note — NOT a fail. The relay
-    # leg above is the deterministic >=0.8.0 coverage.
-    j=0; while [ "$j" -lt 12 ]; do spt endpoint list 2>/dev/null | grep -qi "$ID-psyche" && break; sleep 1; j=$((j+1)); done
-    if spt endpoint list 2>&1 | grep -qi "$ID-psyche"; then
-      ok "Psyche daemon-hosted: $ID-psyche perch online (v0.8.0 livehost / REQ-INSTALL-11 proof)"
+    # RESOLVED (v0.8.1 + adapter greedy-prompt fix, 2026-06-16): hosting succeeds iff the daemon
+    # spawned claude-spt-psyche AND the runner stays RESIDENT. Two bugs were in the way: (1) spt-core
+    # <0.8.1 livehost did not reconcile (no spawn at all); v0.8.1 fixed it. (2) spt-core substitutes
+    # `{psyche_prompt}` into the psyche_init command STRING then whitespace-SPLITS, so the multi-word
+    # prompt arrived as stray argv tokens — the runner's non-greedy --prompt rejected the 2nd word
+    # ("unknown arg") and exited 2 instantly → the daemon recorded a phantom hosted perch (nested
+    # info.json status=online, real-looking pid) with NO live process and NO psyche_host_error. The
+    # runner now parses --prompt greedily (slurps trailing tokens). DETECTION: the nested {id}-psyche
+    # perch does NOT surface in `endpoint list` (it lives under the parent in the owlery), so assert on
+    # the RESIDENT runner process + the nested perch dir for THIS id. This is also the REQ-INSTALL-11
+    # install-dir-resolution proof: the runner resolved by bare name FROM the adapter install dir.
+    OWL="${SPT_HOME:-$HOME/AppData/Local/spt-core}/owlery/$ID/nested/$ID-psyche/info.json"
+    resident() { tasklist 2>/dev/null | grep -qi "claude-spt-psyche"; }
+    j=0; while [ "$j" -lt 20 ]; do resident && [ -f "$OWL" ] && break; sleep 1; j=$((j+1)); done
+    procs=$(tasklist 2>/dev/null | grep -ci "claude-spt-psyche")
+    nested=no; [ -f "$OWL" ] && nested=yes
+    if resident && [ -f "$OWL" ]; then
+      ok "Psyche daemon-hosted: claude-spt-psyche runner RESIDENT for $ID-psyche (v0.8.1 livehost + greedy-prompt fix; REQ-INSTALL-11 install-dir resolution proven)"
     else
-      skip "psyche-spawn: perch stamped status=online (live_capable OK) but the daemon reconcile is not hosting the Psyche on spt $ver — reconcile/brain gap, doyle's v0.8.1 fix (diagnosed 2026-06-16). REQ-INSTALL-11 install-dir proof rides the same fix. Relay leg above is the deterministic coverage."
+      bad "psyche-spawn: no resident claude-spt-psyche for $ID (v0.8.1 host gap or prompt-split regression); nested=$nested procs=$procs"
     fi
     ;;
 esac
