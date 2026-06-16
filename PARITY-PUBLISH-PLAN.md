@@ -54,9 +54,12 @@ only — user supplies their own ccs config/keys).
   user-facing UX only); plugin.json bumped 0.0.1→0.1.0 (name stays `sptc`; version independent of
   the adapter-manifest version per RUNBOOK). validate-skeleton INSTALLABLE + package-skeleton
   dry-run green; llms.txt regen = no drift. Gate PASS + traceable green.
-  **Remaining = OPERATOR's step only:** `package-skeleton.sh --apply` → cplugs commit/push →
-  `claude plugin install sptc@cplugs`. Plan stops at validated dry-run (credentials + pointer flip
-  are operator-owned).
+- ✅ **PUBLISHED (2026-06-15, operator-authorized)** — `package-skeleton.sh --apply` staged the
+  skeleton into the cplugs clone; `sptc` registered in `marketplace.json` (first publish — added
+  alongside legacy `spt`/screen-timelapse/everything); cplugs commit **b1e2895** ("sptc: first
+  publish — spt adapter skeleton v0.1.0") pushed to `SaberMage/cplugs` main (33927ca..b1e2895).
+  **Remaining = pointer flip only:** `claude plugin install sptc@cplugs` + `/reload-plugins`
+  (session-affecting — needs CC restart; held for operator).
 
 ## Phases (sequence; one commit + green gate each)
 
