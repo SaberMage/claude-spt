@@ -146,7 +146,10 @@ Staged, not built now (JIT). From `SCOPE.md` §"/spt:setup" LOCKED {1,2,3,4,5,6,
   One gap found + interim-fixed + logged: bundled binaries extract beside the manifest but bare-name
   templates resolve from PATH only (**F-006**); interim = `/sptc:setup` copies them onto a PATH dir
   (now wired into both setup bodies); proper fix = doyle's **REQ-INSTALL-9** (v0.7.4/counter-16).
-- **Remaining:** the live relay int (REQ-SKILL-LIVE, heavy/hazard-sensitive) · int scripts to flip
+- **Remaining:** the live relay int (REQ-SKILL-LIVE, heavy/hazard-sensitive — run the SUT under a
+  throwaway `sptc-ci-<n>` id, **overriding BOTH identity env vars**; perches are name-keyed
+  last-establish-wins, so a nested `claude` as `perri` displaces this perch + steals its stream —
+  REQ-HAZARD-PERCH-COLLISION; doyle confirmed 2026-06-15) · int scripts to flip
   REQ-SETUP-ACTIVATE/REQ-DIST-ADAPTER-RELEASE int stages green · cplugs republish (ship the
   activation setup floor) · per-OS `adapter.spt` assets · LOCKED v1 setup {1..7} later waves.
 - **PRE-POSITIONED (2026-06-15):** monorepo pushed (origin/main); GitHub **release `v0.1.0`** cut with
