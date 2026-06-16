@@ -184,3 +184,15 @@ required_stages = ["doc", "impl", "unit", "int"]
 id = "REQ-SKILL-VERSION"
 title = "/spt:version reports the spt-core-tracked manifest/binary version (the version-of-truth, not the marketplace skeleton version)"
 required_stages = []
+
+# ── Milestone: SETUP-SLICE (the /sptc:setup activation bridge + LOCKED v1 setup paths) — minted
+# 2026-06-15, seeded from SCOPE.md §"/spt:setup" (LOCKED v1 = {1..7}) + finding F-005 (the
+# post-install adapter ACTIVATION step). Inactive (required_stages = []) until the slice executes —
+# REQ-SETUP-ACTIVATE activates to ["doc","impl","int"] (Wave 1); the {1..7} feature paths get their
+# own REQs as each later wave starts. The end-user --github activation target is blocked on doyle's
+# topology ruling (Q1-Q3, owl 2026-06-15) — see SETUP-SLICE-PLAN.md.
+
+[[requirements]]
+id = "REQ-SETUP-ACTIVATE"
+title = "/sptc:setup, after confirming the spt binary is present, ACTIVATES the claude-spt adapter (`spt adapter add` — the manifest file in local dev; `--github <published-adapter-repo>` for end-users) so profiles/strings/hints/[digest] go live, then verifies (adapter no longer `deregistered`). Binary-present is NOT a no-op — this is the F-005 post-install activation bridge."
+required_stages = []  # SEEDED inactive (activate-don't-pre-fail). Activates ["doc","impl","int"] when the setup-slice Wave 1 executes: doc = adapter/strings/skills/setup.md + plugin SKILL.md (the activation branch); impl = the `spt adapter add` activation step + verify; int = a registration re-activate assertion (deregistered -> active, profiles resolve). Blocked-open: the end-user `--github` target repo topology (doyle Q1-Q3 pending) — local-dir activation is unblocked.
