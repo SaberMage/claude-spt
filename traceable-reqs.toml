@@ -156,6 +156,21 @@ title = "Generated docs (llms.txt) are CI-gated against drift: a deterministic g
 required_stages = ["doc", "impl", "unit"]  # doc: DOCS-STRATEGY #10. impl: ci/docs/{gen-llms,check-docs}.sh + run-gates wiring. unit: tests/docs-gen.sh.
 
 [[requirements]]
+id = "REQ-PARITY-AUDIT"
+title = "The adapter's operative skill/profile surface is reconciled against the SCOPE.md LOCKED parity-trim (KEEP/ADD/DROP/TRANSFORM): every divergence is either resolved or logged as an accepted gap in docs/PARITY.md — the 'proven parity' record the sptc->spt succession flip gates on"
+required_stages = ["doc"]  # doc: docs/PARITY.md (the parity matrix + per-row evidence/finding). Pure reconciliation record (no code of its own); the per-surface impl/unit evidence lives on the surface's own REQ (REQ-SKILL-SUBNET, REQ-CCS-PROFILES, REQ-SKILL-LIVE, etc.).
+
+[[requirements]]
+id = "REQ-SKILL-SUBNET"
+title = "The adapter ships subnet membership skill(s) (create/join/show-code) wrapping the published `spt subnet <verb>` surface — the LOCKED-ADD cross-subnet entrypoint (v1 topology is mandatory, SCOPE)"
+required_stages = []  # activate [doc,impl] when Phase C starts. doc: adapter/strings/skills/subnet*.md. impl: [strings.skills] entries + plugin stub(s). int: registration-int file-backed-resolve assertion (mirrors :live).
+
+[[requirements]]
+id = "REQ-CCS-PROFILES"
+title = "The adapter ships ccs profile template(s) (claude-spt:glm …) — LOCKED-ADD overlays that retarget the spawn/psyche/echo command templates through `ccs <profile>` with a per-profile ~/.ccs log dir; templates only (user supplies their own ccs config/keys)"
+required_stages = []  # activate [doc,impl] when Phase D starts. impl: [profiles.<glm>] overlay(s) in claude-spt.toml. int: registration-int profile-resolves assertion (mirrors :deep/:live).
+
+[[requirements]]
 id = "REQ-SKILL-VERSION"
 title = "/spt:version reports the spt-core-tracked manifest/binary version (the version-of-truth, not the marketplace skeleton version)"
 required_stages = []
