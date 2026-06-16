@@ -42,9 +42,21 @@ only — user supplies their own ccs config/keys).
   dead new-alarm stub removed. Surface 11→9.
 - ✅ **Phase C** (e3382a0) — /sptc:subnet skill added (one skill wrapping `spt subnet`).
   REQ-SKILL-SUBNET [doc,int] green on v0.7.2. how-to-subnet finding logged. Surface 9→10.
-- ⏭️ **Phase D** (ccs profiles) — NEXT. Needs research: the spawn/psyche/echo command seams a ccs
-  overlay leaf-replaces. Activate REQ-CCS-PROFILES [doc,impl] when starting.
-- ⏭️ **Phase E** (publish prep as sptc) — after D.
+- ✅ **Phase D** (b15c1bf) — `claude-spt:ccs` profile. Scoped to bare `ccs` (default account, NOT
+  glm/kimi — operator ruling); validated vs sister project claude_skill_owl. Spawn seam
+  (`[profiles.ccs.session.self].command = "ccs"`, a drop-in for `claude`) + observability string
+  leaf. Log-dir seam landed IN the extractor: claude-spt-digest now honors `CLAUDE_CONFIG_DIR`
+  (owl `owlery::claude_projects_root` parity) — ccs relocates CC's transcript tree per-account, a
+  runtime value with no static path, so no `[profiles.ccs.digest]` leaf. REQ-CCS-PROFILES
+  [doc,impl,unit,int] green. Finding logged (SCOPE conflated ccs profiles vs accounts).
+  **docs/PARITY.md verdict → PROVEN (adapter surface).** Gate PASS; registration-int OK on v0.7.2.
+- ✅ **Phase E** (publish prep as sptc) — CHANGELOG.md created (`## [0.1.0] - 2026-06-15`,
+  user-facing UX only); plugin.json bumped 0.0.1→0.1.0 (name stays `sptc`; version independent of
+  the adapter-manifest version per RUNBOOK). validate-skeleton INSTALLABLE + package-skeleton
+  dry-run green; llms.txt regen = no drift. Gate PASS + traceable green.
+  **Remaining = OPERATOR's step only:** `package-skeleton.sh --apply` → cplugs commit/push →
+  `claude plugin install sptc@cplugs`. Plan stops at validated dry-run (credentials + pointer flip
+  are operator-owned).
 
 ## Phases (sequence; one commit + green gate each)
 
