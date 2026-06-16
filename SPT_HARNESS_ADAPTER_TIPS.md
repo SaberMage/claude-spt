@@ -6,21 +6,19 @@
 > verified against a live `spt` binary, not aspirational. Harness-agnostic where it can be;
 > Claude-Code-specific points are marked **[CC]**.
 
-## Mental model: two publish layers, never one
+## The adapter lives in the spt-core registry
 
-An adapter ships to **two independent targets** — keep them straight:
+An adapter — its `*.toml` manifest, profiles, `[strings]`, the `[digest]` extractor binary, any
+runner binaries — is registered with **`spt adapter add <dir>`** into the node-local adapter
+registry. The manifest/binary version tracked there (`spt adapter list`) is the **version-of-truth**
+for what the adapter actually does. That is the whole, universal delivery mechanism: every spt
+adapter ships this way.
 
-| Layer | Carries | Where | Versioned by |
-|---|---|---|---|
-| **spt-core adapter registry** | the `*.toml` manifest, profiles, `[strings]`, `[digest]` extractor binary, any runner binaries | `spt adapter add <dir>` (node-local registry) | the adapter manifest/binary version — the **version-of-truth** (`spt adapter list`) |
-| **Marketplace skeleton** (e.g. cplugs) | thin skill stubs, `hooks.json`, `plugin.json`, the SessionStart bootstrap | the marketplace repo / `<harness> plugin install` | the marketplace `plugin.json` version |
-
-- **No binary, no manifest, no runtime state in the marketplace skeleton.** Those ride the
-  registry layer. The skeleton is install-shaped glue only.
-- **The two version numbers are independent** and move on separate schedules — never sync them
-  reflexively. The marketplace version bumps rarely (only on *structural* skeleton change:
-  new/removed skill stub, hook wiring, bootstrap, `plugin.json`). The manifest/binary version is
-  the one users see via a `version` skill.
+> **Project-specific aside (not framework):** `claude-spt` *also* publishes a thin harness plugin to
+> a marketplace (skill stubs + `hooks.json` + `plugin.json` + bootstrap) so casual users can install
+> it. That is one project's distribution choice — an adapter does **not** have to ship a plugin. If
+> you do: keep no binary/manifest/runtime-state in the plugin (those ride the registry), and treat
+> the plugin's version as independent of the manifest/binary version (separate schedules).
 
 ## The manifest is static templates — runtime logic lives in binaries
 
@@ -34,11 +32,10 @@ The single most important design rule:
   `[digest]` extractor, a `[session.*]` runner, etc. Example: if the harness can relocate its
   state directory at runtime, the manifest `source` is only the *fallback* root; the extractor
   must resolve the real location itself.
-- Corollary for **requirement traceability**: a profile/string/hook expressed purely in `.toml`
-  has **no `impl` code of its own** — its evidence is `doc` (the manifest/docs) + `int` (it
-  resolves on the live binary). Real `impl`/`unit` evidence lives in the binaries. If you want a
-  profile to carry `impl`, the impl must be runtime code (an extractor/runner change), not a
-  `.toml` leaf.
+- Corollary: a profile/string/hook expressed purely in `.toml` has **no executable code of its
+  own** — you can only verify it by registering and resolving it on the live binary, not by
+  unit-testing it. Anything you want to cover with real tests must live in a binary (an
+  extractor/runner change), not a `.toml` leaf.
 
 ## Profiles: sparse leaf-replace overlays
 
@@ -114,7 +111,7 @@ The single most important design rule:
   endpoint id via **`[env.<VAR>]`** (`direction = "inject"`, `value = "{id}"`); the SessionStart
   hook reads the env and self-registers (`api bind <id>`).
 - `adapter.shortcut_basename` brands the `endpoint run` launcher shortcut (`<basename>-<id>`),
-  **decoupled** from the marketplace plugin name.
+  **decoupled** from the adapter name.
 
 ## Lifecycle file-drops (not api verbs)
 
@@ -133,12 +130,3 @@ The single most important design rule:
   behind an opt-in env flag + a minimum `spt` version; it mutates the node-local registry.
 - **Observable behavior of the public binary is itself public surface** — when prose docs lag, a
   byte-capture against the live `api`/`adapter` surface is a legitimate way to confirm a contract.
-
-## Release mechanics
-
-- The **CHANGELOG section is the public release body verbatim** — a release fails loudly without a
-  `## [<version>] - <date>` section for the tagged version. Write **user-facing UX only** (name the
-  actual commands/flags users touch); no requirement ids, module names, or commit hashes.
-- Package the marketplace skeleton with a **dry-run-by-default** stager that validates first and
-  copies only the skeleton subset; the marketplace commit/push + install stays the operator's step
-  (credentials + pointer flip).
