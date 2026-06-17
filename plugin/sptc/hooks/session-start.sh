@@ -32,7 +32,11 @@ case "$(sptc_register_verb "$src")" in
     ;;
   seed)
     # harness-hosted (seed→listen path): user-launched CC. Record the seed for /sptc:ready|live.
-    "$SPT" api --adapter "$ADAPTER" seed --pid "$PPID" --session-id "$sid" >/dev/null 2>&1 || true
+    # ADAPTER-AGNOSTIC since spt-core v0.9.0 (PREP-4): NO --adapter — `api listen`/`poll` resolve the
+    # owning adapter from this seed's parent pid via [adapter] host_binaries = ["claude"] (the legacy-
+    # parity bare flow). $PPID is the CC host process (basename `claude`), the host_binaries match-key.
+    # (bind/boundary above keep their explicit --adapter override — sanctioned, valid on 0.9.0.)
+    "$SPT" api seed --pid "$PPID" --session-id "$sid" >/dev/null 2>&1 || true
     ;;
 esac
 

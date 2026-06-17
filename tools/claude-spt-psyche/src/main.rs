@@ -1,9 +1,11 @@
 //! claude-spt-psyche — the `[session.psyche_init]` Psyche runner for the claude-spt LiveAgent.
 //!
 //! WHAT A PSYCHE IS (doyle 2026-06-15, traced spt-core): a LiveAgent's detached companion. The
-//! spt-core daemon's BrainLifecycle spawns it ONCE per live session — only when the resolved
-//! manifest declares `[session.psyche_init]` (the `claude-spt:live` overlay; base claude-spt has
-//! none = ReadyAgent). The Psyche owns its OWN perch (`<parent>-psyche`), receives daemon PULSES
+//! spt-core daemon's livehost hosts it — only when the resolved manifest declares
+//! `[session.psyche_init]` AND the perch came up as state=live_agent (the live `api listen` path;
+//! Option A 2026-06-17 — psyche_init lives in the BASE claude-spt manifest, no `:live` profile; a
+//! ready/poll perch is skipped regardless, livehost.rs:282). The Psyche owns its OWN perch
+//! (`<parent>-psyche`), receives daemon PULSES
 //! on that perch, and on each pulse authors a COMMUNE delta (a context brief for the parent's
 //! resume across `/clear`/compact) — it NEVER replies/notifies (the echo-commune is a distinct,
 //! cheaper actor). It exits at session end. The Psyche is daemon-MANAGED by contract (decoupled

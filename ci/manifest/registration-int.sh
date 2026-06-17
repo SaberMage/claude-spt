@@ -33,9 +33,9 @@ case "$out" in *registered*) ok "spt adapter add: registered" ;; *) bad "adapter
 list=$(spt adapter list 2>&1)
 case "$list" in *claude-spt*) ok "listed: claude-spt active" ;; *) bad "claude-spt not listed" ;; esac
 case "$list" in *claude-spt:deep*) ok "shipped profile resolves: claude-spt:deep" ;; *) bad "deep profile not resolved" ;; esac
-# The LiveAgent overlay (:live adds [session.psyche_init]) — proves a profile [session] overlay
-# validates + resolves on the live binary (the /sptc:live seam; doyle-grounded propagation).
-case "$list" in *claude-spt:live*) ok "shipped profile resolves: claude-spt:live (LiveAgent overlay)" ;; *) bad "live profile not resolved" ;; esac
+# NOTE: there is no `:live` profile (Option A, PREP-4) — base claude-spt is live-capable
+# ([session.psyche_init] in base); the LiveAgent capability is asserted via `spt api capability` at
+# step 4d below, not a composite resolve.
 # The ccs overlay (:ccs leaf-replaces [session.self].command -> `ccs`, a drop-in for `claude`) —
 # the LOCKED-ADD ccs profile template (REQ-CCS-PROFILES; validated vs sister project claude_skill_owl).
 case "$list" in *claude-spt:ccs*) ok "shipped profile resolves: claude-spt:ccs (ccs overlay)" ;; *) bad "ccs profile not resolved" ;; esac
@@ -60,8 +60,8 @@ cbody=$(spt adapter get-string claude-spt skills.commune 2>&1)
 case "$cbody" in "# /sptc:commune"*) ok "file-backed string resolves: skills.commune -> body" ;; *) bad "skills.commune not resolved to file body: '$(printf %.40s "$cbody")'" ;; esac
 fbody=$(spt adapter get-string claude-spt "skills.force-stop" 2>&1)
 case "$fbody" in "# /sptc:force-stop"*) ok "file-backed string resolves: skills.force-stop -> body" ;; *) bad "skills.force-stop not resolved to file body: '$(printf %.40s "$fbody")'" ;; esac
-# `live` is now file-backed too (LiveAgent activation body; the inline summary was flipped once the
-# :live profile + claude-spt-psyche runner landed — REQ-SKILL-LIVE).
+# `live` is file-backed too (the LiveAgent bringup body — base [session.psyche_init] + bare
+# `api listen`; REQ-SKILL-LIVE).
 lbody=$(spt adapter get-string claude-spt skills.live 2>&1)
 case "$lbody" in "# /sptc:live"*) ok "file-backed string resolves: skills.live -> body" ;; *) bad "skills.live not resolved to file body: '$(printf %.40s "$lbody")'" ;; esac
 # subnet (LOCKED-ADD cross-machine membership skill — wraps `spt subnet`). [int->REQ-SKILL-SUBNET]

@@ -29,9 +29,11 @@
 name = "claude-spt"
 kind = "harness"
 version = "0.2.1"
-# Local spt binary is 0.6.0; the published contract we build to is v0.7.0 (manifest.schema.json,
-# shortcut_basename). 0.7.0 is the floor this manifest's fields require.
-min_spt_core_version = "0.7.0"
+# Floor BUMPED to 0.9.0 (2026-06-17, PREP-4): the legacy-parity bringup requires spt-core's
+# adapter-agnostic seed + bind-time resolution by [adapter] host_binaries (shipped v0.9.0, ADR-0021).
+# On <0.9.0 `api seed`/`listen` still mandate --adapter, so the bare flow this manifest now wires
+# would break — the compat gate refuses the adapter on older spt-core rather than misbehave.
+min_spt_core_version = "0.9.0"
 hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # host_binaries — STAGED ahead of spt-core v0.9.0 (doyle 2026-06-16). The pid→binary match-key for
 # adapter-agnostic resolution: `spt api listen <id>` resolves the owning adapter/profile by walking
@@ -64,10 +66,12 @@ repo = "SaberMage/spt-claude-code"
 # fields we map; `can_inject` = whether the event can surface additionalContext back to the agent.
 
 [hooks.SessionStart]
-# Seed the endpoint. {parent_pid} + {adapter_name} are spt-filled keys (confirmed against the
-# published mock-adapter manifest); session_id is a CC stdin field. NOT the blocking poll/listen
-# loop — that is /sptc:ready|live, never SessionStart.
-fires = "api seed --session-id {session_id} --pid {parent_pid} --adapter {adapter_name}"
+# Seed the endpoint — ADAPTER-AGNOSTIC since spt-core v0.9.0 (PREP-4): NO --adapter. The owning
+# adapter resolves at bind time from this seed's {parent_pid} via [adapter] host_binaries (the
+# legacy-parity bare flow). {parent_pid} is a spt-filled key; session_id is a CC stdin field. NOT the
+# blocking poll/listen loop — that is /sptc:ready|live, never SessionStart. (Mirrors the hand-written
+# plugin hook session-start.sh, whose bind/boundary branches keep an explicit --adapter override.)
+fires = "api seed --session-id {session_id} --pid {parent_pid}"
 reads = ["session_id", "parent_pid"]
 can_inject = true
 
@@ -117,6 +121,30 @@ parent_ancestor_name = "claude"
 [session]
 commune_dir = ".claude"
 signoff_dir = ".claude"
+
+# ── [session.psyche_init] — base is LIVE-CAPABLE (Option A, doyle-ruled + code-confirmed 2026-06-17) ─
+# The Psyche-spawn seam lives in the BASE manifest, not a `:live` profile overlay. ready-vs-live is the
+# COMMAND, not the profile: `/sptc:live` brings the perch up via `spt api listen` → the live path stamps
+# the perch state=live_agent → the daemon livehost hosts the Psyche off that online status (it checks
+# psyche_init on the resolved manifest). `/sptc:ready` brings it up as state=ready_agent → livehost
+# SKIPS the Psyche regardless of base psyche_init (livehost.rs:282 gate — doyle). So declaring
+# psyche_init in base is harmless for ready agents and removes the need for a separate `:live` profile
+# (legacy parity: zero --adapter on the default path; the daemon resolves claude-spt by host_binaries).
+#
+# Psyche keys the daemon fills are EXACTLY {id, session_id, psyche_dir, psyche_prompt} — NOT
+# {session_name} (a [session.self] fill) and NOT {psyche_context} (the resume-preload seam, not first
+# spawn). `detach=true` + cwd={psyche_dir}: the Psyche is fire-and-forget detached (Stdio::null,
+# unsupervised), owns its `<parent>-psyche` perch, authors commune-drops only, exits at session end.
+# The runner (claude-spt-psyche, tools/) is a resident wrapper — `claude -p` is one-shot, so it seeds
+# the Psyche `claude` session once from {psyche_prompt} then drives one `claude --continue` turn per
+# daemon pulse (NOT a bare `claude -p`), the claude authoring commune drops. spt-core fills each {key}
+# as ONE argv element (tokenize-then-fill, v0.8.2+); the runner parses --prompt greedily as defense.
+# [impl->REQ-SKILL-LIVE]
+[session.psyche_init]
+command = "claude-spt-psyche --id {id} --session-id {session_id} --prompt {psyche_prompt}"
+cwd = "{psyche_dir}"
+detach = true
+keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
 
 # ── [session.self] ─────────────────────────────────────────────────────────────────────────
 # The spt-hosted bringup template (publish target #2's launcher seam). `spt endpoint run --adapter
@@ -184,27 +212,10 @@ window_turns = 20
 [profiles.deep.strings]
 adapter_label = "Claude Code (spt, deep)"
 
-# `live` — the LiveAgent overlay. Selected as `claude-spt:live`; /sptc:live activates this profile so
-# the daemon resolves the MERGED manifest, sees [session.psyche_init], and spawns the endpoint's
-# Psyche companion (base claude-spt declares no psyche_init = ReadyAgent — doyle 2026-06-15, traced:
-# api seed stores the composite → info.json adapter → daemon resolve_option_in applies the overlay →
-# BrainLifecycle checks psyche_init on the merged view). Psyche keys the daemon fills are EXACTLY
-# {id, session_id, psyche_dir, psyche_prompt} — NOT {session_name} (a [session.self] fill; the
-# published example's use of it is a bug doyle fixed) and NOT {psyche_context} (the resume-preload
-# seam, not first spawn). `detach=true` + cwd={psyche_dir}: the Psyche is fire-and-forget detached
-# (Stdio::null, unsupervised), owns its `<parent>-psyche` perch, authors commune-drops only, exits at
-# session end. The runner (claude-spt-psyche, tools/) is BUILT: a resident wrapper — `claude -p` is
-# one-shot, so it seeds the Psyche `claude` session once from {psyche_prompt} then drives one
-# `claude --continue` turn per daemon pulse (NOT a bare `claude -p`), the claude authoring commune
-# drops. Activation: /sptc:live brings the perch up under the `claude-spt:live` composite (the overlay
-# the daemon resolves to see psyche_init) + runs the delivery relay via Monitor (skills/live.md).
-# [impl->REQ-SKILL-LIVE]
-[profiles.live.session.psyche_init]
-command = "claude-spt-psyche --id {id} --session-id {session_id} --prompt {psyche_prompt}"
-cwd = "{psyche_dir}"
-detach = true
-keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
-
+# NOTE: there is no `:live` profile (removed 2026-06-17, PREP-4 Option A). The LiveAgent seam
+# `[session.psyche_init]` now lives in the BASE manifest above — base is live-capable, and ready-vs-live
+# is the command (`api listen` vs `api poll`), not a profile. A live agent needs no composite.
+#
 # `ccs` — the LOCKED-ADD ccs profile template. Selected as `claude-spt:ccs`. ccs is the model/billing
 # multiplexer (kaitranntt/ccs): structurally Claude Code, only the launch binary + backend differ —
 # exactly the profile seam (SCOPE §ccs, LOCKED). This overlay leaf-replaces ONE leaf: the spawn
@@ -259,12 +270,11 @@ list-agents = { file = "skills/list-agents.md" } # -> spt endpoint list (the ros
 commune = { file = "skills/commune.md" }       # -> file-drop <id>-commune.md into [session].commune_dir
 force-stop = { file = "skills/force-stop.md" } # -> spt endpoint shutdown (graceful, tears down Psyche)
 subnet = { file = "skills/subnet.md" }         # -> spt subnet {status,create,show-code,join} (cross-machine); REQ-SKILL-SUBNET
-# `live` -> upgrade THIS session to a LiveAgent via the `claude-spt:live` profile (overlays
-# [session.psyche_init] -> daemon spawns the Psyche) + a resident Monitor relay as the delivery pipe.
-# Profile propagation CONFIRMED in spt-core code (doyle 2026-06-15: api seed stores the composite ->
-# info.json adapter -> daemon resolve_option_in applies the overlay -> BrainLifecycle checks
-# psyche_init on the merged view). Body authored; runner (claude-spt-psyche) built (tools/).
-live = { file = "skills/live.md" }             # -> activate claude-spt:live + Monitor relay (LiveAgent)
+# `live` -> upgrade THIS session to a LiveAgent (Option A, 2026-06-17): base claude-spt is live-capable
+# ([session.psyche_init] in base), so going live is just the COMMAND — bare `spt api listen <id>` under
+# a Monitor relay. The live listen path stamps the perch state=live_agent → the daemon livehost hosts
+# the Psyche (livehost.rs:282 gates on live_agent state, doyle). No `:live` composite, no --adapter.
+live = { file = "skills/live.md" }             # -> bare `spt api listen <id>` + Monitor relay (LiveAgent)
 # `new-alarm` -> EXPLICIT OUT OF SCOPE for v1: no core `spt` alarm/timed-pulse primitive exists
 # (legacy $LIVE TIMED PULSE is owl/Psyche-layer, not lifted into core; adapters don't add core
 # features). doyle carries a parity-gap finding to mint a core deferred-pulse primitive; the skill

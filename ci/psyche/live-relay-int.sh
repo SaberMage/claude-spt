@@ -28,12 +28,19 @@
 # Run: SPTC_ACCEPTANCE=1 sh ci/psyche/live-relay-int.sh   (exit 0 = pass).
 set -u
 ROOT=$(CDPATH= cd "$(dirname "$0")/../.." && pwd)
-A=claude-spt:live
+A=claude-spt
 MAN="$ROOT/adapter/claude-spt.toml"
 # Disposable perch id — NEVER a live agent's id (REQ-HAZARD-PERCH-COLLISION). Override BOTH identity
 # env vars; pin OWL_SESSION_ID for the auth-gated seed/send/listen surfaces. PER-RUN UNIQUE ($$ suffix):
 # the daemon hosts a Psyche at most ONCE per session_id, so a FIXED id/session would not re-host on a
 # rerun (the first run's hosted-session memory suppresses it) — each CI run must be a fresh session.
+# Option A (PREP-4): [session.psyche_init] is in the BASE manifest — NO `:live` profile. The adapter
+# is BASE claude-spt; the live `api listen` COMMAND (not a composite) is what stamps state=live_agent
+# and actualizes the Psyche. We still pass an explicit `--adapter claude-spt --manifest <man>` here:
+# CI has no real `claude` parent process, so spt-core's bare-by-pid host_binaries resolution cannot
+# fire (the anchor is `sh`/`timeout`, not `claude`). The explicit override remains valid on 0.9.0 and
+# loads the same base manifest the bare flow would resolve. The TRUE bare-flow (no --adapter, by-pid
+# resolution under a real claude host) is covered by the live /sptc:live VERIFY, not this int.
 RUN=$$
 ID=sptc-ci-liverelay-$RUN
 SID=sptc-ci-liverelay-$RUN-sess

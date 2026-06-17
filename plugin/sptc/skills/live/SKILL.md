@@ -18,6 +18,7 @@ allowed-tools: [Bash]
 > floor.
 
 Upgrades THIS session to a LiveAgent (Psyche-backed) — distinct from `spt endpoint run` (which
-spawns a separate broker-PTY session). Activates the `claude-spt:live` profile (overlays
-`[session.psyche_init]` → the daemon spawns the Psyche) and runs a resident Monitor relay as the
-delivery pipe.
+spawns a separate broker-PTY session). Base `claude-spt` is live-capable (`[session.psyche_init]` in
+the base manifest); going live is just the command — a resident Monitor relay running bare
+`spt api listen <id>` (no `--adapter`). The live listen path stamps the perch `state=live_agent`, so
+the daemon hosts the Psyche; `/sptc:ready` (poll) stays Psyche-less.

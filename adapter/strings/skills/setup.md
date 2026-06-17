@@ -46,8 +46,15 @@ nothing to source. Setup must leave the adapter **active**.
        <!-- [doc->REQ-DIST-ADAPTER-PEROS] -->
 
 3. **Verify activation.** Re-run `spt adapter list`: `claude-spt` must now appear **active** (no
-   `deregistered`). Spot-check a profile resolves: `spt adapter get-string claude-spt:live adapter_label`
-   (any shipped profile). Report the active state.
+   `deregistered`). Spot-check a profile resolves: `spt adapter get-string claude-spt:deep adapter_label`
+   (any shipped profile — `:deep` or `:ccs`). Report the active state.
+
+   Then **set the active-profile pointer** so bare resolution lands on this adapter for the `claude`
+   host binary (the legacy-parity bare flow — `/sptc:live` and `/sptc:ready` need no `--adapter`):
+   `spt adapter use claude-spt`. (With a single claude-hosting adapter registered this is the implicit
+   default, but setting it is explicit + durable. There is **no `:live` profile** — base claude-spt is
+   live-capable and the command decides ready vs live; reach for `--adapter claude-spt:ccs`/`:deep`
+   only to select one of those override profiles.)
 
 4. **Tool binaries — resolved from the install dir (REQ-INSTALL-11; no PATH copy).** The `[digest]`
    extractor (`claude-spt-digest`) and the Psyche runner (`claude-spt-psyche`) are invoked by **bare
