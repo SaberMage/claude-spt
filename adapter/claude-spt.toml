@@ -166,6 +166,17 @@ keys = ["id"]
 # SessionStart hook can self-register the right perch via `api bind $SPT_ENDPOINT_ID`. spt-hosted
 # sessions inherit env from the spawning broker, so no `channel` is needed (that field is for the
 # harness-hosted injection path). [impl->REQ-DIST-SHORTCUT-BASENAME]
+#
+# KNOWN-MINOR (F-013, doyle-ruled 2026-06-17): the `{id}` substitution into this inject value is only
+# applied by `spt endpoint run` on **spt-core >= 0.11.0** (REQ-HAZARD-ENV-SUBST). On < 0.11.0 the value
+# arrives EMPTY → SessionStart sees no $SPT_ENDPOINT_ID → it SEEDS (harness-hosted path) instead of
+# binding → the spt-hosted endpoint-run yields no perch (silent; no error). NOT floor-bumped:
+# min_spt_core stays 0.9.0 because the ready/live flows work on 0.9.0, and a blanket floor would
+# needlessly block them on older nodes (doyle). A runtime adapter guard was rejected too — a
+# < 0.11.0 endpoint-run spawn is ENV-INDISTINGUISHABLE from a normal user-launched seed session (both
+# have SPT_RELEASE_SEED/OWL_SESSION_ID set + SPT_ENDPOINT_ID empty; verified), so a guard would
+# false-positive "update spt" on every normal seed. The case is narrow + transient (only bites a node
+# still on < 0.11.0 running `endpoint run`; the fleet updates forward). Doc-note only.
 [env.SPT_ENDPOINT_ID]
 direction = "inject"
 value = "{id}"
