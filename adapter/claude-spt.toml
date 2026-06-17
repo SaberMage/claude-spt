@@ -28,7 +28,7 @@
 [adapter]
 name = "claude-spt"
 kind = "harness"
-version = "0.1.0"
+version = "0.2.0"
 # Local spt binary is 0.6.0; the published contract we build to is v0.7.0 (manifest.schema.json,
 # shortcut_basename). 0.7.0 is the floor this manifest's fields require.
 min_spt_core_version = "0.7.0"

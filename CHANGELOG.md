@@ -4,9 +4,32 @@ All notable user-facing changes to the **sptc** plugin (Spacetime adapter for Cl
 The format follows [Keep a Changelog](https://keepachangelog.com/); each release section is the
 public release body verbatim.
 
-> The plugin (marketplace) version below tracks the *plugin skeleton* and moves on its own
-> schedule. It is independent of the spt engine version you see in `/sptc:version` — that one is
-> the version of truth and updates itself behind the scenes.
+> Each release below is keyed to the **adapter version of truth** (the version you see in
+> `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
+> moves on its own slower schedule and may differ.
+
+## [0.2.0] - 2026-06-16
+
+### Fixed
+- **Live agents now reliably start their background companion.** Previously a live agent could come
+  up marked "online" while its persistent companion silently failed to start, leaving it with no
+  running context. The companion now launches and stays resident.
+
+### Changed
+- **Simpler setup — no manual PATH step.** The adapter's helper tools are now found automatically
+  from where the adapter is installed; `/sptc:setup` no longer asks you to copy anything onto your
+  PATH.
+- **Automatic adapter updates.** The adapter now updates itself from this project's GitHub releases
+  (`spt adapter update`) — logic and instruction changes reach you without a reinstall.
+
+### Added
+- **Linux support.** The adapter ships native **Windows and Linux** builds; `/sptc:setup` detects
+  your OS and installs the right one.
+- **ccs integration.** If you use [ccs](https://github.com/kaitranntt/ccs), `/sptc:setup` wires the
+  shipped `claude-spt:ccs` profile so live/ready agents can run on your ccs backends instead of
+  `claude`.
+- **Private-network onboarding.** `/sptc:setup` now offers to create or join a private network
+  (subnet) so you can pair machines and reach agents across them.
 
 ## [0.1.0] - 2026-06-15
 
