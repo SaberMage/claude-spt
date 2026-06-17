@@ -33,6 +33,13 @@ version = "0.2.0"
 # shortcut_basename). 0.7.0 is the floor this manifest's fields require.
 min_spt_core_version = "0.7.0"
 hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
+# host_binaries — STAGED ahead of spt-core v0.9.0 (doyle 2026-06-16). The pid→binary match-key for
+# adapter-agnostic resolution: `spt api listen <id>` resolves the owning adapter/profile by walking
+# parent pid → exe basename → host_binaries match → active-profile pointer → registered_at_ms
+# fallback (ADR-0021, CONTEXT §170-186). Additive + N-1-safe: harmless before spt-core reads it (the
+# vendored v0.7.0 schema's [adapter] allows additional props), live once v0.9.0 + `spt adapter use`
+# land. Claude Code's host process basename is `claude`. [impl->REQ-SKILL-LIVE]
+host_binaries = ["claude"]
 # Brands the `spt endpoint run` picker shortcut as `cc-<id>` (default would be `spt-<id>`) — this is
 # the M12 `cc` launcher, and matches the schema's own example (spt-claude-code → `cc`). The launcher
 # brand is DECOUPLED from the plugin name (`sptc`, skills `/sptc:*`): the s/sptc/spt/ succession seam
