@@ -18,6 +18,7 @@
 | F-008 | 2026-06-16 | **OPEN — reported to doyle** — blocks SCOPE LOCKED v1 setup #5 (legacy migration); /sptc:setup can't author the step against the public surface | No published legacy-migration command (`spt` has no migrate/import/adopt/legacy/owl verb in any subcommand, no how-to) though spt-core CONTEXT.md commits to claude_skill_owl→spt migration as first-class |
 | F-009 | 2026-06-16 | **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2, 2026-06-17)**. doyle's fix: command templating now fills each `{key}` as ONE argv element (tokenize-then-fill). Argv-capture confirmed the multi-line `{psyche_prompt}` arrives as a single element, newlines intact. Adapter keeps greedy `--prompt` as defensive | `[session.psyche_init]`/extractor command templating substitutes a `{key}` into the command STRING then WHITESPACE-SPLITS → ANY multi-word fill (e.g. `{psyche_prompt}`) explodes into stray argv tokens. Survived only by single-token fills |
 | F-010 | 2026-06-16 | **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2, 2026-06-17)**. A spawn-then-exit psyche now stamps `psyche_host_error{reason:"host not resident within 5s ...", attempts:2}` on the parent perch (rendered `psyche-host: FAILED (...)` by `endpoint list`/`whoami`); status stays online (liveness authoritative). Forced fast-exit confirmed it | Silent-exit still maskable: `psyche_host_error` stays clear when the detached spawn() succeeds but the child exits IMMEDIATELY (e.g. arg-parse exit 2). A crash-on-startup host looks identical to a healthy one |
+| F-013 | 2026-06-17 | **ROOT-CAUSED (perri) → RULED spt-core BUG (doyle 2026-06-17): fork (a)**. spt-core must honor `[env].value` substitution in endpoint-run (the schema already promises "with substitution"; not applying it is a silent correctness bug). **Adapter manifest is CORRECT as-is — no wrapper** (b rejected: a shim would dodge a bug every `[env]`-routing adapter hits). Dispatched **`REQ-HAZARD-ENV-SUBST` → todlando, v0.11.0-findings** (pairs with REQ-SEND-SPT-HOSTED). Adapter **int HELD** until the spt-core fix releases (doyle pings). Ghost-roster = separate daemon-side finding doyle is minting. `spt endpoint run` threads the endpoint `{id}` to the `[session.self]` spawn **ONLY** via `{id}` substitution in the command **argv**; `[env.<VAR>].value = "{id}"` is **NOT** substituted (injects empty) — although the schema documents `value` as "Value to inject (**with substitution**)". A flagless harness (bare `claude`, no CLI flag for an id) cannot place `{id}` on argv → SessionStart sees empty `$SPT_ENDPOINT_ID` → `sptc_register_verb` returns **`seed` not `bind`** → endpoint-run yields **ZERO perch** (the operator's wall-b `NO_PERCH`). bind itself is fine (a direct `api bind` builds a fully reachable perch). Fix fork: (a) spt-core honors `[env].value` substitution → current manifest becomes correct, or (b) adapter ships a wrapper launcher that takes `{id}` on argv and exports `SPT_ENDPOINT_ID` before exec-ing claude |
 | F-011 | 2026-06-17 | **CONFIRMED + ROOT-CAUSED (doyle, spt-core source) — case-3 robustness, NON-blocking**. doyle: `registry.rs` `manifest_dir` — Pointer/GhReleaseManaged adapters read the manifest LIVE from `source_dir`; a deferred install whose manifest isn't extracted yet → `load_manifest` fails → `registered()` `filter_map(...ok())` **SILENTLY DROPS** the adapter → zero host_binaries candidates (`ADAPTER_UNRESOLVED`) AND `resolve_option/set_active` reads the absent manifest → bare **os-error-2**. Fix shape (doyle minting REQ-HAZARD→todlando): clear diagnostic at resolver + `adapter use` instead of silent-drop/cryptic-os2, possibly eager manifest extract at register. Real `--release`/extracted-dir installs work (v0.3.0 dogfooded clean) | A registered **Pointer**-mode adapter whose deferred install dir lacks the extracted manifest vanishes from the active set: bare resolution fails `ADAPTER_UNRESOLVED` (host_binaries never consulted) and `spt adapter use <adapter>` fails cryptic `os error 2` (no path/cause), even though the manifest declares everything needed |
 
 > **F-012 (NOT logged as spt-core)** — legacy-owl 1.11.25 poll-loop exits 1 / orphans the Psyche across daemon churn (`/spt:revive` started gen-7 wrapper+psyche fine but the foreground poll died with a non-fatal `sessions log seal failed: git failed (continuing)` line). doyle ruled this is the **legacy owl listener** (a separate daemon from spt-core), NOT an spt-core public-surface finding; the seal line is non-fatal/continues so isn't the exit cause; it dies with legacy owl's retirement. Re-open as spt-core ONLY if repro'd clean-room (sptc listener, zero legacy owl). No spt-core action.
@@ -655,6 +656,104 @@ Upgraded spt 0.7.3 → **0.8.0** (hash `10ff8166…`, daemon restarted). Results
   skip→ASSERT green, and **REQ-INSTALL-11 / F-006** is proven in the same run. The "peer pump STALLED"
   correlate recurs ~7-8 min after every daemon start but did NOT block hosting (a Psyche hosted fine
   with the pump stalled) — flagged to doyle as **F-010**-adjacent, separate from the host path.
+
+---
+
+## F-013 — `spt endpoint run` does not substitute `[env.<VAR>].value = "{id}"` (the spt-hosted bind-path never gets its endpoint id)
+
+**Surfaced:** 2026-06-17, root-causing the operator's wall-b zero-perch (`spt endpoint run claude-spt
+wall-b` → CC PTY came up but `spt send wall-b` → `NO_PERCH` and **zero perch on disk**). This is the
+M12 cc-launcher path — impl+UNIT only, **never int-proven E2E** — and wall-b was its first real
+exercise. (Build orientation: `CC-LAUNCHER-BIND-PLAN.md`.)
+
+**How the adapter intends the spt-hosted bind path to work.** `endpoint run` spawns
+`[session.self].command = "claude"` (bare — CC has no CLI flag for an externally-chosen id; it mints
+its own session id post-spawn). To tell the spawned CC *which* endpoint it is, the manifest declares:
+
+```toml
+[session.self]
+command = "claude"
+keys = ["id"]
+
+[env.SPT_ENDPOINT_ID]
+direction = "inject"
+value = "{id}"
+```
+
+The `plugin/sptc/hooks/session-start.sh` `bind)` branch then reads `$SPT_ENDPOINT_ID` and self-binds
+(`api bind "$SPT_ENDPOINT_ID" --set-session-id "$sid"`). `sptc_register_verb` selects `bind` **iff
+`$SPT_ENDPOINT_ID` is set**, else `seed`.
+
+**Root cause (hard repro, probe-adapter — public-surface only, no spt-core source).** Registered a
+throwaway clone adapter whose `[session.self].command` was a no-op env/argv-dumping `cmd` probe, then
+ran `spt endpoint run --adapter probe-spt --id <ID> --start` and captured exactly what spt-core spawns:
+
+- With `command = "cmd /c probe.cmd"` + `[env.SPT_ENDPOINT_ID] value = "{id}"`:
+  `ARGV: ` *(empty)* and **`SPT_ENDPOINT_ID=[]`** — the env inject is **not substituted** (empty, not
+  the id). The id appears in **no** env var (grepped full `set` for the literal id → zero hits). spt
+  injected only **inherited** daemon env (`OWL_SESSION_ID` = a static inherited UUID, `SPT_RELEASE_SEED`,
+  legacy `OWL`) — nothing endpoint-specific.
+- With `command = "cmd /c probe.cmd {id}"` (placeholder **in the command**): `ARGV-WITH-ID:[<ID>]` —
+  the `{id}` fills **on argv**. ✅
+
+So on spt **0.9.1** the endpoint id is threaded to the `[session.self]` spawn **only** via `{id}`
+substitution **in the command argv** (matching `endpoint run --help`: *"The endpoint id rides argv so
+the harness binds to exactly it"*). The `[env.<VAR>].value = "{id}"` route the adapter relies on is a
+**no-op** — even though `manifest.schema.json` `EnvVar.value` is documented as *"Value to inject (with
+substitution); required for `inject`."* (the schema does not enumerate which keys are available to the
+env-value substitution context; `[session.<role>].keys` only governs the command-string fills).
+
+**Consequence (the wall-b zero-perch, fully explained).** In the real spawn, `$SPT_ENDPOINT_ID` is
+empty → `sptc_register_verb` returns **`seed`**, not `bind` → the hook runs the harness-hosted seed
+branch (records an ephemeral seed by PPID) instead of binding the endpoint perch → **no perch on disk
+for the endpoint id** → `spt send <id>` → `NO_PERCH`. **bind itself is not broken**: a direct
+`spt api --adapter claude-spt bind <id> --set-session-id <sid>` from an ordinary (non-broker) shell
+returns `BOUND` and builds a complete, reachable perch (owlery dir + `info.json` + `api.token` +
+`spool.db`); `spt send <id>` → `QUEUED` and `api poll <id> --token` drains it. So the **only** broken
+link is endpoint-run's failure to deliver the id to the flagless harness. (Also note: `bind` does
+**not** require broker parentage — the "broker-parentage IS the credential" comment in session-start.sh
+is not load-bearing for the success path; bind succeeded with neither `--token` nor a proof
+`--session-id`.)
+
+**Fix fork (reported to doyle; his call on the spt-core half):**
+- **(a) spt-core honors `[env.<VAR>].value` substitution** for `endpoint run` (fill `{id}` — and
+  presumably the same key set as the spawning role's `keys`). Then the **current manifest is already
+  correct** and no adapter binary ships. Cleanest if `[env].value`-with-substitution is intended per
+  the schema text.
+- **(b) adapter ships a wrapper launcher** — `command = "claude-spt-launch {id}"`, a tiny per-OS shim
+  (mirrors the existing `claude-spt-psyche` runner) that captures `$1` as the endpoint id, exports
+  `SPT_ENDPOINT_ID`, then exec's `claude`. Works **today** on the proven argv-`{id}` mechanism with no
+  spt-core change; cost is a new shipped cross-OS binary in the spt-core-conducted layer.
+
+**Then (regardless of fork): add the missing int** — `endpoint run <id> --start` → assert a **bound
+perch** exists on disk under `owlery/` **and** is reachable (a queued `spt send <id>` drains via the
+next `api poll`). Gated `SPTC_ACCEPTANCE=1`, disposable id (REQ-HAZARD-PERCH-COLLISION), full teardown.
+This int would have caught the wall-b zero-perch.
+
+**Secondary observation (cleanup gap, flagged to doyle, NOT yet a separate finding).** During teardown
+of the disposable probe perch: a proper `spt api session-end <id> --erase` wiped the perch (owlery dir
+gone, no process) **but the endpoint stayed in the subnet roster** (`identity/registry/SPT_DEV.json`)
+listed `Active` with no perch behind it; `spt endpoint stop <id>` reported "address unregistered" yet
+the roster line persisted; there is **no CLI verb to forget a roster entry**, and hand-editing the
+registry JSON is **immediately overwritten by the single-writer daemon** (which re-adds the entry). A
+daemon bounce (the likely reconcile) was declined as too disruptive to the operator's live perches
+(F-012). Net: a ghost `Active` roster line can outlive an erased endpoint with no supported way to
+evict it. (Also noted: `bind` defaults `--type live_agent`, so a bare disposable `bind` triggers the
+livehost to spawn a `<id>-psyche` — bind disposables with `--type gateway` to avoid it.)
+
+**Status:** **ROOT-CAUSED (perri) → RULED (doyle 2026-06-17): fork (a) — spt-core BUG.** doyle: the
+schema already promises `value` "with substitution", so spt-core not applying it in endpoint-run is a
+silent correctness bug (empty inject → seeds-not-binds → zero perch, no error). **The adapter manifest
+is CORRECT as authored — no wrapper binary** (fork b rejected: a shim would mask a bug every adapter
+routing an id via `[env]` would hit). Dispatched as **`REQ-HAZARD-ENV-SUBST` to todlando on the
+v0.11.0-findings line** (pairs with `REQ-SEND-SPT-HOSTED` — the two spt-core halves that make
+`endpoint run` fully reachable). **Our adapter int is HELD** until the env-subst fix gates+releases;
+doyle pings when ready, then the int asserts: `endpoint run <id>` → `SPT_ENDPOINT_ID` populated →
+SessionStart **binds** → bound perch on disk + reachable via next `api poll`. Ghost-roster (secondary)
+= a separate **daemon-side finding doyle is minting** (a local roster entry whose backing perch is
+erased should self-heal/epoch-lease-evict); leave it, harmless, no supported evict today. All probe
+artifacts torn down; box at the X/help/wall-a/doyle baseline (modulo the harmless ghost). pid 60824
+(doyle's original wall-b orphan) — he reaps it pid-scoped.
 
 ---
 
