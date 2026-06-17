@@ -20,9 +20,12 @@
 //! Invoked by the daemon (detached, cwd=`{psyche_dir}`, stdio null):
 //!   claude-spt-psyche --id <parent>-psyche --session-id <session_id> --prompt <psyche_prompt…>
 //! ({id} is the daemon-OVERRIDDEN `<parent>-psyche`, NOT the parent endpoint id — see spawn_psyche.)
-//! NOTE: spt-core substitutes `{psyche_prompt}` into the command STRING then whitespace-splits, so the
-//! multi-word prompt reaches us as many trailing argv tokens — `--prompt` is parsed greedily (slurps
-//! the rest). Keep `--prompt` LAST in the `[session.psyche_init]` command template. [impl->REQ-SKILL-LIVE]
+//! NOTE on `--prompt` parsing: spt-core **<0.8.2** substituted `{psyche_prompt}` into the command
+//! STRING then whitespace-split it, so the multi-word prompt reached us as many trailing argv tokens.
+//! spt-core **0.8.2+** fills each `{key}` as exactly ONE argv element (tokenize-then-fill — re-validated
+//! 2026-06-17: the prompt arrives as a single element, newlines intact). We parse `--prompt` GREEDILY
+//! (slurp the rest) anyway — defensive: it reconstructs a split prompt on <0.8.2 AND passes the single
+//! 0.8.2 element through unchanged. Keep `--prompt` LAST in the command template. [impl->REQ-SKILL-LIVE]
 //!
 //! Loop:  seed `claude -p <prompt>`  ->  forever { `spt ready <id> --once` (blocks for one pulse;
 //! its stdout is the pulse body) ; perch-closed => exit ; empty drain => next ; else feed the pulse
@@ -45,14 +48,15 @@ struct Args {
 impl Args {
     /// Parse `--id V --session-id V --prompt <rest…>`. `--id`/`--session-id` are single-value and
     /// order-independent; `--prompt` is TERMINAL and GREEDY — it slurps every remaining token as the
-    /// prompt (rejoined with single spaces). This is load-bearing: spt-core substitutes the
-    /// `{psyche_prompt}` key into the `[session.psyche_init]` command STRING and then whitespace-splits
-    /// the result, so a multi-word prompt (it always is — "PSYCHE REVIVAL time: … incoming event: …")
-    /// arrives as many argv tokens, NOT one. A non-greedy `--prompt` would read only the first word and
-    /// reject the second as "unknown arg" → instant exit 2 → the daemon records a phantom hosted Psyche
-    /// with no live process (diagnosed v0.8.1, 2026-06-16). Our manifest command places `--prompt` last,
-    /// so greedy-slurp reconstructs the prompt. Returns the offending flag on a missing value or an
-    /// unknown arg seen BEFORE `--prompt`, so a real misfire is still loud rather than a silent default.
+    /// prompt (rejoined with single spaces). History: spt-core **<0.8.2** substituted `{psyche_prompt}`
+    /// into the `[session.psyche_init]` command STRING then whitespace-split it, so a multi-word prompt
+    /// (it always is — "PSYCHE REVIVAL time: … incoming event: …") arrived as many tokens, NOT one; a
+    /// non-greedy `--prompt` read only the first word and rejected the second as "unknown arg" → instant
+    /// exit 2 → the daemon recorded a phantom hosted Psyche (diagnosed v0.8.1, 2026-06-16). spt-core
+    /// **0.8.2** fixed it (fills each `{key}` as ONE argv element; re-validated 2026-06-17). Greedy is
+    /// KEPT as defensive: with one element, `collect().join(" ")` returns it unchanged; with the old
+    /// split, it reconstructs. Our manifest places `--prompt` last. Returns the offending flag on a
+    /// missing value or an unknown arg seen BEFORE `--prompt`, so a real misfire is still loud.
     fn parse<I: IntoIterator<Item = String>>(argv: I) -> Result<Args, String> {
         let (mut id, mut session_id, mut prompt) = (None, None, None);
         let mut it = argv.into_iter();
