@@ -8,6 +8,18 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.2.1] - 2026-06-16
+
+### Fixed
+- **Going live shows a clean status, not raw machine output.** Starting a live agent previously
+  leaked internal setup markers and tokens into the chat. `/sptc:live` now reports a single tidy
+  summary — your agent id, online status, how other agents reach you, and how to reply — and
+  nothing else.
+
+### Changed
+- **Self-contained live setup.** Bringing a session live no longer bounces you to a separate help
+  topic; `/sptc:live` carries the full bringup itself, so going live works in one step.
+
 ## [0.2.0] - 2026-06-16
 
 ### Fixed
