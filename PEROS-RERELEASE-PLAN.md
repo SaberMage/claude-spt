@@ -1,7 +1,9 @@
 # Per-OS re-release + cplugs v0.1.2 — JIT plan
 
-> **Status: NOT STARTED.** Gated on operator go-ahead (outward-facing GitHub release).
-> Prereqs DONE: v0.8.1 psyche fix (ddf1965) + F-006 retired (717efd2), both committed, proof green.
+> **Status: DONE (2026-06-16).** Shipped as adapter **v0.2.0** (operator chose 0.2.0 minor +
+> full-send-incl-publish). GitHub release v0.2.0 with win+linux .spt; auto-update wiring proven
+> (Copy→Pointer/GhReleaseManaged); cplugs sptc 0.1.2 pushed (8d9c222). See commit a11f545 + the
+> v074-follow-ups memory. Retained as the worked release-runbook example.
 
 ## Why this release
 The registered/published adapter is **v0.1.0** — it predates: the greedy-`--prompt` psyche fix
