@@ -62,5 +62,30 @@ going live is now one bare step, full legacy parity; requires spt-core 0.9.0+). 
 structural skeleton change) → bump plugin.json 0.1.2→0.1.3, copy skeleton subset, push cplugs.
 Sequence: per-OS-asset release FIRST, then cplugs skeleton bump (runbook coupling).
 
+## VERIFY STATUS (2026-06-17) — wiring DONE + committed (3665fc5), gates green; live verify HELD
+Local spt updated 0.8.2→0.9.0; Option-A manifest registered (capability=LiveAgent, no :live, base
+psyche_init); `spt adapter use claude-spt` set. Live bare-flow verify surfaced TWO spt-core findings
+(doyle triaged — wiring correct, both spt-core-side):
+- **F1 (FIXED) = broker version-skew.** `spt update apply` restarts only the BRAIN; the resident
+  BROKER (seed-control server, survives brain restarts) stayed pre-0.9.0 and couldn't deserialize the
+  adapter-less Seed → `SEED_FAIL: failed to fill whole buffer` (IPC, pid-independent). Fix = full
+  `spt daemon stop` (stops the broker too) → next `spt api` spawns a fresh 0.9.0 broker. CONFIRMED:
+  `SEEDED:14188` on fresh broker. (Deployment hazard logged by doyle: a Seed-wire change rides
+  self-update = brain-only restart; the broker needs a full daemon stop. Fleet nodes need one broker
+  restart for 0.9.0's agnostic seed.)
+- **F2a (NOT a bug):** matcher strips trailing `.exe` (normalize_basename) → `host_binaries=["claude"]`
+  is CORRECT. Do NOT add `"claude.exe"`. (Real doc gap — match rule undocumented; doyle fixing docs.)
+- **F2b (BLOCKING — spt-core v0.9.1):** normalize strips only a TRAILING `.exe`, so
+  `claude.exe.old.<ts>` (Claude Code's updater renames the IN-USE exe on self-update) never matches
+  `"claude"` → `ADAPTER_UNRESOLVED`. Common production state. Fix (spt-core, todlando): normalize =
+  lowercase + stem-before-first-dot. Keep `host_binaries=["claude"]` — matches once v0.9.1 lands.
+
+**Resume on doyle's v0.9.1 ping:** (1) ensure fresh 0.9.0+ broker (`spt daemon stop`); (2) re-run the
+bare `/sptc:live` verify (no --adapter; perch stamps claude-spt + state=live_agent + online + clean
+LIVE block; confirm poll-stays-ready); (3) ship v0.3.0 (repack both .spt, CHANGELOG already drafted,
+tag, GH release) + cplugs republish (plugin.json 0.1.2→0.1.3, session-start.sh structural change);
+(4) re-acquire published v0.3.0 on the operator's machine (flips temp/source Pointer → GhReleaseManaged).
+Version bump (0.2.1→0.3.0) + CHANGELOG [0.3.0] are STAGED uncommitted; commit with the release.
+
 ## Closes
 The whole legacy-parity arc (doyle). PREP-4 fully activated; staging from v0.2.1 retired.

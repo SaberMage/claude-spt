@@ -8,6 +8,22 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.3.0] - 2026-06-17
+
+### Changed
+- **Going live is now a single, seamless step.** A live agent comes up directly — no behind-the-scenes
+  adapter selection, no chained setup commands. `/sptc:live` just brings your session up live, and
+  `/sptc:ready` brings it up reachable-but-light; the difference is simply which one you run. This is
+  full parity with the original live-agent experience.
+- **Requires spt-core 0.9.0 or newer.** This release uses spt-core's newer automatic
+  harness-resolution, so the adapter now needs spt-core **0.9.0+**. If you keep spt-core up to date
+  (it self-updates), there's nothing to do; on an older spt-core the adapter will decline to install
+  until you update.
+
+### Fixed
+- **Setup pins this adapter as your default.** `/sptc:setup` now records `claude-spt` as the active
+  adapter for Claude Code, so going live or ready needs no extra flags.
+
 ## [0.2.1] - 2026-06-16
 
 ### Fixed
