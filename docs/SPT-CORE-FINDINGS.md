@@ -16,8 +16,8 @@
 | F-006 | 2026-06-15 | **RESOLVED + interim RETIRED (v0.8.1 dogfood 2026-06-16)** — install-dir resolution (REQ-INSTALL-11) dogfood-proven for BOTH binaries: digest-proof + daemon-hosted Psyche resolve straight from `…/adapters/_github/<safe>/` with nothing on PATH. Interim PATH-copy step dropped from both /sptc:setup bodies; interim copies deleted | `--release` bundles + extracts the adapter binaries beside the manifest, but bare-name `[digest]`/`[session]` templates resolve from PATH only → bundled binaries don't resolve (copy-mode) |
 | F-007 | 2026-06-16 | **RESOLVED-SHIPPED (v0.8.0)** — `spt how-to live` topic is live; /sptc:live re-pointed at it; the int's relay leg is green on 0.8.0 (psyche-spawn moved to daemon-host = real-session, see v0.8.0 dogfood note) | `spt how-to live` was `NO_SUCH_TOPIC`; the non-interactive live-bringup was `--manifest` + persistent-child `api listen` (Monitor surrogate) |
 | F-008 | 2026-06-16 | **OPEN — reported to doyle** — blocks SCOPE LOCKED v1 setup #5 (legacy migration); /sptc:setup can't author the step against the public surface | No published legacy-migration command (`spt` has no migrate/import/adopt/legacy/owl verb in any subcommand, no how-to) though spt-core CONTEXT.md commits to claude_skill_owl→spt migration as first-class |
-| F-009 | 2026-06-16 | **OPEN — PENDING DELIVERY to doyle (he's offline; report in commit ddf1965 + below)**. Adapter worked around it (greedy `--prompt`); recommend spt-core fix so it doesn't bite every adapter | `[session.psyche_init]`/extractor command templating substitutes a `{key}` into the command STRING then WHITESPACE-SPLITS → ANY multi-word fill (e.g. `{psyche_prompt}`) explodes into stray argv tokens. Survived only by single-token fills |
-| F-010 | 2026-06-16 | **OPEN — PENDING DELIVERY to doyle**. Hardening request on top of the v0.8.1 `psyche_host_error` surface | Silent-exit still maskable: `psyche_host_error` stays clear when the detached spawn() succeeds but the child exits IMMEDIATELY (e.g. arg-parse exit 2). A crash-on-startup host looks identical to a healthy one |
+| F-009 | 2026-06-16 | **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2, 2026-06-17)**. doyle's fix: command templating now fills each `{key}` as ONE argv element (tokenize-then-fill). Argv-capture confirmed the multi-line `{psyche_prompt}` arrives as a single element, newlines intact. Adapter keeps greedy `--prompt` as defensive | `[session.psyche_init]`/extractor command templating substitutes a `{key}` into the command STRING then WHITESPACE-SPLITS → ANY multi-word fill (e.g. `{psyche_prompt}`) explodes into stray argv tokens. Survived only by single-token fills |
+| F-010 | 2026-06-16 | **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2, 2026-06-17)**. A spawn-then-exit psyche now stamps `psyche_host_error{reason:"host not resident within 5s ...", attempts:2}` on the parent perch (rendered `psyche-host: FAILED (...)` by `endpoint list`/`whoami`); status stays online (liveness authoritative). Forced fast-exit confirmed it | Silent-exit still maskable: `psyche_host_error` stays clear when the detached spawn() succeeds but the child exits IMMEDIATELY (e.g. arg-parse exit 2). A crash-on-startup host looks identical to a healthy one |
 
 ---
 
@@ -691,8 +691,13 @@ placeholder slot as exactly **one** argv element (no post-substitution whitespac
 multi-word fills usable without every adapter hand-rolling a slurp. Alternatively, document the
 constraint loudly (fills must be single-token) — but that effectively forbids prompt-like keys.
 
-**Status:** **OPEN — PENDING DELIVERY to doyle** (offline at fix time; full report in commit ddf1965
-and queued to retry `spt send doyle`). Adapter unblocked via the greedy workaround.
+**Status:** **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2 / counter 18, 2026-06-17).** doyle's fix:
+command-template substitution now fills each `{key}` as ONE argv element (tokenize-then-fill), applied
+to every `[session.<role>]` template. Re-validated by argv-capture on the daemon-spawned psyche with a
+STRICT single-value `--prompt` parser (greedy workaround removed so spt-core's fill is what is tested):
+the psyche HOSTED, and the raw argv had exactly 7 elements with the `--prompt` value = the entire
+multi-line prompt as ONE element (newlines intact). The shipped adapter keeps greedy `--prompt` as
+defensive (a single element passes `join(" ")` unchanged; a pre-0.8.2 split is still reconstructed).
 
 ---
 
@@ -714,6 +719,11 @@ comes online) before clearing/omitting `psyche_host_error`, and record `{reason:
 within <n>s"}` otherwise. This closes the last masking gap so "online + no Psyche + no cause" cannot
 recur.
 
-**Status:** **OPEN — PENDING DELIVERY to doyle** (offline; report in commit ddf1965 + queued send).
-Lower urgency than F-009 (the adapter fix removes our trigger), but it would have surfaced the bug
-directly instead of via argv instrumentation.
+**Status:** **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2 / counter 18, 2026-06-17).** A daemon-hosted
+psyche that spawns then exits immediately is now reported a FAILED host: the daemon stamps the
+harness-reachable `psyche_host_error { reason, ts, attempts }` on the PARENT perch, de-onlines the
+phantom nested `{id}-psyche` perch, un-hosts, and arms a cooldown. Re-validated by deploying a
+psyche that `exit(2)`s at startup: the parent perch got
+`psyche_host_error{reason:"host not resident within 5s (psyche perch missing/dead pid)", attempts:2}`,
+and both `spt endpoint list` and `spt whoami` rendered `psyche-host: FAILED (...)` after the liveness
+line (status itself stays `online` — liveness remains authoritative). No more silent phantom.
