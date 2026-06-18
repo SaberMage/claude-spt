@@ -84,17 +84,56 @@ impl Args {
     }
 }
 
+/// Tool/permission SANDBOX flags applied to EVERY psyche claude turn (seed + each pulse) — legacy
+/// owl parity (claude_skill_owl `src/live/wrapper/claude.rs`, init/resume/final all carry this exact
+/// set). The Psyche is a CONSTRAINED companion, not a general agent:
+///   * `--tools Read,Edit,Write` — the commune authoring needs file IO only; NO Bash/network/etc.
+///     (legacy ALSO scopes an `--agents owl-psyche` subagent to the same three; the session-level
+///     `--tools` cap is the effective gate, and our role-prompt arrives via `-p`, not an embedded
+///     `--agents` template, so we apply the cap directly rather than recreating the subagent).
+///   * `--disable-slash-commands` — the Psyche drives itself from the prompt; no slash surface.
+///   * `--dangerously-skip-permissions` — REQUIRED, not cosmetic: the daemon spawns this runner
+///     DETACHED with `Stdio::null` (see run()), so an interactive permission prompt would have no
+///     operator/stdin to approve it and would HANG the turn. Auto-approve within the Read/Edit/Write
+///     sandbox is the safe combination (bounded surface + no deadlock).
+///   * model pin (`sonnet` primary, `opus` fallback, `medium` effort) — mirrors legacy so the cheap
+///     companion does not silently ride the parent's heavier model.
+/// [impl->REQ-SKILL-LIVE]
+fn sandbox_flags() -> Vec<String> {
+    [
+        "--model",
+        "sonnet",
+        "--fallback-model",
+        "opus",
+        "--effort",
+        "medium",
+        "--dangerously-skip-permissions",
+        "--disable-slash-commands",
+        "--tools",
+        "Read,Edit,Write",
+    ]
+    .iter()
+    .map(|s| (*s).to_string())
+    .collect()
+}
+
 /// argv for the one-shot SEED turn: establishes the Psyche's headless `claude` session in the cwd
-/// (`{psyche_dir}`) from the daemon-supplied psyche prompt. `-p` is the headless/print mode.
+/// (`{psyche_dir}`) from the daemon-supplied psyche prompt. `-p` is the headless/print mode; the
+/// sandbox flags (see [`sandbox_flags`]) constrain it to the legacy Read/Edit/Write companion box.
 fn seed_cmd(prompt: &str) -> Vec<String> {
-    vec!["-p".into(), prompt.into()]
+    let mut v = vec!["-p".into(), prompt.into()];
+    v.extend(sandbox_flags());
+    v
 }
 
 /// argv for a per-PULSE turn: resume the seeded session (`--continue` picks the most-recent session
 /// in the cwd) and feed the pulse body as the turn's prompt. The seeded role-prompt makes that
-/// claude author a commune delta for this pulse.
+/// claude author a commune delta for this pulse. Carries the SAME sandbox flags as the seed so the
+/// constraint holds for every turn, not just the first (legacy applies them to resume too).
 fn pulse_cmd(pulse: &str) -> Vec<String> {
-    vec!["--continue".into(), "-p".into(), pulse.into()]
+    let mut v = vec!["--continue".into(), "-p".into(), pulse.into()];
+    v.extend(sandbox_flags());
+    v
 }
 
 /// argv for one perch poll: `spt ready <id> --once` registers the perch (first call), drains the
@@ -223,16 +262,31 @@ mod tests {
 
     #[test]
     fn seed_is_headless_print_of_the_prompt() {
-        assert_eq!(seed_cmd("hello psyche"), vec!["-p", "hello psyche"]);
+        // -p <prompt> leads; sandbox flags follow.
+        let c = seed_cmd("hello psyche");
+        assert_eq!(&c[..2], &["-p", "hello psyche"]);
+        assert_eq!(&c[2..], &sandbox_flags()[..]);
     }
 
     #[test]
     fn pulse_resumes_then_prints() {
         // --continue MUST precede -p so the turn resumes the seeded session rather than starting fresh.
-        assert_eq!(
-            pulse_cmd("commune now"),
-            vec!["--continue", "-p", "commune now"]
-        );
+        let c = pulse_cmd("commune now");
+        assert_eq!(&c[..3], &["--continue", "-p", "commune now"]);
+        assert_eq!(&c[3..], &sandbox_flags()[..]);
+    }
+
+    #[test]
+    fn every_turn_is_sandboxed_to_legacy_owl_parity() {
+        // The Psyche is a constrained companion (claude_skill_owl parity): Read/Edit/Write only,
+        // slash-commands off, and skip-permissions because the daemon spawns it detached/null-stdin
+        // (an interactive prompt would deadlock). Both seed AND pulse must carry the full set.
+        for cmd in [seed_cmd("seed"), pulse_cmd("pulse")] {
+            assert!(cmd.windows(2).any(|w| w == ["--tools", "Read,Edit,Write"]), "tools cap missing: {cmd:?}");
+            assert!(cmd.iter().any(|a| a == "--disable-slash-commands"), "slash-commands not disabled: {cmd:?}");
+            assert!(cmd.iter().any(|a| a == "--dangerously-skip-permissions"), "skip-permissions missing (detached spawn would hang): {cmd:?}");
+            assert!(cmd.windows(2).any(|w| w == ["--model", "sonnet"]), "model not pinned: {cmd:?}");
+        }
     }
 
     #[test]
