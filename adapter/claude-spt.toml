@@ -28,7 +28,7 @@
 [adapter]
 name = "claude-spt"
 kind = "harness"
-version = "0.3.0"
+version = "0.4.0"
 # Floor BUMPED to 0.9.0 (2026-06-17, PREP-4): the legacy-parity bringup requires spt-core's
 # adapter-agnostic seed + bind-time resolution by [adapter] host_binaries (shipped v0.9.0).
 # On <0.9.0 `api seed`/`listen` still mandate --adapter, so the bare flow this manifest now wires

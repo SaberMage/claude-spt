@@ -8,6 +8,23 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.4.0] - 2026-06-18
+
+### Changed
+- **Your live-agent companion now runs in a safe, limited mode.** When you go live with
+  `/sptc:live`, the background companion that writes your context-resume notes works with a
+  file-only toolset and a lighter, cheaper model. It is more contained and costs less to run,
+  with no change to what you see or do.
+- **Removed the experimental `:deep` profile.** `claude-spt:deep` was an unused placeholder. The
+  one shipped profile overlay is `claude-spt:ccs` (routes sessions through `ccs`). If you ever
+  selected `:deep`, use `:ccs` or the base adapter instead.
+
+### Fixed
+- **Sessions that spt starts for you no longer stall on a permission prompt.** When spt brings up
+  a Claude Code session on your behalf (the live companion, and the spt-hosted launcher), it could
+  hang waiting on an approval prompt that no one was there to answer. Those sessions now start
+  cleanly.
+
 ## [0.3.0] - 2026-06-17
 
 ### Changed
