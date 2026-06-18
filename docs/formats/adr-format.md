@@ -19,7 +19,7 @@
 ## The sections
 
 - **Status** — `proposed` | `accepted` | `superseded`, plus a date. If it changes an earlier
-  decision, link it: `supersedes [ADR-0003](0003-….md)`. When a later ADR overrides this one,
+  decision, link it: `supersedes [ADR-NNNN](NNNN-….md)`. When a later ADR overrides this one,
   come back and mark this one `superseded by …`. Be precise about *what* is superseded — a later
   ADR may reverse one mechanism while keeping another's framing.
 - **Context** — the forces that made the decision necessary: constraints, the real problems

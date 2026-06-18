@@ -7,7 +7,7 @@
 
 <!-- proposed | accepted | superseded — plus a date, and links if it supersedes / is superseded. -->
 proposed (`<YYYY-MM-DD>`)
-<!-- e.g. accepted (2026-01-15) · supersedes [ADR-0003](0003-old-decision.md) -->
+<!-- e.g. accepted (2026-01-15) · supersedes [ADR-NNNN](NNNN-old-decision.md) -->
 
 ## Context
 
