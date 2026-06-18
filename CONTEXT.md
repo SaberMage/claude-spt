@@ -33,6 +33,22 @@ spawns-or-attaches a CC endpoint via spt-core's spt-hosted topology (broker PTY 
 attach). The spt-core realization of legacy's unbuilt "Capsule" milestone. _Avoid_: equating
 it with psmux/sendkeys — spt-core's broker is the terminal host.
 
+**Psyche** — a LiveAgent's detached *companion* process. When a session goes live
+(`/sptc:live`), spt-core's daemon hosts a Psyche alongside it: the Psyche owns its own
+perch (`<parent>-psyche`), is woken by daemon *pulses*, and on each pulse authors a
+*commune*. It never replies or notifies (that is the echo-commune, a different actor) and
+exits at session end. A *ready* agent has no Psyche — live-vs-ready is the command, not a
+profile. (Realized here by the `claude-spt-psyche` runner.)
+
+**commune** — the context-delta a Psyche writes on each pulse: a brief that lets the
+parent agent resume coherently after a context wipe (`/clear` / compact). A file-drop the
+daemon ingests, not an `api` verb.
+
+**psyche sandbox** — the constrained surface a Psyche's `claude` turns run under:
+Read/Edit/Write tools only, slash-commands disabled, permissions auto-approved, cheap
+pinned model. Deliberately narrower than the parent agent (which is unconstrained). Mirrors
+legacy owl's psyche box; see `docs/adr/0003-*`.
+
 **casual end user** — a user who *uses* an spt-powered system mostly-invisibly, vs the
 adapter/shell *developer* who is spt-core's nominal target. spt-claude-code serves casual
 users: install the plugin, get spt-core for free.

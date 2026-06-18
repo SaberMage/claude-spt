@@ -190,6 +190,22 @@ adapter:profile · 5: whoami obsolescence). spt-claude-code blocks on these.
 - AGENTS.md = source of truth + thin `CLAUDE.md`=`@AGENTS.md` stub.
 - Must teach acquisition of `traceable-reqs` + the grill-with-docs skill (toml/INSTANTIATE).
 
+## Decisions — 2026-06-18
+
+- **`claude-spt:deep` profile REMOVED — LOCKED.** It was a placeholder (digest `window_turns=20`
+  + a label leaf) that forked nothing real; it existed only to demonstrate overlay-observability,
+  which `:ccs` already proves. `:ccs` is now the **sole shipped overlay**. Reversible (re-add a
+  profile any time) — recorded so the absence reads as intent, not omission.
+- **Non-interactive spt-spawned CC carries `--dangerously-skip-permissions` — LOCKED.** Both
+  `[session.self]` bringup commands (base `claude`, the `ccs` profile) pass it: the broker spawns CC
+  into a PTY with no operator, so the permission gate would deadlock the launch. Same root cause as
+  the Psyche (below); cross-cutting invariant in `docs/KNOWN-HAZARDS.md` §2.2.
+- **Psyche runs sandboxed at legacy-owl parity — LOCKED (→ `docs/adr/0003-*`).** Every
+  `claude-spt-psyche` turn (seed + each pulse): `--tools Read,Edit,Write --disable-slash-commands
+  --dangerously-skip-permissions --model sonnet --fallback-model opus --effort medium`. Bounded
+  blast radius + no detached-deadlock; mirrors `claude_skill_owl`. Closes a parity gap (psyche was
+  previously bare `claude`).
+
 ## Open threads (grill queue)
 
 - [ ] CI trigger mechanism (git-hook signal vs polling routine)

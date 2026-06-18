@@ -276,6 +276,7 @@ mod tests {
         assert_eq!(&c[3..], &sandbox_flags()[..]);
     }
 
+    // [unit->REQ-HAZARD-PSYCHE-PERMS-DEADLOCK]
     #[test]
     fn every_turn_is_sandboxed_to_legacy_owl_parity() {
         // The Psyche is a constrained companion (claude_skill_owl parity): Read/Edit/Write only,

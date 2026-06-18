@@ -83,3 +83,31 @@ required_stages = []   # activate (["unit"] or ["unit","int"]) when you cover it
 - **cite:** Operator diagnosis 2026-06-15 (perch collision, self-inflicted via nested `claude -p`
   loading the spt plugin). Reference only — binding evidence is the tagged test under
   `REQ-HAZARD-PERCH-COLLISION`.
+
+### 2.2 A non-interactive spt-spawned CC deadlocks on a permission prompt
+
+<!-- [doc->REQ-HAZARD-PSYCHE-PERMS-DEADLOCK] -->
+
+- **Failure:** spt-core spawns Claude Code **non-interactively** on two paths — the Psyche runner
+  (`claude-spt-psyche`, launched **detached** with `Stdio::null`) and the `[session.self]` bringup
+  (broker-held **PTY**, no operator attached at spawn). If such a CC turn hits a tool-use that
+  requires permission approval, the interactive permission gate has **no operator / no stdin** to
+  approve it — the turn blocks indefinitely. For the Psyche this is silent (detached, stdio
+  discarded): the daemon believes it hosts a working companion that never produces a commune.
+- **Invariant:** Every CC process spt-core spawns non-interactively MUST bypass the permission gate
+  with `--dangerously-skip-permissions`. Concretely: each `claude-spt-psyche` turn (seed **and**
+  every pulse) carries it, and **both** `[session.self]` bringup commands (base `claude`, the `ccs`
+  profile) carry it. The Psyche additionally runs **inside** a Read/Edit/Write tool sandbox
+  (`--tools Read,Edit,Write --disable-slash-commands`), so auto-approve is bounded, not blanket
+  trust (see `docs/adr/0003-*`).
+- **Mapping / notes:** `tools/claude-spt-psyche/src/main.rs` `sandbox_flags()` appends the flag (and
+  the tool cap) to both `seed_cmd` and `pulse_cmd`; the unit test
+  `every_turn_is_sandboxed_to_legacy_owl_parity` asserts it on every turn. The bringup leg is a
+  manifest property — `adapter/claude-spt.toml` `[session.self].command` and
+  `[profiles.ccs.session.self].command` must both contain `--dangerously-skip-permissions`; a unit
+  assertion over the manifest covers it. The legacy sibling `claude_skill_owl`
+  (`src/live/wrapper/claude.rs`) applies the identical flag to init/resume/final, which is why this
+  is a *committed-never-to-reintroduce* invariant rather than an observed incident here.
+- **cite:** `claude_skill_owl/src/live/wrapper/claude.rs` (init/resume/final all pass
+  `--dangerously-skip-permissions`); identified 2026-06-18 while reaching psyche parity. Reference
+  only — binding evidence is the tagged tests under `REQ-HAZARD-PSYCHE-PERMS-DEADLOCK`.

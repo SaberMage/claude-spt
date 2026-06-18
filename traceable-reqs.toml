@@ -71,7 +71,7 @@ required_stages = ["doc", "impl"]  # doc: ADR-0001. impl: plugin/sptc/bootstrap.
 [[requirements]]
 id = "REQ-DIST-HOOKS-API"
 title = "hooks.json delegates to `spt api` rather than carrying adapter logic"
-required_stages = ["doc", "impl", "unit", "int"]  # doc: ADR-0001/0002. impl: hooks.json + wrappers. unit: tests/hooks-parse.sh. int: ci/hooks/poll-int.sh — `spt api poll` on live v0.7.1 emits the canonical <EVENT> envelope (ADR-0020), confirm-matched through render_frames; __REPLY_TO__ relic gone, multi-drain splits on </EVENT>. 5/5 green 2026-06-15 (throwaway perch, torn down).
+required_stages = ["doc", "impl", "unit", "int"]  # doc: ADR-0001/0002. impl: hooks.json + wrappers. unit: tests/hooks-parse.sh. int: ci/hooks/poll-int.sh — `spt api poll` on live v0.7.1 emits the canonical <EVENT> envelope, confirm-matched through render_frames; __REPLY_TO__ relic gone, multi-drain splits on </EVENT>. 5/5 green 2026-06-15 (throwaway perch, torn down).
 
 [[requirements]]
 id = "REQ-DIST-MANIFEST-SCHEMA"
@@ -90,7 +90,7 @@ required_stages = ["int"]  # doc (ADR-0001 cc-launcher) + impl (adapter [session
 
 [[requirements]]
 id = "REQ-DIST-DIGEST-EXTRACTOR"
-title = "The claude-spt [digest] extractor (claude-spt-digest) maps Claude Code's JSONL transcript to the published digest-record NDJSON contract (role∈{input,agent,tool}; text/tool/ts), emitting RAW records for spt-core's renderer (ADR-0019)"
+title = "The claude-spt [digest] extractor (claude-spt-digest) maps Claude Code's JSONL transcript to the published digest-record NDJSON contract (role∈{input,agent,tool}; text/tool/ts), emitting RAW records for spt-core's renderer"
 required_stages = ["impl", "unit", "int"]  # impl: tools/claude-spt-digest (Rust — CC JSONL -> digest NDJSON; per-session locate of <slug>/<session_id>.jsonl under the projects root via the {session_id} the command receives; native UTF-8 stdout; defensive ~ expansion) + ci/digest/build.sh gate. unit: the crate's cargo tests (9: input/agent/tool mapping, arg-key preference, thinking+tool_result+noise+bad-json drops, UTF-8 round-trip, contract invariants, tilde expansion) run by ci/digest/build.sh. int: ci/digest/digest-proof-int.sh — `spt adapter digest-proof claude-spt --sample` on live v0.7.2 ran the published-shape extractor command (`--session {session_id} --in {source}`) and rendered DIGEST_PROOF_OK (5 parsed / 0 dropped). GREEN 2026-06-15 (registry left clean via soft-remove). Was F-004-blocked (digest-proof --sample passed an empty substitution-key map, cli.rs:5135) — doyle's spt-core PR#14 fix (v0.7.2, release counter 14) now fills {id}+{session_id} + an optional --session, matching runtime. doc deferred (the mapping is documented in the module + manifest [digest] comment; a docs-site section lands with the doc slice).
 
 [[requirements]]
@@ -146,6 +146,11 @@ required_stages = ["unit"]  # unit: tests/acceptance-harness.sh. Diagnosed 2026-
 id = "REQ-HAZARD-MSYS-PATHCONV"
 title = "Hook wrappers read the CC payload from stdin, never from a /-leading positional argv (Git-Bash/MSYS path-mangles those on Windows)"
 required_stages = ["unit"]  # unit: tests/msys-hazard.sh. Confirmed live 2026-06-15 (UPS validation run A).
+
+[[requirements]]
+id = "REQ-HAZARD-PSYCHE-PERMS-DEADLOCK"
+title = "Every CC process spt-core spawns NON-INTERACTIVELY carries --dangerously-skip-permissions: each claude-spt-psyche turn (seed + every pulse, detached/null-stdin) AND both [session.self] bringup commands (base claude + ccs profile, broker PTY). An interactive permission prompt with no operator deadlocks the turn (silently, for the detached Psyche). The Psyche additionally runs inside a Read/Edit/Write tool sandbox so auto-approve is bounded."
+required_stages = ["doc", "unit"]  # doc: docs/KNOWN-HAZARDS.md §2.2 + docs/adr/0003-*. unit: tools/claude-spt-psyche/src/main.rs every_turn_is_sandboxed_to_legacy_owl_parity (psyche turns) + tests/manifest-shortcut.sh (both [session.self] commands carry the flag). Legacy parity: claude_skill_owl src/live/wrapper/claude.rs (init/resume/final all skip-permissions). Identified 2026-06-18 reaching psyche parity.
 
 # ── Milestone: DOCS-SITE (mdBook, drift-gated) — minted on-start. Dual-audience product docs
 # in docs-site/, built with mdBook, gated against drift. Seeded from docs/DOCS-STRATEGY.md.
