@@ -58,12 +58,12 @@ sptc_unescape() {
     -e 's/&lt;/</g' -e 's/&gt;/>/g' -e 's/&quot;/"/g' -e 's/&amp;/\&/g'
 }
 
-# Render an `api poll` drain ($1) for CC. Canonical format (ADR-0020): every message is a
+# Render an `api poll` drain ($1) for CC. Canonical format: every message is a
 # self-delimiting `<EVENT type="msg" from="<sender>">body</EVENT>` envelope (spt-proto::event) —
 # the same grammar the live listener emits. Multi-message drains split cleanly on `</EVENT>`.
 # Sender is preserved as `from=` (reply-correlation). NOTE: targets canonical <EVENT>; the current
 # 0.6.0 binary still emits a `__REPLY_TO__` relic at the poll surface until the REQ-MSG-ENVELOPE
-# refactor lands (ADR-0020) — finalize/validate against poll only post-refactor. [unit->REQ-UPS-INJECTION]
+# refactor lands — finalize/validate against poll only post-refactor. [unit->REQ-UPS-INJECTION]
 render_frames() {
   _in="$1"
   [ -z "$_in" ] && return 0

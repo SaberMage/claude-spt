@@ -10,7 +10,7 @@
    ccs profiles), reconcile whoami, THEN publish as sptc. `new-alarm` stays **deferred** — doyle
    TRIAGED it (high-prio 2026-06-15) as an **ACCEPTED parity gap = "deferred-pending-arrangement-
    system", NOT missing**: spt-core has only the alarm event shape + relay handling + a test
-   fixture; the durable timer is a deliberate deferral (DEFERRED.md:43, ADR-0018 Q4/V3), and the
+   fixture; the durable timer is a deliberate deferral (DEFERRED.md:43), and the
    operator has a superseding "arrangement" system in mind. **Do NOT build an adapter-side stopgap
    timer** (throwaway vs the coming model), **no REQ minted**. Remove the dead stub (deferred ≠
    shipping a no-op skill); doyle loops me when the arrangement design surfaces.

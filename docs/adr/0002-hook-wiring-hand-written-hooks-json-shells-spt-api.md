@@ -53,11 +53,11 @@ queued messages (`api poll`) is where `/sptc:X` skill-instruction injection land
 `[strings]`, M12-dep). `api poll` emitting to stdout is by design (L149); formatting it for CC is
 ours. PTY/relay inject methods are M3 roadmap (M2a = stdout/hook only) — not a gap.
 
-### `api poll` parse contract — the `<EVENT>` envelope (ADR-0020, operator-ruled 2026-06-15)
+### `api poll` parse contract — the `<EVENT>` envelope (operator-ruled 2026-06-15)
 
 > **Supersedes** the earlier `__REPLY_TO__` framing (a mis-elevated relic, now deleted from
 > spt-core — see `docs/SPT-CORE-FINDINGS.md` F-002, resolved-by-design). Confirmed by doyle as the
-> deliberate poll-surface contract (ADR-0020 §1). **Transitional:** the current 0.6.0 binary still
+> deliberate poll-surface contract. **Transitional:** the current 0.6.0 binary still
 > emits the `__REPLY_TO__` relic at poll until `REQ-MSG-ENVELOPE` ships; build to `<EVENT>` but
 > validate against poll only post-refactor.
 
@@ -76,7 +76,7 @@ The **canonical format at every surface, including `api poll`, is the `spt-proto
 Parser (`render_frames`, `plugin/sptc/hooks/_common.sh`): split on `</EVENT>`; per envelope, read
 the `from` attr → `<sptc_messages from="<sender>">`, decode the body (`<br>` → newline, then entity
 unescape `&lt; &gt; &quot;` then `&amp;` **last**). **Sender preserved** (reply-correlation: access
-gate `ADR-0009`, Psyche routing `ADR-0012`), never silently stripped. Covered by
+gate, Psyche routing), never silently stripped. Covered by
 `tests/hooks-parse.sh` (named / entity / multi-message / no-from / empty).
 
 **Harness injection-size limit is ours** (harness-agnostic boundary — spt-core emits whole
@@ -126,7 +126,7 @@ skill) on the real CC 2.1.177 binary:
 
 ## Open / resolved `int`
 
-1. **`api poll` → `additionalContext` round-trip — RESOLVED (v0.7.1, 2026-06-15).** ADR-0020 shipped
+1. **`api poll` → `additionalContext` round-trip — RESOLVED (v0.7.1, 2026-06-15).** The canonical poll envelope shipped
    in v0.7.1; a throwaway byte-capture against the live `spt api poll` drain (`od`-verified) confirmed
    the canonical `<EVENT type="msg" from=…>body</EVENT>\n` envelope (no `__REPLY_TO__`, no
    `<EVENT-PART>` on normal drains, multi-drain splits on `</EVENT>`), and `render_frames` confirm-

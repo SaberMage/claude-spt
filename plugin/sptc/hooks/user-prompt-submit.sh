@@ -25,8 +25,8 @@ if [ -n "$id" ]; then
   SPT=$(spt_bin)
   frames=$("$SPT" api --adapter "$ADAPTER" poll "$id" --session-id "$sid" 2>/dev/null)
   if [ -n "$frames" ]; then
-    # Format for CC, preserving the sender (reply-correlation: ADR-0009/0012). render_frames parses
-    # the self-delimiting <EVENT> envelope (ADR-0020) — multi-message drains split on </EVENT>.
+    # Format for CC, preserving the sender (reply-correlation). render_frames parses
+    # the self-delimiting <EVENT> envelope — multi-message drains split on </EVENT>.
     rendered=$(render_frames "$frames")
     [ -n "$rendered" ] && out="${out:+$out
 }$rendered"

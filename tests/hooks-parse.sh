@@ -22,7 +22,7 @@ check "unescape br+entities" \
   "$(printf 'a <b>\n"c" & &lt;')" \
   "$(sptc_unescape 'a &lt;b&gt;<br>&quot;c&quot; &amp; &amp;lt;')"
 
-# --- render_frames: canonical <EVENT> envelope (ADR-0020) --- [unit->REQ-UPS-INJECTION]
+# --- render_frames: canonical <EVENT> envelope --- [unit->REQ-UPS-INJECTION]
 # Named single, <br>-escaped multiline body, sender preserved.
 named=$(render_frames '<EVENT type="msg" from="doyle">hello<br>world</EVENT>')
 check "render named <EVENT>" \

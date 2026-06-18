@@ -62,7 +62,7 @@ Out (deferred to post-M12 — sequence after doyle's M12-live ping):
 - [x] **Hook-side id-resolution** (ADR-0002 Open#1) resolved via `spt whoami`.
 - [x] **Parser unit-tested** (`tests/hooks-parse.sh`: `json_str` + `render_frames`, 7/7 pass).
       `REQ-DIST-HOOKS-API` + `REQ-UPS-INJECTION` activated to `[doc,impl,unit]` (`int` held).
-- [x] **F-002 resolved-by-design (ADR-0020):** canonical poll format = self-delimiting `<EVENT>`
+- [x] **F-002 resolved-by-design:** canonical poll format = self-delimiting `<EVENT>`
       envelope (`__REPLY_TO__` relic deleted). Parser retargeted to `<EVENT>` (split on `</EVENT>`,
       `from` attr + `<br>`/entity unescape) — **multi-message built + unit-tested** (10/10). No
       `<EVENT-PART>` reassembly at poll (listener-stream-only). Follow-up: CC `additionalContext`

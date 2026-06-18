@@ -30,7 +30,7 @@ name = "claude-spt"
 kind = "harness"
 version = "0.3.0"
 # Floor BUMPED to 0.9.0 (2026-06-17, PREP-4): the legacy-parity bringup requires spt-core's
-# adapter-agnostic seed + bind-time resolution by [adapter] host_binaries (shipped v0.9.0, ADR-0021).
+# adapter-agnostic seed + bind-time resolution by [adapter] host_binaries (shipped v0.9.0).
 # On <0.9.0 `api seed`/`listen` still mandate --adapter, so the bare flow this manifest now wires
 # would break — the compat gate refuses the adapter on older spt-core rather than misbehave.
 min_spt_core_version = "0.9.0"
@@ -38,7 +38,7 @@ hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # host_binaries — STAGED ahead of spt-core v0.9.0 (doyle 2026-06-16). The pid→binary match-key for
 # adapter-agnostic resolution: `spt api listen <id>` resolves the owning adapter/profile by walking
 # parent pid → exe basename → host_binaries match → active-profile pointer → registered_at_ms
-# fallback (ADR-0021, CONTEXT §170-186). Additive + N-1-safe: harmless before spt-core reads it (the
+# fallback (CONTEXT §170-186). Additive + N-1-safe: harmless before spt-core reads it (the
 # vendored v0.7.0 schema's [adapter] allows additional props), live once v0.9.0 + `spt adapter use`
 # land. Claude Code's host process basename is `claude`. [impl->REQ-SKILL-LIVE]
 host_binaries = ["claude"]
@@ -193,7 +193,7 @@ activity = ["hook"]
 idle = ["hook"]
 
 # ── [digest] ───────────────────────────────────────────────────────────────────────────────
-# Session-digest extractor seam (ADR-0019). CC's transcript is JSONL (one event per line); the
+# Session-digest extractor seam. CC's transcript is JSONL (one event per line); the
 # extractor maps that native log → the published {role,text,tool,ts} digest-record contract,
 # one JSON record per output line. (CC has a rich log, so the extractor seam fits — a defensible
 # divergence from the deliberately log-less mock adapter, which declares no [digest].)

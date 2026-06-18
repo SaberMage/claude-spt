@@ -1,4 +1,4 @@
-# claude-spt-digest — the [digest] session-digest extractor for the claude-spt adapter (ADR-0019).
+# claude-spt-digest — the [digest] session-digest extractor for the claude-spt adapter.
 # Rust for the same reasons legacy spt is Rust: a compiled, dependency-light binary with no
 # interpreter-on-PATH or locale-encoding hazards (stdout is always UTF-8), one .exe the fleet can
 # spawn bare on Win+Linux. Builds via ci/digest/build.sh, gated in ci/run-gates.sh.

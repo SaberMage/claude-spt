@@ -36,7 +36,7 @@
       ]
     },
     "digest": {
-      "description": "`[digest]` — the adapter-declared session-digest extractor seam (ADR-0019).",
+      "description": "`[digest]` — the adapter-declared session-digest extractor seam.",
       "anyOf": [
         {
           "$ref": "#/$defs/Digest"
@@ -247,7 +247,7 @@
           ]
         },
         "notif": {
-          "description": "`[session.notif]` — the endpoint-native notification render\n(ADR-0007's `notif_command` seam, REQ-NOTIF-2): an OS toast, a\nGameRobot `alert-symbol`, anything the adapter can run. Spawned\ndetached when a notif surfaces at this endpoint, combinable with the\nagent-surface delivery. Keys spt-core fills: `{notif_id}`,\n`{notif_from}`, `{notif_subnet}`, `{notif_body}`.",
+          "description": "`[session.notif]` — the endpoint-native notification render\n(the `notif_command` seam, REQ-NOTIF-2): an OS toast, a\nGameRobot `alert-symbol`, anything the adapter can run. Spawned\ndetached when a notif surfaces at this endpoint, combinable with the\nagent-surface delivery. Keys spt-core fills: `{notif_id}`,\n`{notif_from}`, `{notif_subnet}`, `{notif_body}`.",
           "anyOf": [
             {
               "$ref": "#/$defs/SessionRole"
@@ -389,7 +389,7 @@
       ]
     },
     "Digest": {
-      "description": "`[digest]` — the session-digest extractor seam (ADR-0019). Reverses M9's\n\"no manifest seam\" stance: the digest gets its **own** adapter-declared\nextractor, distinct from `[history]` (which stays opaque + single-session and\nfeeds the echo-commune verbatim). The extractor maps the harness's **native**\nlog → the published `{role, text, tool, ts}` digest-record contract\n([`spt_term::DigestRecord`]).\n\n**Imperative, not a DSL** (ADR-0019 §Decision): real harness logs are nested\n(one line → many entries, mixed block lists, types to filter) — a flat\ndeclarative map cannot express them, and a map powerful enough is a reinvented\nlanguage. So the extractor is an opaque command spt-core never parses, exactly\nlike every other manifest template.\n\n**Source.** By default the extractor reads the **same files as `[history]`**\n(the `locate_template`; DRY). An adapter may override with `source` (the\nown-source escape hatch). `api digest-entry` push remains the always-available\nfallback for a log-less adapter (which declares no `[digest]` at all).\n\n**Presentation.** `window_turns`, `arg_truncation`, and `sprint_collapse` are\nadapter-declared **defaults** any consumer may override at pull/subscribe;\nspt-core ships fallback defaults ([`spt_term::DigestConfig`]) when absent. The\nfixed \"~3 turns\" is no longer an spt-core requirement (ADR-0019).",
+      "description": "`[digest]` — the session-digest extractor seam. Reverses M9's\n\"no manifest seam\" stance: the digest gets its **own** adapter-declared\nextractor, distinct from `[history]` (which stays opaque + single-session and\nfeeds the echo-commune verbatim). The extractor maps the harness's **native**\nlog → the published `{role, text, tool, ts}` digest-record contract\n([`spt_term::DigestRecord`]).\n\n**Imperative, not a DSL** (by design): real harness logs are nested\n(one line → many entries, mixed block lists, types to filter) — a flat\ndeclarative map cannot express them, and a map powerful enough is a reinvented\nlanguage. So the extractor is an opaque command spt-core never parses, exactly\nlike every other manifest template.\n\n**Source.** By default the extractor reads the **same files as `[history]`**\n(the `locate_template`; DRY). An adapter may override with `source` (the\nown-source escape hatch). `api digest-entry` push remains the always-available\nfallback for a log-less adapter (which declares no `[digest]` at all).\n\n**Presentation.** `window_turns`, `arg_truncation`, and `sprint_collapse` are\nadapter-declared **defaults** any consumer may override at pull/subscribe;\nspt-core ships fallback defaults ([`spt_term::DigestConfig`]) when absent. The\nfixed \"~3 turns\" is no longer an spt-core requirement.",
       "type": "object",
       "properties": {
         "extractor": {
@@ -529,7 +529,7 @@
           ]
         },
         "signing_key": {
-          "description": "The adapter's Ed25519 **content-signing public key** (64 hex chars / 32\nbytes). spt-core verifies a pulled payload against this per-adapter key\nbefore applying it (REQ-UPD-5 adapter content signing, ADR-0004 §D) — the\nadapter author signs their own releases; spt-core's release key stays\nscoped to spt-core. **Required for `file_pull`** (there are bytes to\nverify); **optional for `gh_release`** (absent ⇒ HTTPS+GitHub\nfirst-acquisition trust, the same trust `spt adapter add --release` and\nthe installer first-fetch place; present ⇒ the fetched `.spt` is verified\nfail-closed against this key, REQ-UPD-9); not applicable to `delegated`\n(opaque updater).",
+          "description": "The adapter's Ed25519 **content-signing public key** (64 hex chars / 32\nbytes). spt-core verifies a pulled payload against this per-adapter key\nbefore applying it (REQ-UPD-5 adapter content signing) — the\nadapter author signs their own releases; spt-core's release key stays\nscoped to spt-core. **Required for `file_pull`** (there are bytes to\nverify); **optional for `gh_release`** (absent ⇒ HTTPS+GitHub\nfirst-acquisition trust, the same trust `spt adapter add --release` and\nthe installer first-fetch place; present ⇒ the fetched `.spt` is verified\nfail-closed against this key, REQ-UPD-9); not applicable to `delegated`\n(opaque updater).",
           "type": [
             "string",
             "null"

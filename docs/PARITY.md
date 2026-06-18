@@ -84,7 +84,7 @@ hooks (`session-start.sh`, `_common.sh`) are the CLI, not the skill — they STA
 **Not missing — deliberately deferred.** doyle triage (2026-06-15): spt-core carries only the
 alarm *event shape* (spt-proto) + relay handling (psyrelay.rs) + a test fixture; the durable
 "fire-at-target-time" timer still lives in legacy owl in-memory, and an in-daemon durable scheduler
-is a deliberate deferral (DEFERRED.md:43, ADR-0018 Q4/V3 — deferred because the daemon had no
+is a deliberate deferral (DEFERRED.md:43 — deferred because the daemon had no
 one-shot consumer; building pre-consumer = untested dead code). The **operator has a superseding
 "arrangement" system** in mind that would replace the alarm port. Disposition: **do not build an
 adapter-side stopgap timer** (throwaway vs the coming model); **no REQ minted**; **remove the dead

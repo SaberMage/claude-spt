@@ -1,4 +1,4 @@
-//! claude-spt-digest — the `[digest]` session-digest extractor for the claude-spt adapter (ADR-0019).
+//! claude-spt-digest — the `[digest]` session-digest extractor for the claude-spt adapter.
 //!
 //! Maps Claude Code's native JSONL transcript -> the published digest-record contract: NDJSON, one
 //! `{"role","text"?,"tool"?,"ts"?}` object per stdout line. Emits RAW records — spt-core's digest

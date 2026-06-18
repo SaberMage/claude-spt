@@ -97,7 +97,7 @@ spt-core source. A missing capability = a FINDING for doyle/todlando, not a work
 
 ### Still held on spt-core (non-blocking)
 - `sptc-<id>` shortcut EMISSION — spt-core picker wave (not in 0.7.0) + needs `[session.self]`.
-- REQ-MSG-ENVELOPE poll→additionalContext bus-delivery int — **DONE (v0.7.1, 2026-06-15).** ADR-0020
+- REQ-MSG-ENVELOPE poll→additionalContext bus-delivery int — **DONE (v0.7.1, 2026-06-15).** The canonical poll envelope
   published in v0.7.1; byte-capture confirmed `<EVENT>` on the live `api poll` drain (no `__REPLY_TO__`,
   F-002 dissolved), `render_frames` confirm-match. Locked by `ci/hooks/poll-int.sh` (5/5);
   REQ-DIST-HOOKS-API + REQ-UPS-INJECTION `int` flipped green.
@@ -108,7 +108,7 @@ Local `spt` is **0.7.0** (operator-upgraded 2026-06-15).
 
 ## Still gated on spt-core (non-blocking)
 
-poll→additionalContext bus-delivery `int` — **DONE (v0.7.1).** ADR-0020 published; byte-capture
+poll→additionalContext bus-delivery `int` — **DONE (v0.7.1).** The canonical poll envelope published; byte-capture
 confirmed the `<EVENT>` envelope on the live `api poll` drain + `render_frames` confirm-match;
 `ci/hooks/poll-int.sh` (5/5) locks it; HOOKS-API + UPS-INJECTION `int` green. (Remaining open: the
 ~10k additionalContext large-drain truncate/spill — lower priority, ADR-0002 Open #2.)

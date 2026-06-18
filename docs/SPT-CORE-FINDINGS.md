@@ -143,7 +143,7 @@ unspecified in `CONTEXT.md` / `docs/api.md`.
   formatted; a (rare) concatenated multi-drain degrades to a surfaced-but-unattributed blob rather
   than a parser guessing boundaries.
 
-**Resolution — RESOLVED-BY-DESIGN (ADR-0020, operator-ruled 2026-06-15):** the framing question is
+**Resolution — RESOLVED-BY-DESIGN (operator-ruled 2026-06-15):** the framing question is
 settled, more cleanly than a delimiter patch. The **canonical format at every surface — including
 `api poll` — is the `<EVENT type="msg" from="<sender>">body</EVENT>` envelope** (`spt-proto::event`,
 the ADR-0001 grammar the live listener already emits). `__REPLY_TO__` was a **mis-elevated relic**
@@ -154,7 +154,7 @@ spt-core**. The `<EVENT>` envelope is **self-delimiting**, so multi-message drai
 - **Our parser** now targets `<EVENT>` (the `from` attr → `<sptc_messages from="…">`, `<br>` →
   newline, entity unescape with `&amp;` last) — exactly the live-agent body-parsing rule. See
   `render_frames` in `plugin/sptc/hooks/_common.sh` + `tests/hooks-parse.sh` (multi-message covered).
-- **VERIFIED ON THE PUBLISHED SURFACE (v0.7.1, 2026-06-15).** ADR-0020 shipped in **v0.7.1**
+- **VERIFIED ON THE PUBLISHED SURFACE (v0.7.1, 2026-06-15).** The canonical poll envelope shipped in **v0.7.1**
   (counter 13); `__REPLY_TO__` relic gone. A throwaway byte-capture against the live 0.7.1 `spt api
   poll` drain (`od`-verified) confirms the canonical envelope end-to-end:
   - single msg: `<EVENT type="msg" from="probe-sender">hello from probe<br>second &lt;line&gt;
@@ -167,7 +167,7 @@ spt-core**. The `<EVENT>` envelope is **self-delimiting**, so multi-message drai
     confirm-match PASS). `notify` events ride the same envelope.
   Locked in by `ci/hooks/poll-int.sh` (SPTC_ACCEPTANCE-gated, ≥0.7.1, 5/5): bind→send→`api
   poll`→`render_frames` assert. **`REQ-DIST-HOOKS-API` + `REQ-UPS-INJECTION` `int` flipped GREEN.**
-  ADR-0020 loop closed: design→impl→gate→ship→real-surface-verify.
+  Canonical poll envelope loop closed: design→impl→gate→ship→real-surface-verify.
 
 ---
 
@@ -263,7 +263,7 @@ F-003 fully resolved.
 
 ## F-004 — `spt adapter digest-proof --sample` does not fill `{session_id}` (false-fails the published extractor shape)
 
-**Surfaced:** 2026-06-15, authoring the claude-spt `[digest]` extractor (ADR-0019).
+**Surfaced:** 2026-06-15, authoring the claude-spt `[digest]` extractor.
 
 **Symptom.** `spt adapter digest-proof --sample <log>` substitutes only `{source}` (= the sample
 path) into the extractor command and hard-fails on any other key. The claude-spt extractor command
@@ -293,7 +293,7 @@ example and what `spt endpoint digest` fills at runtime.
 (`cli.rs:5135`, `let keys = BTreeMap::new()` — comment admits "placeholders like `{session_id}`
 will fail"), whereas the runtime daemon path fills `{id}`+`{session_id}` before running the same
 extractor (`digest.rs:208-210`). digest-proof is meant to be the author-time half of the *same*
-ADR-0019 engine (§diagnostics), so it must supply the same keys. It doesn't → it is infidelitous to
+spt-core digest engine (§diagnostics), so it must supply the same keys. It doesn't → it is infidelitous to
 runtime and false-fails any `{session_id}`-templated extractor, including the published example.
 
 Aside: `{home}` is **not** a catalog key — hard-failing on it is correct. Use `~` for home

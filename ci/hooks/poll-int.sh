@@ -1,6 +1,6 @@
 #!/bin/sh
 # Integration proof for the UserPromptSubmit message-drain path against a REAL spt-core (>= v0.7.1):
-# the published `api poll` surface emits the canonical self-delimiting <EVENT> envelope (ADR-0020),
+# the published `api poll` surface emits the canonical self-delimiting <EVENT> envelope,
 # and our hook parser (render_frames) decodes it correctly. This is the confirm-match that closes
 # REQ-MSG-ENVELOPE end-to-end: design -> impl -> ship -> real-surface-verify. F-002 (no inter-frame
 # delimiter) is dissolved — multi-message drains split cleanly on </EVENT>, no __REPLY_TO__ relic.
@@ -47,7 +47,7 @@ raw=$(spt api --adapter "$ADAPTER" poll "$BID" --session-id "$BSID" 2>&1)
 # 1. Canonical <EVENT type="msg" from=…> envelope with correct body escaping; no relic.
 expected='<EVENT type="msg" from="probe-int">hello from probe<br>second &lt;line&gt; &amp; &quot;stuff&quot;</EVENT>'
 case "$raw" in *"$expected"*) ok "api poll emits canonical <EVENT> msg envelope (escaped body)" ;; *) bad "envelope mismatch; raw=[$raw]" ;; esac
-case "$raw" in *__REPLY_TO__*) bad "raw drain still carries the __REPLY_TO__ relic" ;; *) ok "no __REPLY_TO__ relic (ADR-0020 shipped)" ;; esac
+case "$raw" in *__REPLY_TO__*) bad "raw drain still carries the __REPLY_TO__ relic" ;; *) ok "no __REPLY_TO__ relic (canonical poll envelope shipped)" ;; esac
 
 # 2. Hook parser confirm-match: render_frames decodes the drain to our additionalContext shape.
 rendered=$( . "$ROOT/plugin/sptc/hooks/_common.sh"; render_frames "$raw" )

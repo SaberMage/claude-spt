@@ -1,6 +1,6 @@
 #!/bin/sh
 # Integration proof: `spt adapter digest-proof` runs the claude-spt [digest] extractor and renders a
-# non-empty digest from a real CC-shaped sample (ADR-0019 — the M10 acceptance criterion carried
+# non-empty digest from a real CC-shaped sample (the M10 acceptance criterion carried
 # forward for spt-claude-code). [int->REQ-DIST-DIGEST-EXTRACTOR]
 #
 # Gated behind SPTC_ACCEPTANCE=1 (mutates the node-local adapter registry: add + soft-remove) and a
