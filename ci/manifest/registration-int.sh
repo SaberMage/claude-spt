@@ -2,7 +2,7 @@
 # Integration proof for the claude-spt adapter manifest against a REAL spt-core (>= v0.7.0): the
 # 2nd validation layer beyond JSON Schema — spt-core's `spt adapter add` cross-field registration —
 # accepts the manifest, the shipped profile resolves, [strings] read through the registry, and the
-# profile overlay is observable (base vs :deep differ). This is the v1 acceptance proof for the
+# profile overlay is observable (base vs :ccs differ). This is the v1 acceptance proof for the
 # adapter manifest (LLM never in the loop; pure CLI assertions). [int->REQ-DIST-MANIFEST-SCHEMA]
 #
 # Mutates the node-local adapter registry (add + soft-remove), so it is gated behind SPTC_ACCEPTANCE=1
@@ -32,7 +32,6 @@ case "$out" in *registered*) ok "spt adapter add: registered" ;; *) bad "adapter
 # 2. Listed, with the shipped profile resolved as a composite option.
 list=$(spt adapter list 2>&1)
 case "$list" in *claude-spt*) ok "listed: claude-spt active" ;; *) bad "claude-spt not listed" ;; esac
-case "$list" in *claude-spt:deep*) ok "shipped profile resolves: claude-spt:deep" ;; *) bad "deep profile not resolved" ;; esac
 # NOTE: there is no `:live` profile (Option A, PREP-4) — base claude-spt is live-capable
 # ([session.psyche_init] in base); the LiveAgent capability is asserted via `spt api capability` at
 # step 4d below, not a composite resolve.
@@ -44,10 +43,9 @@ case "$list" in *claude-spt:ccs*) ok "shipped profile resolves: claude-spt:ccs (
 base=$(spt adapter get-string claude-spt adapter_label 2>&1)
 [ "$base" = "Claude Code (spt)" ] && ok "strings resolve: adapter_label (base)" || bad "base adapter_label='$base'"
 
-# 4. Profile overlay is observable: :deep leaf-replaces the base string.
-deep=$(spt adapter get-string claude-spt:deep adapter_label 2>&1)
-[ "$deep" = "Claude Code (spt, deep)" ] && ok "overlay observable: :deep adapter_label differs" || bad "deep adapter_label='$deep'"
-# :ccs overlay observable the same way (leaf-replaced adapter_label). [int->REQ-CCS-PROFILES]
+# 4. Profile overlay is observable: :ccs leaf-replaces the base string. (The placeholder :deep
+#    profile was removed 2026-06-18; :ccs is the sole shipped overlay and proves the same seam.)
+# :ccs overlay observable (leaf-replaced adapter_label). [int->REQ-CCS-PROFILES]
 ccs=$(spt adapter get-string claude-spt:ccs adapter_label 2>&1)
 [ "$ccs" = "Claude Code (spt, ccs)" ] && ok "overlay observable: :ccs adapter_label differs" || bad "ccs adapter_label='$ccs'"
 

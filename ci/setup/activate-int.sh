@@ -53,7 +53,7 @@ postline=$(printf '%s\n' "$post" | grep '^claude-spt:')
 case "$postline" in *active*) ok "verified: claude-spt is now active" ;; *) bad "claude-spt not active after re-activate ($postline)" ;; esac
 
 # 3. Profiles/strings went live with activation (the point of activating, not just registering).
-case "$post" in *claude-spt:deep*) ok "shipped profile resolves post-activate: claude-spt:deep" ;; *) bad "deep profile not resolved post-activate" ;; esac
+case "$post" in *claude-spt:ccs*) ok "shipped profile resolves post-activate: claude-spt:ccs" ;; *) bad "ccs profile not resolved post-activate" ;; esac
 lbl=$(spt adapter get-string claude-spt adapter_label 2>&1)
 [ "$lbl" = "Claude Code (spt)" ] && ok "strings live post-activate: adapter_label" || bad "adapter_label='$lbl'"
 

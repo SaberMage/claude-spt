@@ -55,7 +55,7 @@ safe=$(printf '%s' "$REPO" | tr '/' '-')
 case "$line" in *"$safe"*) ok "install dir carries the repo safe-name ($safe)" ;; *) bad "repo safe-name '$safe' not in source path: $line" ;; esac
 
 # 3. Profiles/strings shipped inside the .spt resolve through the registry (the asset was complete).
-case "$list" in *claude-spt:deep*) ok "shipped profile resolves from the .spt: claude-spt:deep" ;; *) bad "deep profile not resolved from --release asset" ;; esac
+case "$list" in *claude-spt:ccs*) ok "shipped profile resolves from the .spt: claude-spt:ccs" ;; *) bad "ccs profile not resolved from --release asset" ;; esac
 lbl=$(spt adapter get-string claude-spt adapter_label 2>&1)
 [ "$lbl" = "Claude Code (spt)" ] && ok "file-backed strings shipped in the .spt resolve: adapter_label" || bad "adapter_label='$lbl'"
 

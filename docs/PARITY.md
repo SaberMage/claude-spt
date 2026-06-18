@@ -24,7 +24,7 @@
 | `/force-stop` | KEEP (topology-aware) | operative — `skills/force-stop.md` | ✅ parity |
 | `/spt:setup` | ADD | operative — `skills/setup.md` | ✅ parity |
 | `/spt:version` | ADD | operative — `skills/version.md` | ✅ parity |
-| profiles + strings + hints | ADD | wired (`:deep`, `:ccs`, `[strings]`, `[[hints]]`; live-capability is in base, not a profile) | ✅ parity |
+| profiles + strings + hints | ADD | wired (`:ccs`, `[strings]`, `[[hints]]`; live-capability is in base, not a profile) | ✅ parity |
 | subnet skill (status/create/show-code/join) | ADD (LOCKED) | operative — `skills/subnet.md` (wraps `spt subnet`) | ✅ parity (REQ-SKILL-SUBNET) |
 | ccs profile (`claude-spt:ccs`) | ADD (LOCKED) | operative — `[profiles.ccs]` overlay + CLAUDE_CONFIG_DIR-aware extractor | ✅ parity (REQ-CCS-PROFILES) |
 | `/whoami` skill | **DROP** (core `spt whoami` stays → M12 `endpoint list` alias) | removed (was carry-over) | ✅ dropped |

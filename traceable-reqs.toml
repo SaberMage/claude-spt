@@ -182,7 +182,7 @@ title = "The adapter ships a ccs profile template (claude-spt:ccs) — LOCKED-AD
 # impl/unit = the CLAUDE_CONFIG_DIR-aware projects-root resolver in claude-spt-digest (a .toml
 # profile leaf does NOT register as impl evidence; the real impl is the env-aware extractor).
 # doc = manifest [profiles.ccs] overlay + docs/PARITY.md. int = registration-int profile-resolves
-# assertion (claude-spt:ccs resolves + adapter_label overlay observable; mirrors :deep).
+# assertion (claude-spt:ccs resolves + adapter_label overlay observable; sole shipped overlay).
 required_stages = ["doc", "impl", "unit", "int"]
 
 [[requirements]]

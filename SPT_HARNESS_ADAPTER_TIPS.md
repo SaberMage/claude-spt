@@ -39,7 +39,7 @@ The single most important design rule:
 
 ## Profiles: sparse leaf-replace overlays
 
-- A profile is selected as the composite `<adapter>:<profile>` (e.g. `claude-spt:deep`). It
+- A profile is selected as the composite `<adapter>:<profile>` (e.g. `claude-spt:ccs`). It
   **leaf-replaces only the leaves you declare**; everything else inherits from base.
 - Override exactly what differs:
   - `[profiles.<name>.session.self].command` — retarget the spawn/bringup command.

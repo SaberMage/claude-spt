@@ -152,13 +152,17 @@ keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
 # post-spawn (`api bind <id>`, the spt-hosted path — NOT the seed→listen path /sptc:ready|live uses).
 # This is what the `cc-<id>` shortcut (shortcut_basename="cc") bakes into a non-interactive launch.
 #
-# command is `claude` bare: CC mints its OWN session id internally (identity.session_id_source =
-# post_spawn), so spt's {session_id} is not threaded on argv — only the endpoint {id} matters, and
-# CC has no native flag for it, so it rides the ENV instead (see [env.SPT_ENDPOINT_ID] below; the
-# published sanctioned pattern for a flagless harness). SessionStart reads $SPT_ENDPOINT_ID and binds.
+# command is `claude` (+ `--dangerously-skip-permissions`): CC mints its OWN session id internally
+# (identity.session_id_source = post_spawn), so spt's {session_id} is not threaded on argv — only the
+# endpoint {id} matters, and CC has no native flag for it, so it rides the ENV instead (see
+# [env.SPT_ENDPOINT_ID] below; the published sanctioned pattern for a flagless harness). SessionStart
+# reads $SPT_ENDPOINT_ID and binds. `--dangerously-skip-permissions` is required for the spt-hosted
+# bringup: the broker spawns CC non-interactively into a PTY, so the permission-prompt gate would
+# deadlock the launch with no operator to approve it. spt tokenizes the command on whitespace
+# (tokenize-then-fill, v0.8.2+), so the flag is a clean second argv element.
 # [impl->REQ-DIST-SHORTCUT-BASENAME]
 [session.self]
-command = "claude"
+command = "claude --dangerously-skip-permissions"
 keys = ["id"]
 
 # ── [env.<VAR>] ────────────────────────────────────────────────────────────────────────────
@@ -213,15 +217,10 @@ sprint_collapse = true
 
 # ── [profiles.<name>] ────────────────────────────────────────────────────────────────────────
 # Shipped profile overlays (sparse leaf-replace; selected as the composite `claude-spt:<name>`).
-# `deep` widens the digest window for long-context review sessions without forking the base, and
-# overrides a [strings] leaf so the overlay is observable via `spt adapter get-string` (base vs
-# `:deep` differ). (Node-local user profiles are created with `spt adapter create-profile` and
-# live in the registry, never in this manifest.)
-[profiles.deep.digest]
-window_turns = 20
-
-[profiles.deep.strings]
-adapter_label = "Claude Code (spt, deep)"
+# `ccs` is the ONLY shipped overlay (the placeholder `:deep` digest-window profile was removed
+# 2026-06-18 — it forked nothing real and only existed as an overlay-observability demo, which
+# `:ccs` already proves). Node-local user profiles are created with `spt adapter create-profile`
+# and live in the registry, never in this manifest.
 
 # NOTE: there is no `:live` profile (removed 2026-06-17, PREP-4 Option A). The LiveAgent seam
 # `[session.psyche_init]` now lives in the BASE manifest above — base is live-capable, and ready-vs-live
@@ -230,7 +229,9 @@ adapter_label = "Claude Code (spt, deep)"
 # `ccs` — the LOCKED-ADD ccs profile template. Selected as `claude-spt:ccs`. ccs is the model/billing
 # multiplexer (kaitranntt/ccs): structurally Claude Code, only the launch binary + backend differ —
 # exactly the profile seam (SCOPE §ccs, LOCKED). This overlay leaf-replaces ONE leaf: the spawn
-# command. `ccs` (bare) is a DROP-IN for `claude` and launches the user's ccs *default* account
+# command — carrying the same `--dangerously-skip-permissions` as base (ccs is a drop-in for `claude`
+# and forwards CC's flags, so the non-interactive-PTY rationale applies identically). `ccs` is a
+# DROP-IN for `claude` and launches the user's ccs *default* account
 # (set via `ccs auth default <name>`); SPT_ENDPOINT_ID rides the inherited env through the wrapper
 # exactly as for bare `claude`. Validated against the known-good sister project claude_skill_owl,
 # which latches `cli_binary = "ccs"` as a same-argv `claude` substitute (live/wrapper/claude.rs).
@@ -246,9 +247,9 @@ adapter_label = "Claude Code (spt, deep)"
 # and ccs sessions transparently. That env-aware resolver is REQ-CCS-PROFILES's impl evidence.
 # (REQ-CCS-PROFILES doc evidence lives in docs/PARITY.md; int = registration-int :ccs assertions.)
 [profiles.ccs.session.self]
-command = "ccs"
+command = "ccs --dangerously-skip-permissions"
 
-# Observability leaf (mirrors :deep): makes the overlay visible via `spt adapter get-string
+# Observability leaf: makes the overlay visible via `spt adapter get-string
 # claude-spt:ccs adapter_label` (differs from base) — the registration-int resolve proof.
 [profiles.ccs.strings]
 adapter_label = "Claude Code (spt, ccs)"
