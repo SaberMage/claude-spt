@@ -1,30 +1,54 @@
 # Skill authoring
 
-> How `/sptc:*` skills are written in this repo. Skills live on **two surfaces** (ADR-0001's
-> thin-skeleton split). Keep both lean: the plugin file is a stub, the adapter file is the operative
-> instructions. Bloat — provenance notes, requirement ids, ADR/finding citations, rationale the
-> running agent doesn't need — does not belong in either.
+> How `/sptc:*` skills are written here. The guiding rule: a skill tells the agent **what to do, what
+> it will see, and how to act** — never **how the plugin or spt-core implements it**. Strip internals,
+> strip jargon from anything the user reads, never ship an untrue step, and keep the agent's actions to
+> the minimum (the end user is often waiting on it).
 
-## The two surfaces
+## What a skill body must NOT contain
 
-| Surface | File | Role | Audience |
-|---|---|---|---|
-| **Plugin skeleton** | `plugin/sptc/skills/<name>/SKILL.md` | Thin stub shipped on cplugs. Frontmatter `description` is the routing surface; body is a fixed note. | The model deciding *which* skill to load. |
-| **Adapter body** | `adapter/strings/skills/<name>.md` | The operative instructions, UPS-injected at invocation from the adapter `[strings]`. | The agent *running* the skill. |
+- **Plugin / spt-core internals.** No adapter resolution (`--adapter`, parent-pid / `host_binaries`
+  matching), no perch-state stamping (`state=live_agent`), no daemon/poll-vs-relay coordination, no
+  seed/bind wiring. The agent runs a command; it does not need to know how spt routes it.
+- **Internal jargon in user-facing text.** What the *user* reads (e.g. the LIVE announcement) carries
+  zero `Perch` / `Psyche` / `daemon` / `LiveAgent` / marker names. Say "Now running as `<id>`", not
+  "LiveAgent, Psyche hosted by the daemon".
+- **Untrue or stale steps.** Verify against behavior. (E.g. the persistent Monitor relay *survives*
+  `/clear`/compact — there is no "re-fire the relay" step.)
+- **Ceremony.** Don't make the agent gate on `BOUND`/`READY` markers in the happy path. Fire it,
+  announce, move on — inspect markers only when troubleshooting.
 
-The plugin skeleton carries **no operative steps** — those are injected from the adapter body at call
-time. The two never duplicate instructions.
+Keep the legacy operational tells that *are* useful: the Monitor task `description: "« spt event »"`,
+and the `<EVENT type="msg|alarm|echo_commune|init_signoff" …>` envelope catalog the agent handles.
 
-## Plugin SKILL.md template
+## Minimum-friction bringup
+
+`ready` and `live` bring a perch up while the **user waits**. Optimize for the fewest agent
+actions and zero avoidable delay: resolve the id (given, else `spt whoami`), fire the listener as one
+persistent Monitor task, announce reachable. No marker-watching, no extra round-trips.
+
+## Two delivery patterns
+
+| Pattern | Files | Use for |
+|---|---|---|
+| **A — injected** | thin `plugin/sptc/skills/<n>/SKILL.md` stub + `adapter/strings/skills/<n>.md` body (manifest `[strings.skills].<n>`) | Skills the **user** invokes (`/sptc:<n>`) or a hint surfaces. The UPS hook injects the body on the slash-command. |
+| **B — full-fat** | `plugin/sptc/skills/<n>/SKILL.md` only — operative body in the SKILL.md, **no** `[strings.skills]` entry, **no** adapter body | Skills the **agent self-drives reactively** without the user typing `/sptc:<n>` — `send`, `commune`, `signoff`. UPS-injection fires only on a slash-command in the prompt, so it cannot deliver these; the always-loadable SKILL.md does. |
+
+Self-drive anchor (both patterns): point the agent at the live source of truth where one exists —
+`spt how-to <topic>` (ready · send · subnet · live) or `spt <verb> --help` — instead of duplicating
+full reference inline.
+
+## Templates
+
+**Pattern A — plugin skeleton** (thin; the `description` is the routing surface):
 
 ```md
 ---
 name: <name>
 description: |
-  <One sentence: what it does.> Use when the user says "<trigger>", "<trigger>", or
-  wants to <intent>.
+  <What it does.> Use when the user says "<trigger>", "<trigger>", or wants to <intent>.
 argument-hint: "<args>"        # omit if none
-allowed-tools: [Bash]          # the minimum the skill needs (Bash/Read/Write/Monitor)
+allowed-tools: [Bash]          # the minimum the skill needs
 ---
 
 # /sptc:<name>
@@ -38,55 +62,52 @@ allowed-tools: [Bash]          # the minimum the skill needs (Bash/Read/Write/Mo
 <One line naming what the skill does.>
 ```
 
-The skeleton note above is **verbatim and identical** across every skill (except `setup` — see
-below). Do not re-add ADR/finding/requirement citations to it.
-
-## Adapter body template
+**Pattern A — adapter body** (the injected operative instructions):
 
 ```md
 # /sptc:<name> — operative instructions
 
-**Goal:** <one line — the outcome the agent is producing>.
+<One line: the outcome.>
 
-**Do this:**
+1. <step> … <step>
 
-1. <step>
-2. <step>
+Full guidance: `spt how-to <name>` (or `spt <verb> --help`).
 <!-- [<doc>->REQ-NAME] -->   # keep the traceability tag if this body is doc evidence
 ```
 
-Rules for the body:
+**Pattern B — full-fat SKILL.md** (no skeleton note, no adapter body):
 
-- **No provenance preamble.** Do not open with "Delivered file-backed via the adapter `[strings]`…"
-  — the running agent does not need to know its own delivery mechanism.
-- **Self-contained.** Inline the operative steps; do **not** redirect to `spt how-to <topic>`. (A
-  verb's own `spt <verb> --help` is fine to cite as the live source of truth where the surface is
-  large, e.g. `subnet`.)
-- **Concise.** Commands, the must-do sequence, the reply/output shape — nothing else. Cut rationale,
-  repeated warnings, and history.
-- **Keep `[<doc>->REQ-*]` HTML-comment tags** — they are traceability evidence; place them on/above the
-  real evidence.
+```md
+---
+name: <name>
+description: |
+  <What it does.> Use when the user says "<trigger>", or when you need to <intent> yourself.
+allowed-tools: [Bash]
+---
 
-## `description` rules (from write-a-skill)
+# /sptc:<name>
 
-The `description` is the only thing the model sees when choosing a skill. Per
-`write-a-skill`: third person, **what it does** then **"Use when [triggers]"**, ≤1024 chars, no
-time-sensitive info, consistent terms. Route phrases reference **`/sptc:`** (the shipped plugin
-name; the `s/sptc/spt/` succession flip renames them later). The legacy `claude_skill_owl`
-descriptions are the basis for the trigger phrasing — adapt them, dropping legacy internals
-(`$OWL`/`$LIVE`/`info.json`).
+<The full operative instructions — the agent loads this directly.>
+```
 
 ## The `setup` exception
 
-`setup` is **self-contained on both surfaces**: it runs precisely when spt-core may be **absent**,
-so UPS-injection (which needs `spt adapter get-string`) can no-op. Its plugin SKILL.md therefore
-keeps the operative steps as the floor, and the adapter body mirrors them for the spt-present repair
-path. Tighten `setup` for concision, but do **not** reduce it to a stub.
+`setup` is **self-contained on both surfaces**: it runs precisely when spt-core may be absent, so
+injection can no-op. Its plugin SKILL.md keeps the operative steps as the floor; tighten it, never
+reduce it to a stub.
+
+## `description` rules (from write-a-skill)
+
+Third person, **what it does** then **"Use when [triggers]"**, ≤1024 chars, no time-sensitive info,
+consistent terms. Route phrases reference **`/sptc:`** (the shipped plugin name; the `s/sptc/spt/`
+succession renames them later). Trigger phrasing is adapted from the legacy `claude_skill_owl`
+descriptions, dropping legacy internals (`$OWL`/`$LIVE`/`info.json`).
 
 ## Checklist
 
-- [ ] `description` is third-person, has "Use when …" triggers, routes via `/sptc:`.
-- [ ] Plugin SKILL.md uses the verbatim skeleton note + one what-it-does line (except `setup`).
-- [ ] Adapter body has no provenance preamble, is self-contained, ≤ ~40 lines (large surfaces aside).
-- [ ] `allowed-tools` is the minimum the skill needs.
-- [ ] Traceability `[<doc>->REQ-*]` tags preserved.
+- [ ] Body says what to do / what you'll see / how to act — no plugin or spt-core internals.
+- [ ] User-facing text carries no internal jargon; no untrue or stale steps.
+- [ ] Bringup skills (`ready`/`live`) are minimum-friction — fire and announce, no marker-gating.
+- [ ] Right pattern: agent-self-driven (`send`/`commune`/`signoff`) → full-fat, no injection.
+- [ ] Cites `spt how-to`/`--help` where one exists; `allowed-tools` is the minimum.
+- [ ] `[<doc>->REQ-*]` traceability tags preserved.

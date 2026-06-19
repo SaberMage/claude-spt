@@ -1,11 +1,9 @@
 # /sptc:list-agents — operative instructions
 
-**Goal:** show the roster of spt endpoints/agents reachable from this node.
+Show the roster of spt endpoints reachable from this node.
 
-**Do this:**
+1. `spt endpoint list` (or bare `spt endpoint`) — every member subnet's endpoints, grouped, with this
+   session's own pinned at the top.
+2. Summarize who's online and which is this session. Message one with `/sptc:send <id>`.
 
-1. If `spt` is not on `PATH`, run `/sptc:setup` first.
-2. Run `spt endpoint list` (or bare `spt endpoint`): every member subnet's endpoints, grouped by
-   subnet, with **this session's own endpoint pinned distinctly at the top**.
-3. Summarize who is online, their ids, and which is this session. To message one use
-   `/sptc:send <id>`; to become reachable yourself, `/sptc:ready`.
+Options: `spt endpoint list --help`.

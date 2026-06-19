@@ -53,9 +53,8 @@ ccs=$(spt adapter get-string claude-spt:ccs adapter_label 2>&1)
 #     sibling still prints as-is. Proves `{ file = "skills/<x>.md" }` over adapter/strings/ (F-003).
 body=$(spt adapter get-string claude-spt skills.ready 2>&1)
 case "$body" in "# /sptc:ready"*) ok "file-backed string resolves: skills.ready -> body" ;; *) bad "skills.ready not resolved to file body: '$(printf %.40s "$body")'" ;; esac
-# Newly file-backed skills (commune = file-drop body; force-stop = endpoint shutdown body).
-cbody=$(spt adapter get-string claude-spt skills.commune 2>&1)
-case "$cbody" in "# /sptc:commune"*) ok "file-backed string resolves: skills.commune -> body" ;; *) bad "skills.commune not resolved to file body: '$(printf %.40s "$cbody")'" ;; esac
+# force-stop = endpoint shutdown body. (send/commune/signoff are NOT injected — full-fat in the
+# plugin SKILL.md, no [strings.skills] entry — so they are intentionally absent from this resolve set.)
 fbody=$(spt adapter get-string claude-spt "skills.force-stop" 2>&1)
 case "$fbody" in "# /sptc:force-stop"*) ok "file-backed string resolves: skills.force-stop -> body" ;; *) bad "skills.force-stop not resolved to file body: '$(printf %.40s "$fbody")'" ;; esac
 # `live` is file-backed too (the LiveAgent bringup body — base [session.psyche_init] + bare

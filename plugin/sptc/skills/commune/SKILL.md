@@ -1,18 +1,20 @@
 ---
 name: commune
 description: |
-  Push a context update to your Psyche so it can brief a resume across a reset. Use when the
-  user says "commune", "update psyche", or wants to brief their Psyche before a /clear or compact.
-  Live agents only.
+  Push a context update to your Psyche so it can brief your resume across a reset. Use when the
+  user says "commune" or "update psyche", or — as a live agent — after a significant body of work,
+  before a /clear or /compact.
 allowed-tools: [Bash, Write]
 ---
 
 # /sptc:commune
 
-> **Skeleton — thin by design.** Operative instructions for this skill are delivered by the
-> `sptc` adapter at invocation time. Look out for the UserPromptSubmit additionalContext.
->
-> **Operative.** If injection ever no-ops (spt absent / adapter unregistered), check
-> SPT's installation status using the skill `sptc:setup`. Otherwise, avoid additional steps.
+Brief your Psyche with a context DELTA so it can carry you across a `/clear` or compact. Live agents
+only (a ready agent has no Psyche).
 
-Drops a context delta for the Psyche to absorb (a file the daemon ingests).
+This is a **file-drop, not a command** — you write the file; spt absorbs it.
+
+1. Get your id: `spt whoami` (empty ⇒ no perch — `/sptc:live` first).
+2. Write `.claude/<id>-commune.md` — a concise delta: current task + status, decisions since the last
+   commune, immediate next steps. One atomic write of the full body.
+3. The file disappearing is the success signal (spt ingested it). If it lingers, you are not live.

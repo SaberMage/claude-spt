@@ -275,13 +275,16 @@ not_installed = "spt-core not found on PATH — run /sptc:setup to install it."
 # "who am i" hint below points at the core CLI. (docs/PARITY.md.)
 setup = { file = "skills/setup.md" }
 ready = { file = "skills/ready.md" }
-send = { file = "skills/send.md" }
 version = { file = "skills/version.md" }
-signoff = { file = "skills/signoff.md" }       # -> spt endpoint shutdown (graceful + final save)
 list-agents = { file = "skills/list-agents.md" } # -> spt endpoint list (the roster)
-commune = { file = "skills/commune.md" }       # -> file-drop <id>-commune.md into [session].commune_dir
 force-stop = { file = "skills/force-stop.md" } # -> spt endpoint shutdown (graceful, tears down Psyche)
 subnet = { file = "skills/subnet.md" }         # -> spt subnet {status,create,show-code,join} (cross-machine); REQ-SKILL-SUBNET
+# `send` / `commune` / `signoff` are DELIBERATELY NOT injected here (2026-06-19). A live agent uses
+# them REACTIVELY — replying to a message, briefing its Psyche, signing off — WITHOUT the user typing
+# `/sptc:<skill>`, so UPS-injection (which fires only on that slash-command in the prompt) is the wrong
+# delivery. Their full operative bodies live in the plugin SKILL.md (full-fat, always model-loadable);
+# there is no `[strings.skills]` entry and no adapter aux body for them. (sptc_inject_skill no-ops
+# silently on the absent key — the full SKILL.md is the single source.)
 # `live` -> upgrade THIS session to a LiveAgent (Option A, 2026-06-17): base claude-spt is live-capable
 # ([session.psyche_init] in base), so going live is just the COMMAND — bare `spt api listen <id>` under
 # a Monitor relay. The live listen path stamps the perch state=live_agent → the daemon livehost hosts

@@ -16,11 +16,11 @@
 | Surface | SCOPE bucket | Adapter today | Status |
 |---|---|---|---|
 | `/live` | KEEP | operative — `skills/live.md` (base-manifest `[session.psyche_init]` + bare `api listen` + Monitor relay; Option A, no `:live` profile) | ✅ parity |
-| `/commune` | KEEP | operative — `skills/commune.md` (file-drop) | ✅ parity |
-| `/ready` | KEEP | operative — `skills/ready.md` | ✅ parity |
-| `/send` | KEEP | operative — `skills/send.md` | ✅ parity |
-| `/list-agents` | KEEP (→ `spt endpoint list`) | operative — `skills/list-agents.md` | ✅ parity |
-| `/signoff` | KEEP (harness-hosted v1) | operative — `skills/signoff.md` | ✅ parity |
+| `/commune` | KEEP | operative — full-fat plugin SKILL (agent-self-driven, not injected) | ✅ parity |
+| `/ready` | KEEP | operative — `skills/ready.md` (injected) | ✅ parity |
+| `/send` | KEEP | operative — full-fat plugin SKILL (agent-self-driven, not injected) | ✅ parity |
+| `/list-agents` | KEEP (→ `spt endpoint list`) | operative — `skills/list-agents.md` (injected) | ✅ parity |
+| `/signoff` | KEEP (harness-hosted v1) | operative — full-fat plugin SKILL (agent-self-driven, not injected) | ✅ parity |
 | `/force-stop` | KEEP (topology-aware) | operative — `skills/force-stop.md` | ✅ parity |
 | `/spt:setup` | ADD | operative — `skills/setup.md` | ✅ parity |
 | `/spt:version` | ADD | operative — `skills/version.md` | ✅ parity |
