@@ -3,13 +3,13 @@ name: live
 description: |
   Run a live agent session. For past sessions, restores a summarized context.
 
-  EXPLICIT START phrases (route to /spt:live <id>):
+  EXPLICIT START phrases (route to /sptc:live <id>):
   - "live as"
   - "start live"
   - "go live"
   - "start a live agent"
 
-  AUTO-RESUME phrases (route to /spt:live --auto, resumes most-recently-active live agent):
+  AUTO-RESUME phrases (route to /sptc:live --auto, resumes most-recently-active live agent):
   - continue live work
   - resume live work
   - continue live agent
@@ -24,7 +24,7 @@ description: |
   - "resume work"
   - "continue" (bare)
 argument-hint: "[<id>] [--auto]"
-allowed-tools: [Monitor, Read]
+allowed-tools: [Bash, Monitor, Read]
 ---
 
 # /sptc:live

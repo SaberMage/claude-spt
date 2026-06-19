@@ -1,18 +1,17 @@
 ---
 name: signoff
 description: |
-  Graceful live-agent shutdown with a final context summary.
-allowed-tools: [Bash]
+  Gracefully shut down this live agent, saving a final context summary. Use when the user
+  says "sign off", "graceful stop", or wants to cleanly end a live session.
+allowed-tools: [Bash, Write]
 ---
 
 # /sptc:signoff
 
 > **Skeleton — thin by design.** Operative instructions for this skill are delivered by the
-> `sptc` adapter at invocation time (UserPromptSubmit injection from the adapter `[strings]`;
-> see `docs/adr/0001-distribution-splits-by-volatility.md`). This SKILL.md stays a stub.
+> `sptc` adapter at invocation time. Look out for the UserPromptSubmit additionalContext.
 >
-> **Operative.** The UPS hook detects `/sptc:signoff` and injects the body from
-> `adapter/strings/skills/signoff.md` (UPS-fires-on-slash confirmed, ADR-0002; file-backed `[strings]`
-> shipped, F-003). If injection ever no-ops (spt absent / adapter unregistered), this stub is the floor.
+> **Operative.** If injection ever no-ops (spt absent / adapter unregistered), check
+> SPT's installation status using the skill `sptc:setup`. Otherwise, avoid additional steps.
 
-Cleanly ends a live session, writing a final summary consumed at teardown.
+Cleanly ends this session's endpoint, saving a final summary at teardown.

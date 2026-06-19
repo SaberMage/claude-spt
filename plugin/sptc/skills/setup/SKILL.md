@@ -9,10 +9,9 @@ allowed-tools: [Bash]
 # /sptc:setup
 
 > **Self-contained by necessity.** Unlike other `/sptc:*` skills, `setup` cannot rely on
-> UPS-injection of its body: it runs precisely when spt-core may be **absent**, so
-> `spt adapter get-string` (the injection source) is unavailable. The operative steps therefore live
-> in this SKILL.md (the floor); the file-backed `[strings.skills].setup` body mirrors them for the
-> spt-present repair path. See `docs/adr/0001-distribution-splits-by-volatility.md`.
+> UPS-injection of its body: it runs precisely when spt-core may be **absent**, so the injection
+> source is unavailable. The operative steps therefore live in this SKILL.md (the floor); the
+> adapter body mirrors them for the spt-present repair path.
 
 Covers the mid-session install + activation gap (ADR-0001): a user who installs the plugin mid-session
 has not had a SessionStart bootstrap fire, so `/sptc:setup` runs the same invisible-installer

@@ -1,21 +1,18 @@
 ---
 name: commune
 description: |
-  Send a communal context update to your Psyche.
-argument-hint: "<<stdin>>"
-allowed-tools: [Bash]
+  Push a context update to your Psyche so it can brief a resume across a reset. Use when the
+  user says "commune", "update psyche", or wants to brief their Psyche before a /clear or compact.
+  Live agents only.
+allowed-tools: [Bash, Write]
 ---
 
 # /sptc:commune
 
 > **Skeleton — thin by design.** Operative instructions for this skill are delivered by the
-> `sptc` adapter at invocation time (UserPromptSubmit injection from the adapter `[strings]`;
-> see `docs/adr/0001-distribution-splits-by-volatility.md`). This SKILL.md stays a stub.
+> `sptc` adapter at invocation time. Look out for the UserPromptSubmit additionalContext.
 >
-> **Operative.** The UPS hook detects `/sptc:commune` and injects the body from
-> `adapter/strings/skills/commune.md` (UPS-fires-on-slash confirmed, ADR-0002; file-backed
-> `[strings]` shipped, F-003). If injection ever no-ops (spt absent / adapter unregistered), this
-> stub is the floor.
+> **Operative.** If injection ever no-ops (spt absent / adapter unregistered), check
+> SPT's installation status using the skill `sptc:setup`. Otherwise, avoid additional steps.
 
-Pushes a context delta to the Psyche via a file-drop (`<id>-commune.md` into the adapter's
-`[session].commune_dir`); the daemon ingests it. Live agents only (a Psyche must exist).
+Drops a context delta for the Psyche to absorb (a file the daemon ingests).

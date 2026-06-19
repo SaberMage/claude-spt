@@ -54,6 +54,10 @@ Cloudflare pattern):
 **The `/spt:*` skills · `/spt:setup` · the `cc` launcher · ccs profiles · subnet setup · the
 `[digest]` extractor.**
 
+> **Authoring the `/sptc:*` skills themselves** — the two-surface shape (thin plugin skeleton +
+> UPS-injected adapter body), templates, and the lean-by-default rules — lives in
+> [`SKILL-AUTHORING.md`](SKILL-AUTHORING.md).
+
 Global sequence (Rust Book logic): early runnable project → dependency-ordered concepts →
 capstone last. Per-vertical internal template (Django labels × Cloudflare ordering):
 `Overview (why + diagram) · Quickstart/Tutorial · How-to guides · Reference (generated) ·
