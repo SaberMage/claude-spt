@@ -641,6 +641,36 @@ Upgraded spt 0.7.3 → **0.8.0** (hash `10ff8166…`, daemon restarted). Results
   "gh_release", repo = "SaberMage/spt-claude-code"`; validates against the re-vendored v0.8.0
   `manifest.schema.json`. Live `spt adapter update` test rides the per-OS re-release (the registered
   adapter is still the published v0.1.0 sans `[update]`).
+  - **LIVE-TESTED 2026-06-20 (v0.5.0 release) — surfaced TWO gh_release-update gaps (F-014, F-015).**
+    First real exercise of the avenue (`0.4.0 -> 0.5.0`). Both flagged to doyle; v0.5.0 unblocked
+    via stopgaps, adapter is functionally on 0.5.0 (briefs resolve; up-to-date, no retry-loop).
+
+## F-014 — gh_release update fetches a single fixed `asset` (default `adapter.spt`); no per-OS resolution
+
+**Surfaced:** 2026-06-20 — `spt adapter update claude-spt` →
+`ADAPTER_UPDATE_FAIL: fetch: HTTP 404 Not Found` fetching `adapter.spt`. The release ships **per-OS**
+assets (`adapter-<os>-<arch>.spt`, REQ-DIST-ADAPTER-PEROS) but the update avenue fetches one fixed
+name — `asset` omitted ⇒ default `adapter.spt`, which we deliberately do NOT publish (the manifest
+comment pre-flagged exactly this). `spt adapter update --help` exposes no `--asset` override and the
+manifest `[update]` has no `{os}`/`{arch}` placeholder. So the avenue cannot target a per-OS asset.
+**Stopgap (applied):** published `adapter.spt` = the windows build to the v0.5.0 release (this node's
+OS; the active fleet is windows). **Needs (doyle):** per-OS resolution in the gh_release update avenue
+— an `asset = "adapter-{os}-{arch}.spt"` placeholder, or host-derive like `--release` acquisition.
+
+## F-015 — Windows update-extract fails (`tar exit 1`) when a live agent locks a bundled binary; whole update reported failed despite manifest+strings applying
+
+**Surfaced:** 2026-06-20 — after the F-014 stopgap, update got past fetch but →
+`ADAPTER_UPDATE_FAIL: extract: tar exit Some(1)`. The `.spt` archive is valid (local `tar xvzf` exits
+0). Root cause: `claude-spt-psyche.exe` was **running** (pid for the live `wall-a` agent's Psyche), so
+Windows locked it and tar could not overwrite the binary → exit 1. The non-binary entries DID extract
+(install-dir `manifest.toml` = 0.5.0, `strings/briefs/` present + resolving, `claude-spt-digest.exe`
+swapped); only the locked `claude-spt-psyche.exe` stayed the old build. spt-core reports the whole
+update FAILED yet still records 0.5.0 (re-run → `UPTODATE installed 0.5.0`), leaving a **partial,
+silently-inconsistent** state: a future release that DID change the psyche binary would believe it's
+up-to-date with a stale binary. (v0.5.0 is unaffected — it changed no binaries, so the old psyche is
+identical.) **Needs (doyle):** graceful locked-binary handling on Windows update — extract-to-temp +
+atomic swap when free, or skip-locked + "restart the live agent to finish" semantics, and do NOT
+record the new version until the binary swap actually succeeds.
 - **Relay leg ✓** — `ci/psyche/live-relay-int.sh` green on 0.8.0: BOUND/READY + a probe relayed as the
   escaped `<EVENT>` off the listen child + live_agent kind. No `--manifest` needed.
 

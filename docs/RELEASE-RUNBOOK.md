@@ -142,6 +142,14 @@ adapter repo: the asset is packed straight from `adapter/`.
   `SaberMage/spt-claude-code`. End users `spt adapter add --release SaberMage/spt-claude-code --asset
   adapter-<os>-<arch>.spt` (or `--tag <ver>` to pin). `/sptc:setup` derives the host's os/arch and
   passes the matching `--asset` automatically.
+- **ALSO attach a default `adapter.spt`** (a copy of the host-OS build — windows for the windows-centric
+  fleet) **until F-014 lands.** The `[update] avenue = "gh_release"` self-update fetches the fixed default
+  asset name `adapter.spt` (no per-OS resolution, no `--asset` override — F-014). Without it,
+  `spt adapter update` 404s even though acquisition via `--asset adapter-<os>-<arch>.spt` works. Verified
+  the hard way on v0.5.0 (2026-06-20). Drop this once F-014 ships per-OS update resolution. Note F-015:
+  on Windows the update can't overwrite a binary locked by a running live agent (`tar exit 1`) — manifest
+  + strings still apply, so a strings/hook-only release lands fine; a binary-changing release needs every
+  live claude-spt agent stopped first.
 <!-- [doc->REQ-DIST-ADAPTER-PEROS] -->
 - **Per-OS (REQ-DIST-ADAPTER-PEROS) — the asset carries native binaries, so it is platform-specific.**
   v1 ships **windows + linux**. spt's `--release` takes a caller-named `--asset` (default
