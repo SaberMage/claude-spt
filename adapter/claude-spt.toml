@@ -295,6 +295,21 @@ live = { file = "skills/live.md" }             # -> bare `spt api listen <id>` +
 # features). doyle carries a parity-gap finding to mint a core deferred-pulse primitive; the skill
 # lands only after that ships. No `[strings.skills].new-alarm` entry by design (visible-not-silent).
 
+# ── [strings.briefs] ─────────────────────────────────────────────────────────────────────────
+# SessionStart agent-facing briefs. Same file-backed/inline machinery as [strings.skills] (resolved
+# via `spt adapter get-string claude-spt briefs.<key>`). The hook COMPOSES + {id}-substitutes these;
+# it never authors agent-facing prose (single-source throughline). Composable so the shared roster +
+# messaging text live once: the identity brief (perched sessions — bind+boundary) = identity +
+# messaging-perch + endpoint-list; the ring brief (no-perch seed, peer-gated) = messaging-no-perch +
+# endpoint-list. Liveness-agnostic (no live/ready split — deferred, public liveness-query gap, logged
+# with doyle). One-liners inline; multi-line bodies file-backed under adapter/strings/briefs/.
+# [impl->REQ-DIST-SESSIONSTART-BRIEF]
+[strings.briefs]
+identity = { file = "briefs/identity.md" }                      # {id}-templated: who + perch-live + don't-re-arm
+messaging-perch = { file = "briefs/messaging-perch.md" }        # has-id reach: spt send + reply
+messaging-no-perch = { file = "briefs/messaging-no-perch.md" }  # no-id reach: spt ring
+endpoint-list = "Show the roster of spt endpoints reachable from this node: `spt endpoint list`."  # shared one-liner (inline)
+
 # ── [[hints]] ──────────────────────────────────────────────────────────────────────────────
 # Once-per-session keyword hints (order significant, first match wins; case-insensitive substrings).
 [[hints]]

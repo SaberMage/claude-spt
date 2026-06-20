@@ -47,4 +47,24 @@ if [ -n "$CLAUDE_ENV_FILE" ]; then
     printf 'SPT_ADAPTER=%s\n' "$ADAPTER"
   } >> "$CLAUDE_ENV_FILE"
 fi
+
+# Relay an agent-facing brief as additionalContext (REQ-DIST-SESSIONSTART-BRIEF). Perched sessions
+# (bind/boundary — an id already exists) get the identity brief: who they are + perch-is-live +
+# how to message. No-perch seeds on a node WITH subnet peers get the ring brief (how to reach others
+# without a perch). Seeds with no peers, and subagent (agent_type) sessions, get nothing. All prose
+# is adapter-string-backed; this hook only selects + composes. [impl->REQ-DIST-SESSIONSTART-BRIEF]
+if ! sptc_is_subagent "$(json_str "$input" agent_type)"; then
+  brief=""
+  case "$(sptc_register_verb "$src")" in
+    bind|boundary)
+      # id: the spt-hosted endpoint id if injected, else resolve our perch via whoami.
+      bid="${SPT_ENDPOINT_ID:-$(sptc_self_id "$sid")}"
+      [ -n "$bid" ] && brief=$(sptc_perch_brief "$bid")
+      ;;
+    seed)
+      sptc_node_has_peers && brief=$(sptc_noperch_brief)
+      ;;
+  esac
+  sptc_emit_additional_context "$brief"
+fi
 exit 0

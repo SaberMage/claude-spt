@@ -84,4 +84,44 @@ check "cap over -> body not inlined"       "clean"      "$leak"
 check "cap empty -> no output"             ""           "$(sptc_cap_output '' 5 "$spill")"
 rm -f "$spill"
 
+# --- SessionStart briefs: pure composition --- [unit->REQ-DIST-SESSIONSTART-BRIEF]
+# assemble_perch: {id} substitution + block structure.
+pb=$(sptc_assemble_perch "perri" 'you are {id}.' 'send body' 'roster line')
+check "assemble_perch structure+subst" \
+  "$(printf '<sptc-active-perch id="perri">\nyou are perri.\n\nsend body\n\nroster line\n</sptc-active-perch>')" \
+  "$pb"
+case "$pb" in *'{id}'*) leftover=present ;; *) leftover=clean ;; esac
+check "assemble_perch no {id} leftover" "clean" "$leftover"
+# Every {id} occurrence is substituted (global).
+multi_id=$(sptc_assemble_perch "kit" 'a {id} b {id}' 'm' 'r')
+case "$multi_id" in *'a kit b kit'*) g=ok ;; *) g=no ;; esac
+check "assemble_perch global subst" "ok" "$g"
+
+# assemble_noperch: ring block structure (no id).
+nb=$(sptc_assemble_noperch 'ring body' 'roster line')
+check "assemble_noperch structure" \
+  "$(printf '<sptc-reach>\nring body\n\nroster line\n</sptc-reach>')" "$nb"
+
+# is_subagent: empty -> real session (inject); set -> subagent (skip).
+check "is_subagent empty -> no"   "no"  "$(sptc_is_subagent ''               && echo yes || echo no)"
+check "is_subagent set -> yes"    "yes" "$(sptc_is_subagent 'general-purpose' && echo yes || echo no)"
+
+# has_peers_lines: >1 non-empty line on `subnet status` stdin = peers present.
+check "peers: header+row -> yes" "yes" "$(printf 'SUBNET NODES ENDPOINTS\nSPT_DEV 3 4\n' | sptc_has_peers_lines && echo yes || echo no)"
+check "peers: single line -> no" "no"  "$(printf 'no subnets\n'                            | sptc_has_peers_lines && echo yes || echo no)"
+check "peers: empty -> no"       "no"  "$(printf ''                                          | sptc_has_peers_lines && echo yes || echo no)"
+
+# --- SessionStart briefs: JSON encode + emit --- [unit->REQ-DIST-SESSIONSTART-BRIEF]
+check "json_escape quotes"    'say \"hi\"' "$(printf '%s' 'say "hi"' | sptc_json_escape)"
+check "json_escape backslash" 'a\\b'       "$(printf '%s' 'a\b'      | sptc_json_escape)"
+check "json_escape newline"   'a\nb'       "$(printf 'a\nb'          | sptc_json_escape)"
+
+check "emit empty -> silent" "" "$(sptc_emit_additional_context '')"
+check "emit json shape" \
+  '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"hi \"x\""}}' \
+  "$(sptc_emit_additional_context 'hi "x"')"
+check "emit json newline-escaped" \
+  '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"a\nb"}}' \
+  "$(sptc_emit_additional_context "$(printf 'a\nb')")"
+
 [ "$fail" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "FAILURES"; exit 1; }

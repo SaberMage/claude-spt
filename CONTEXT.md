@@ -24,6 +24,20 @@ instructions at runtime from the adapter `[strings]` (`spt adapter get-string`/`
 Keeps skill files static while instructions update via spt-core. Distinct from a `[hints]`
 entry (proactive, keyword-triggered, UPS-hook-delivered).
 
+**identity brief** — the agent-facing text the adapter injects at SessionStart into a session
+that already owns a perch (the `bind` + `boundary` topologies). Tells the agent who it is, that
+its perch is already live (so it must not re-arm), and how to message (send + reply + the endpoint
+roster). Adapter-string-backed (`[strings.briefs]`), composed from an `{id}`-templated identity
+piece plus shared messaging pieces. Liveness-agnostic: it does not distinguish live-vs-ready (that
+flavor is deferred until spt-core publishes a machine-readable liveness query). Distinct from the
+**ring brief** (the no-perch sibling).
+
+**ring brief** — the SessionStart counterpart for a session with **no** perch (the `seed`
+topology): a node-local agent that hasn't readied still learns how to reach other agents via
+`spt ring` (the no-id messaging path). Peer-gated — emitted only when the node actually
+participates in a subnet (has reachable peers), so a solo casual end user is never told how to
+ring agents that don't exist.
+
 **ccs profile** — a profile under spt-claude-code (`claude-spt:glm`, `claude-spt:kimi`)
 that leaf-replaces the launch command + history/digest log dir to use the `ccs` backend.
 NOT its own adapter — ccs is structurally Claude Code.

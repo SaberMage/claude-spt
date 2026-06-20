@@ -103,6 +103,11 @@ id = "REQ-UPS-INJECTION"
 title = "UserPromptSubmit hook detects /sptc:X and injects X's real instructions as additionalContext (SKILL.md files stay skeletons); must be empirically confirmed UPS fires on slash-commands"
 required_stages = ["doc", "impl", "unit", "int"]  # doc: ADR-0002. impl: user-prompt-submit.sh (skill-injection + drain) + _common.sh. unit: render_frames + sptc_skill_key tests. int: ci/hooks/poll-int.sh — the poll->additionalContext drain round-trip vs live v0.7.1 (<EVENT> envelope, render_frames confirm-match, multi-message). UPS-fires-on-slash empirical = ADR-0002 validation (CC 2.1.177); skill-injection resolve = registration-int 4c.
 
+[[requirements]]
+id = "REQ-DIST-SESSIONSTART-BRIEF"
+title = "SessionStart injects agent-facing briefs as additionalContext: an identity brief (who + perch-live/don't-re-arm + send/reply/roster) for perched sessions (bind+boundary), and a peer-gated ring brief (spt ring + roster) for no-perch seed sessions; all prose is adapter-string-backed ([strings.briefs]), the hook only composes + {id}-substitutes, never authors prose; subagent (agent_type) sessions are skipped"
+required_stages = ["doc", "impl", "unit"]  # doc: docs-site harness-contract §SessionStart briefs. impl: session-start.sh emit-block + _common.sh (sptc_brief/assemble_perch/assemble_noperch/perch_brief/noperch_brief/is_subagent/has_peers_lines/node_has_peers/json_escape/emit_additional_context) + adapter/strings/briefs/*.md + [strings.briefs] in claude-spt.toml. unit: tests/hooks-parse.sh (assemble structure + {id} global subst + is_subagent + peer-gate line-count + json_escape + emit shape/empty). int PENDING: committed brief round-trip script (get-string file-backed resolve -> compose -> valid JSON) — manually proven 2026-06-19 via a renamed local probe adapter (probe-sptc), add "int" when the script lands + the published claude-spt adapter carries [strings.briefs]. NOTE: live-vs-ready flavor DEFERRED (public liveness-query gap, logged w/ doyle, post-v0.13.0 spt whoami --json).
+
 # ── Milestone: CI (autonomous fleet) — minted on-start. Deterministic gates + git push-trigger +
 # spt reporting bus. Seeded from SCOPE.md "CI model" + docs/CI.md. Real-claude acceptance is a
 # later slice (doc-only now). All harness-agnostic shell; runs on the Win+Linux fleet.
