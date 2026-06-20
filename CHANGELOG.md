@@ -8,6 +8,18 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.5.0] - 2026-06-19
+
+### Added
+- **Agents now know who they are the moment a session starts.** When a session is already
+  reachable — you launched it through `cc`, or it cleared/compacted mid-run — it now opens with a
+  short brief: its own agent name, a reminder that it's already live (so it won't try to re-arm),
+  and how to message other agents (`spt send` and reply, plus `spt endpoint list` to see who's
+  around). Previously a resumed or spt-launched session could start not knowing its own name.
+- **Sessions that aren't reachable yet learn how to reach out.** On a machine that belongs to a
+  subnet, a plain session with no perch now gets a one-line tip on reaching other agents with
+  `spt ring` — without having to go reachable first. Solo machines with no peers see nothing.
+
 ## [0.4.0] - 2026-06-18
 
 ### Changed
