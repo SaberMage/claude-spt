@@ -16,6 +16,7 @@ Deliver a message to another agent. The **body is read from stdin**.
 - **Reply** to a message you received: `printf '%s' "<body>" | spt send <sender>` — the sender id is
   the `from` on the `<EVENT>` you received.
 - **Send and wait** for a reply: `printf '%s' "<body>" | spt ring <target> --timeout 60` (reply prints
-  to stdout; `TIMEOUT` is exit 0 — the message still landed).
+  to stdout; `TIMEOUT` is exit 0 — the message still landed). Only do this if you do NOT have your own
+  ready agent ID or live agent ID.
 
-Full guidance: `spt how-to send`. To receive replies on your own perch, go `/sptc:ready` or `/sptc:live`.
+Full guidance: `spt how-to send`
