@@ -41,6 +41,7 @@ case "$SPTC_OS" in windows) EXE=".exe" ;; *) EXE="" ;; esac
 if [ -n "${SPTC_TARGET:-}" ]; then RELSUB="$SPTC_TARGET/release"; else RELSUB="release"; fi
 DIGEST="$ROOT/tools/claude-spt-digest/target/$RELSUB/claude-spt-digest$EXE"
 PSYCHE="$ROOT/tools/claude-spt-psyche/target/$RELSUB/claude-spt-psyche$EXE"
+IDLE="$ROOT/tools/cc-spt-idle-translate/target/$RELSUB/cc-spt-idle-translate$EXE"
 ASSET="adapter-${SPTC_OS}-${SPTC_ARCH}.spt"
 OUT="${ADAPTER_SPT_OUT:-$ROOT/dist/$ASSET}"   # overridable so the unit test writes to a tmp file
 
@@ -55,11 +56,11 @@ fi
 echo
 echo "== tool binaries =="
 missing=0
-for b in "$DIGEST" "$PSYCHE"; do
+for b in "$DIGEST" "$PSYCHE" "$IDLE"; do
   if [ -f "$b" ]; then echo "  ok    $b"; else echo "  MISS  $b"; missing=1; fi
 done
 if [ "$missing" -ne 0 ]; then
-  echo "REFUSING to package: build the release binaries first — sh ci/digest/build.sh && sh ci/psyche/build.sh" >&2
+  echo "REFUSING to package: build the release binaries first — sh ci/digest/build.sh && sh ci/psyche/build.sh && sh ci/idle-translate/build.sh" >&2
   exit 1
 fi
 
@@ -67,7 +68,7 @@ echo
 echo "== plan ($([ "$APPLY" -eq 1 ] && echo APPLY || echo DRY-RUN)) =="
 echo "manifest : $MANIFEST  ->  (archive root) manifest.toml"
 echo "strings  : $STRINGS/  ->  (archive root) strings/"
-echo "binaries : claude-spt-digest$EXE, claude-spt-psyche$EXE  ->  (archive root)"
+echo "binaries : claude-spt-digest$EXE, claude-spt-psyche$EXE, cc-spt-idle-translate$EXE  ->  (archive root)"
 echo "os/arch  : $SPTC_OS/$SPTC_ARCH"
 echo "asset    : $OUT  (-> $ASSET)"
 echo "NOTE: the archive is PLATFORM-SPECIFIC (native binaries: '$EXE' build) — hence the per-OS name."
@@ -91,9 +92,10 @@ cp "$MANIFEST" "$STAGE/manifest.toml"
 cp -r "$STRINGS" "$STAGE/strings"
 cp "$DIGEST" "$STAGE/claude-spt-digest$EXE"
 cp "$PSYCHE" "$STAGE/claude-spt-psyche$EXE"
+cp "$IDLE" "$STAGE/cc-spt-idle-translate$EXE"
 
 mkdir -p "$(dirname "$OUT")" || { echo "FATAL: cannot create $(dirname "$OUT")"; exit 2; }
-( cd "$STAGE" && tar -czf "$OUT" manifest.toml strings claude-spt-digest$EXE claude-spt-psyche$EXE ) \
+( cd "$STAGE" && tar -czf "$OUT" manifest.toml strings claude-spt-digest$EXE claude-spt-psyche$EXE cc-spt-idle-translate$EXE ) \
   || { echo "FATAL: tar failed"; exit 2; }
 
 # Self-validate the produced archive: manifest.toml must be at the ROOT (no leading path component).

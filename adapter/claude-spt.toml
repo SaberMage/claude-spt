@@ -165,6 +165,28 @@ keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
 command = "claude --dangerously-skip-permissions"
 keys = ["id"]
 
+# ── [session.resume] — native-resume sibling of [session.self] (harness-contract v0.13.0+) ─────
+# spt-core selects THIS over [session.self] when a bringup carries a prior session (`spt endpoint run
+# --resume <session>` or the picker's "Resume from history") AND this role is declared. OMITTING it
+# silently falls back to [session.self] → a fresh session with a BLANK transcript (the documented
+# footgun). The PTY lands in the resumed session's recorded project cwd; CC resolves the transcript by
+# {session_id} + cwd.
+#
+# Command = Claude Code's NATIVE-RESUME verb: `claude -r {session_id}` (-r/--resume reloads the real
+# transcript by id). Unlike [session.self] — which threads the endpoint {id} via $SPT_ENDPOINT_ID
+# because bare `claude` has no id flag — resume threads {id} as the REMOTE-CONTROL name
+# (`--remote-control {id}`, a real CC flag): native-resume drives the resumed PTY over Remote Control,
+# the same channel a live `spt rc` controller / the [message-idle-translation-binary] use, so the
+# endpoint id IS the RC session name. `--dangerously-skip-permissions` for the same non-interactive
+# broker-PTY reason as [session.self] (REQ-HAZARD-PSYCHE-PERMS-DEADLOCK). keys = the two fills
+# spt-core substitutes: {session_id} (the resumed id) + {id} (the endpoint). spt tokenizes on
+# whitespace then fills (tokenize-then-fill, v0.8.2+), so each flag is a clean argv element.
+# Satisfies REQ-DIST-SESSION-RESUME (declaration-only seam; .toml is unscanned, so the formal
+# evidence is the unit assertion in tests/manifest-shortcut.sh — not a tag here).
+[session.resume]
+command = "claude -r {session_id} --remote-control {id} --dangerously-skip-permissions"
+keys = ["session_id", "id"]
+
 # ── [env.<VAR>] ────────────────────────────────────────────────────────────────────────────
 # Broker-injected env for spt-hosted (bind-path) sessions. The endpoint {id} is injected so CC's
 # SessionStart hook can self-register the right perch via `api bind $SPT_ENDPOINT_ID`. spt-hosted
@@ -191,6 +213,29 @@ value = "{id}"
 # PTY injection is spt-core M3 roadmap (F-001 resolution); not claimed here.
 activity = ["hook"]
 idle = ["hook"]
+
+# ── [message-idle-translation-binary] — agnostic idle PTY delivery (harness-contract v0.13.0+) ─
+# The IDLE-delivery seam for spt-HOSTED sessions: a lifecycle-managed stdin→stdout JSON-lines binary
+# spt-core spawns when the endpoint comes online and reaps on shutdown. It turns each inbound <EVENT>
+# envelope into keystroke-commands spt-core applies ATOMICALLY to the broker-held PTY (operator input
+# is buffered during emission, so it coexists with an attached `spt rc` controller). This is the
+# spt-hosted complement to the [inject] hook channel above: [inject] handles BUSY/mid-turn delivery
+# (UPS additionalContext); this handles IDLE delivery into a session sitting at its input box.
+#
+# `path` = the binary's bare name (resolved from the adapter install dir like claude-spt-digest /
+# claude-spt-psyche; it packs into adapter.spt). The binary (tools/cc-spt-idle-translate, Rust) emits
+# the operator-specified choreography per message — ctrl+s (stash draft) · 50ms · <envelope>\r
+# (submit) — so an inbound message never clobbers a half-typed draft (CC AUTO-RESTORES the stashed
+# draft after the submit, so no trailing restore keystroke is needed).
+# The trailing \r submits because spt-core applies a {"text"} command VERBATIM to the PTY (no
+# control-char strip; broker.rs:1016-1017, doyle-confirmed 2026-06-20) — equivalent to {"key":"enter"};
+# that verbatim-apply is also why the binary neutralizes the envelope's internal CR/LF.
+# RUNTIME dogfood (the spawn-on-up/reap-on-down lifecycle + atomic PTY apply) needs the v0.13.0
+# daemon; the binary + manifest declaration are buildable against the published contract now (docs
+# lead the binary — still v0.12.x on spt-releases). Satisfies REQ-DIST-IDLE-TRANSLATE (the scanned
+# impl evidence is the binary tools/cc-spt-idle-translate/src/main.rs; .toml is unscanned).
+[message-idle-translation-binary]
+path = "cc-spt-idle-translate"
 
 # ── [digest] ───────────────────────────────────────────────────────────────────────────────
 # Session-digest extractor seam. CC's transcript is JSONL (one event per line); the

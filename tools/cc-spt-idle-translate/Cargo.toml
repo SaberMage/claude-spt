@@ -1,0 +1,21 @@
+# cc-spt-idle-translate — the [message-idle-translation-binary] for the claude-spt adapter
+# (spt-core harness-contract v0.13.0+). Rust for the same reasons the digest/psyche tools are:
+# a compiled, dependency-light binary with no interpreter-on-PATH or locale-encoding hazards
+# (stdin/stdout are always UTF-8), one .exe the fleet spawns bare on Win+Linux. spt-core
+# lifecycle-manages it (spawn on endpoint up, reap on down). Builds via ci/idle-translate/build.sh,
+# gated in ci/run-gates.sh. Packed into adapter.spt alongside claude-spt-digest + claude-spt-psyche.
+[package]
+name = "cc-spt-idle-translate"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "cc-spt-idle-translate"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+
+[profile.release]
+strip = true
