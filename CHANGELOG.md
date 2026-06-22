@@ -8,6 +8,25 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.6.0] - 2026-06-22
+
+> Requires spt-core **v0.13.0 or newer** for the two new capabilities below. On older spt-core
+> they're simply inactive — nothing else changes, so this release is safe to take on any version.
+
+### Added
+- **Idle agents now receive your messages.** When an spt-hosted agent is sitting at its prompt
+  (idle, not mid-task), a message sent to it now lands *in that session* — typed in and submitted
+  for you — instead of going unseen until the agent next acted. If you were part-way through typing
+  your own input, your draft is stashed first and restored right after, so an incoming message never
+  eats what you were writing.
+- **Resuming an agent brings back its conversation.** Relaunching a session now reloads its prior
+  transcript instead of cold-starting a blank one, and the resume picker shows each session's project
+  folder so you can tell them apart.
+
+### Changed
+- Adapter version of truth is now **0.6.0** (shown in `/sptc:version` and the release tag). The
+  cplugs plugin skeleton is unchanged (still on its own slower track).
+
 ## [0.5.0] - 2026-06-19
 
 ### Added
