@@ -40,10 +40,12 @@
 //!    each delivery stalls to the deadline). `{commit}` flushes the live controller's buffered input
 //!    and releases the InjectFloor race-free. `\r` submits the line; `{commit}` ends the sequence.
 //!
-//! Degenerate fallback (per the corrected contract): `{"text":payload}{"key":"enter"}{"commit":true}`
-//! with no choreography — even the bare form MUST commit. (The published manifest doc historically
+//! Degenerate fallback (per the published contract): `{"text":payload}{"key":"enter"}{"commit":true}`
+//! with no choreography — even the bare form MUST commit. (The published manifest doc ORIGINALLY
 //! omitted `{commit}` from the vocabulary and its degenerate example — a public-surface defect this
-//! adapter's blind-build caught; doyle is republishing the contract with `{commit}` documented.)
+//! adapter's blind-build caught, logged F-016. The contract is now CORRECTED + live:
+//! harness-contract/manifest.html documents `{commit}` as the mandatory terminator + the 5s
+//! commit-deadline + inject-floor release + raw-inject fallback, since v0.13.0.)
 //! We choreograph because Claude Code's input box supports the ctrl+s draft stash/restore, so an
 //! inbound message never eats an in-progress draft.
 //!
