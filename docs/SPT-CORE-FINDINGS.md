@@ -19,7 +19,7 @@
 | F-009 | 2026-06-16 | **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2, 2026-06-17)**. doyle's fix: command templating now fills each `{key}` as ONE argv element (tokenize-then-fill). Argv-capture confirmed the multi-line `{psyche_prompt}` arrives as a single element, newlines intact. Adapter keeps greedy `--prompt` as defensive | `[session.psyche_init]`/extractor command templating substitutes a `{key}` into the command STRING then WHITESPACE-SPLITS → ANY multi-word fill (e.g. `{psyche_prompt}`) explodes into stray argv tokens. Survived only by single-token fills |
 | F-010 | 2026-06-16 | **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2, 2026-06-17)**. A spawn-then-exit psyche now stamps `psyche_host_error{reason:"host not resident within 5s ...", attempts:2}` on the parent perch (rendered `psyche-host: FAILED (...)` by `endpoint list`/`whoami`); status stays online (liveness authoritative). Forced fast-exit confirmed it | Silent-exit still maskable: `psyche_host_error` stays clear when the detached spawn() succeeds but the child exits IMMEDIATELY (e.g. arg-parse exit 2). A crash-on-startup host looks identical to a healthy one |
 | F-013 | 2026-06-17 | **ROOT-CAUSED (perri) → RULED spt-core BUG (doyle 2026-06-17): fork (a)**. spt-core must honor `[env].value` substitution in endpoint-run (the schema already promises "with substitution"; not applying it is a silent correctness bug). **Adapter manifest is CORRECT as-is — no wrapper** (b rejected: a shim would dodge a bug every `[env]`-routing adapter hits). Dispatched **`REQ-HAZARD-ENV-SUBST` → todlando, v0.11.0-findings** (pairs with REQ-SEND-SPT-HOSTED). **VERIFIED FIXED + INT LANDED (spt v0.11.0, 2026-06-17)** — endpoint run → populated `SPT_ENDPOINT_ID` → bind → BOUND perch → `spt send` SENT (live PTY inject); missing int landed = `ci/launcher/bind-int.sh` (REQ-CC-LAUNCHER-BIND, 4/4 green); `<0.11.0` silent-seed = doc-noted KNOWN-MINOR (no floor-bump / no guard — env-indistinguishable, ruled); ghost-roster self-healed (REQ-HAZARD-ROSTER-GHOST). **CLOSED.** `spt endpoint run` threads the endpoint `{id}` to the `[session.self]` spawn **ONLY** via `{id}` substitution in the command **argv**; `[env.<VAR>].value = "{id}"` is **NOT** substituted (injects empty) — although the schema documents `value` as "Value to inject (**with substitution**)". A flagless harness (bare `claude`, no CLI flag for an id) cannot place `{id}` on argv → SessionStart sees empty `$SPT_ENDPOINT_ID` → `sptc_register_verb` returns **`seed` not `bind`** → endpoint-run yields **ZERO perch** (the operator's wall-b `NO_PERCH`). bind itself is fine (a direct `api bind` builds a fully reachable perch). Fix fork: (a) spt-core honors `[env].value` substitution → current manifest becomes correct, or (b) adapter ships a wrapper launcher that takes `{id}` on argv and exports `SPT_ENDPOINT_ID` before exec-ing claude |
-| F-011 | 2026-06-17 | **CONFIRMED + ROOT-CAUSED (doyle, spt-core source) — case-3 robustness, NON-blocking**. doyle: `registry.rs` `manifest_dir` — Pointer/GhReleaseManaged adapters read the manifest LIVE from `source_dir`; a deferred install whose manifest isn't extracted yet → `load_manifest` fails → `registered()` `filter_map(...ok())` **SILENTLY DROPS** the adapter → zero host_binaries candidates (`ADAPTER_UNRESOLVED`) AND `resolve_option/set_active` reads the absent manifest → bare **os-error-2**. Fix shape (doyle minting REQ-HAZARD→todlando): clear diagnostic at resolver + `adapter use` instead of silent-drop/cryptic-os2, possibly eager manifest extract at register. Real `--release`/extracted-dir installs work (v0.3.0 dogfooded clean) | A registered **Pointer**-mode adapter whose deferred install dir lacks the extracted manifest vanishes from the active set: bare resolution fails `ADAPTER_UNRESOLVED` (host_binaries never consulted) and `spt adapter use <adapter>` fails cryptic `os error 2` (no path/cause), even though the manifest declares everything needed |
+| F-011 | 2026-06-17 | **CONFIRMED + ROOT-CAUSED (doyle, spt-core source) — case-3 robustness, NON-blocking**. doyle: `registry.rs` `manifest_dir` — Pointer/GhReleaseManaged adapters read the manifest LIVE from `source_dir`; a deferred install whose manifest isn't extracted yet → `load_manifest` fails → `registered()` `filter_map(...ok())` **SILENTLY DROPS** the adapter → zero host_binaries candidates (`ADAPTER_UNRESOLVED`) AND `resolve_option/set_active` reads the absent manifest → bare **os-error-2**. Fix shape (doyle minting REQ-HAZARD→todlando): clear diagnostic at resolver + `adapter use` instead of silent-drop/cryptic-os2, possibly eager manifest extract at register. Real `--release`/extracted-dir installs work (v0.3.0 dogfooded clean). **RECURRED 2026-06-22 via the `*-proof` commands (translate-proof/digest-proof) on a GhReleaseManaged dev adapter — acked + batched by doyle into v0.13.x adapter-DX (a `--dir`/`--manifest` override); see "F-011 (cont.)" below.** | A registered **Pointer**-mode adapter whose deferred install dir lacks the extracted manifest vanishes from the active set: bare resolution fails `ADAPTER_UNRESOLVED` (host_binaries never consulted) and `spt adapter use <adapter>` fails cryptic `os error 2` (no path/cause), even though the manifest declares everything needed |
 | F-016 | 2026-06-22 | **RESOLVED — both fixes SHIPPED** (doyle, broker.rs-confirmed). The published `[message-idle-translation-binary]` doc omitted `{commit}` from the stdout vocabulary AND its degenerate baseline `{text}{key:enter}` would itself FAULT. `{commit:true}` is the MANDATORY inject-sequence terminator (`run_inject_worker` broker.rs:1075-1090; no-commit → 5s `INJECT_COMMIT_DEADLINE` FAULT, broker.rs:151-169; reference `{text}{key:enter}{commit:true}` translation.rs:74-78). **(i) adapter binary appends trailing `{commit:true}` — DONE (cc-spt-idle-translate, 11 tests); (ii) contract republished + LIVE on gh-pages 2026-06-22 — `{commit}` in the vocabulary + commit-deadline/inject-floor semantics + corrected degenerate; re-verified by re-fetch.** Residual: end-to-end `translate-proof` re-confirm pending v0.13.1 (counter 28+, runner-load delay, not code). Caught by the blind-build BEFORE a live FAULT | The published harness-contract documented the idle-translation binary's stdout vocabulary as `{key}`/`{delay_ms}`/`{text}` only, with a `{text}{key:enter}` degenerate example — but the broker requires a trailing `{commit:true}` terminator or every delivery FAULTs at the 5s commit deadline. A harness author building from the public surface alone ships a binary that faults live |
 
 > **F-012 (NOT logged as spt-core)** — legacy-owl 1.11.25 poll-loop exits 1 / orphans the Psyche across daemon churn (`/spt:revive` started gen-7 wrapper+psyche fine but the foreground poll died with a non-fatal `sessions log seal failed: git failed (continuing)` line). doyle ruled this is the **legacy owl listener** (a separate daemon from spt-core), NOT an spt-core public-surface finding; the seal line is non-fatal/continues so isn't the exit cause; it dies with legacy owl's retirement. Re-open as spt-core ONLY if repro'd clean-room (sptc listener, zero legacy owl). No spt-core action.
@@ -925,3 +925,42 @@ doyle triaged the missing author-time proof (`spt adapter translate-proof`, the 
 `digest-proof`) → todlando built it (PR #28). Its no-commit gate would have caught this same defect at
 author time; runs post-release to confirm the fixed binary green. Caught here BEFORE any live FAULT —
 exactly what the blind-build exists to surface.
+
+---
+
+## F-011 (cont.) — the `*-proof` commands can't resolve a GhReleaseManaged dev adapter (author-time-loop friction)
+
+**Surfaced:** 2026-06-22, running `spt adapter translate-proof` (v0.13.1) against `claude-spt` in
+local dev. Same root class as F-011 (a Pointer/GhReleaseManaged adapter whose manifest isn't at the
+resolver's expected install path → resolution fails), now hit via the author-time proof commands.
+doyle acked it 2026-06-22 and is folding the fix into the v0.13.x adapter-DX batch.
+
+**The friction.** `claude-spt` declares `[update] avenue = "gh_release"`, so `spt adapter add
+<dev-manifest-file>` registers it **GhReleaseManaged**. The `*-proof` resolvers (`translate-proof`,
+and the same path `digest-proof` uses) then want the **extracted install shape** — `manifest.toml`
+plus the binary **co-located** in the install dir — not the dev source file. With a bare-file add the
+proof fails:
+
+```
+$ spt adapter add "$PWD/adapter/claude-spt.toml"          # registers a GhReleaseManaged pointer
+$ spt adapter translate-proof claude-spt --event '<EVENT…>'
+TRANSLATE_PROOF_FAIL:claude-spt: adapter 'claude-spt' is registered as a pointer but its manifest is
+not present yet at <dir> — the adapter's binary/manifest has not been extracted/downloaded …
+```
+
+…even though the dev manifest is right there (just named `claude-spt.toml`, not `manifest.toml`, and
+the binary lives under `tools/…/target/release/`, not co-located).
+
+**Workaround (in `ci/idle-translate/translate-proof-int.sh`).** Stage a disposable install dir that
+mirrors the extracted shape — `manifest.toml` (the renamed manifest) + `strings/` + the built binary
+co-located — and `adapter add` *that dir*. Then the proof resolves and passes (TRANSLATE_PROOF_OK,
+commit: yes). **Knock-on:** the older `ci/digest/digest-proof-int.sh` uses the bare-file form and so is
+now **stale on 0.13.x** (would hit the same error); it needs the same install-dir staging.
+
+**Suggested fix (doyle agreed, batched into v0.13.x adapter-DX).** Add a `--dir <path>` / `--manifest
+<file>` override to the `*-proof` family — mirroring `digest-proof`'s `--sample` pointing straight at a
+file — so an author can proof a DEV binary against a DEV manifest without staging a full extracted
+install. Tiny, and it un-stales `digest-proof-int.sh` too.
+
+**Status:** **acked + tracked by doyle (2026-06-22), batched into the v0.13.x adapter-DX scope.**
+Non-blocking — the disposable-install-dir staging is a clean workaround and the int is GREEN with it.
