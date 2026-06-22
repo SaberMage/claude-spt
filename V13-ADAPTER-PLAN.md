@@ -37,9 +37,16 @@
 - ✅ `ci/idle-translate/build.sh` wired into `ci/run-gates.sh`; packer packs the 3rd binary
 - ✅ traceable-reqs: REQ-DIST-SESSION-RESUME + REQ-DIST-IDLE-TRANSLATE (`["impl","unit"]`); REQ-HAZARD-PSYCHE-PERMS-DEADLOCK extended to resume
 
-## Deferred — `int` (GATED on v0.13.0 daemon — doyle pings on ship)
-- Native-resume launch: real `--resume` reloads the transcript + RC drive → add `int` to REQ-DIST-SESSION-RESUME.
-- Idle-translation lifecycle: spawn-on-up / reap-on-down + atomic PTY apply → add `int` to REQ-DIST-IDLE-TRANSLATE.
+## Int status (spt 0.13.1 / counter 28)
+- ✅ **REQ-DIST-IDLE-TRANSLATE → int** (EMIT half): `ci/idle-translate/translate-proof-int.sh` — real
+  `spt adapter translate-proof` spawns+feeds the binary daemon-identically, asserts `TRANSLATE_PROOF_OK`
+  + `commit: yes` + the trailing `\r`. GREEN 2026-06-22. The `{commit}` fix (F-016) is exactly what
+  the proof's no-commit gate guards.
+- ⏳ **REQ-DIST-IDLE-TRANSLATE APPLY half** (atomic PTY + spawn-on-up/reap-on-down lifecycle): deferred —
+  needs a real-claude bringup (translate-proof is EMIT-only, ADR-0022).
+- ⏳ **REQ-DIST-SESSION-RESUME → int**: deferred — real-claude `endpoint run --resume` bringup
+  (transcript reattach + RC drive). translate-proof does NOT cover resume. Static signals green on
+  0.13.1 (role accepted, `--resume` flag present). Stays `unit`.
 - `doc` for both: docs-site harness-contract RUN-group slice (documented in manifest/module comments meanwhile).
 
 ## Gate
