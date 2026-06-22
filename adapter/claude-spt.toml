@@ -28,7 +28,14 @@
 [adapter]
 name = "claude-spt"
 kind = "harness"
-version = "0.5.0"
+# 0.6.0 (2026-06-21): adds the v0.13.0 harness-contract RUN-group seams [session.resume] +
+# [message-idle-translation-binary]. Bumped off 0.5.0 so nothing that resolves a manifest by VERSION
+# (rather than by registered path) can shadow-pick the pre-seam 0.5.0 _github copy (doyle note,
+# 2026-06-21). The new seams are ADDITIVE — older spt-core (<0.13.0) ignores both tables (resume
+# falls back to [session.self]; the idle-translation table is unread), so min_spt_core_version stays
+# 0.9.0 (a 0.13.0 floor would needlessly block the ready/live flows on older nodes — same additive
+# philosophy as host_binaries / F-013).
+version = "0.6.0"
 # Floor BUMPED to 0.9.0 (2026-06-17, PREP-4): the legacy-parity bringup requires spt-core's
 # adapter-agnostic seed + bind-time resolution by [adapter] host_binaries (shipped v0.9.0).
 # On <0.9.0 `api seed`/`listen` still mandate --adapter, so the bare flow this manifest now wires
@@ -225,11 +232,14 @@ idle = ["hook"]
 # `path` = the binary's bare name (resolved from the adapter install dir like claude-spt-digest /
 # claude-spt-psyche; it packs into adapter.spt). The binary (tools/cc-spt-idle-translate, Rust) emits
 # the operator-specified choreography per message — ctrl+s (stash draft) · 50ms · <envelope>\r
-# (submit) — so an inbound message never clobbers a half-typed draft (CC AUTO-RESTORES the stashed
-# draft after the submit, so no trailing restore keystroke is needed).
-# The trailing \r submits because spt-core applies a {"text"} command VERBATIM to the PTY (no
-# control-char strip; broker.rs:1016-1017, doyle-confirmed 2026-06-20) — equivalent to {"key":"enter"};
-# that verbatim-apply is also why the binary neutralizes the envelope's internal CR/LF.
+# (submit line) · {"commit":true} (terminate sequence) — so an inbound message never clobbers a
+# half-typed draft (CC AUTO-RESTORES the stashed draft after submit, so no trailing restore keystroke).
+# TWO distinct signals (doyle-confirmed from broker.rs): (1) the trailing \r submits the PTY line —
+# spt-core applies a {"text"} command VERBATIM (no control-char strip; broker.rs:1066/:1016-1017),
+# equivalent to {"key":"enter"}; that verbatim-apply is also why the binary neutralizes the envelope's
+# internal CR/LF. (2) {"commit":true} is the MANDATORY inject-sequence terminator: run_inject_worker
+# (broker.rs:1075-1090) ends a sequence ONLY on {commit}; without it the broker FAULTs at the 5s
+# INJECT_COMMIT_DEADLINE on every delivery. \r submits the line; {commit} releases the InjectFloor.
 # RUNTIME dogfood (the spawn-on-up/reap-on-down lifecycle + atomic PTY apply) needs the v0.13.0
 # daemon; the binary + manifest declaration are buildable against the published contract now (docs
 # lead the binary — still v0.12.x on spt-releases). Satisfies REQ-DIST-IDLE-TRANSLATE (the scanned

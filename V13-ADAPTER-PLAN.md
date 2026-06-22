@@ -19,10 +19,14 @@
 ### 2. `[message-idle-translation-binary]` — idle PTY delivery (REQ-DIST-IDLE-TRANSLATE)
 - `path = "cc-spt-idle-translate"` — Rust stdin→stdout JSON-lines filter (`tools/cc-spt-idle-translate`).
 - Input: `{"type":"init",…}` (no output) · `{"type":"event","envelope":"<EVENT…>"}` · `{"type":"input"}` (no output).
-- Output per event = the **operator choreography**:
-  `{"key":"ctrl+s"}` · `{"delay_ms":50}` · `{"text":"<envelope>\r"}`
-  (stash draft → submit message; CC auto-restores the draft after submit, so no trailing restore
-  keystroke — an inbound message never eats a half-typed draft).
+- Output per event = the **choreography**:
+  `{"key":"ctrl+s"}` · `{"delay_ms":50}` · `{"text":"<envelope>\r"}` · `{"commit":true}`
+  (stash draft → submit line → terminate the inject sequence; CC auto-restores the draft after
+  submit, so no trailing restore keystroke). The `\r` submits the line; `{"commit":true}` is the
+  MANDATORY terminator — spt-core's `run_inject_worker` FAULTs at a 5s `INJECT_COMMIT_DEADLINE`
+  without it (broker.rs:1075-1090, doyle-confirmed). The published contract had **dropped `{commit}`**
+  from the vocabulary + degenerate example — a public-surface defect this blind-build caught; doyle
+  is republishing manifest.md with `{commit}` documented.
 - Idle-only; busy/mid-turn delivery stays the `[inject]` hook path. spt-core spawns on endpoint-up,
   reaps on down, applies keystrokes atomically (coexists with a live `spt rc` controller).
 

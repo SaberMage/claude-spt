@@ -20,6 +20,7 @@
 | F-010 | 2026-06-16 | **RESOLVED-SHIPPED + RE-VALIDATED (spt v0.8.2, 2026-06-17)**. A spawn-then-exit psyche now stamps `psyche_host_error{reason:"host not resident within 5s ...", attempts:2}` on the parent perch (rendered `psyche-host: FAILED (...)` by `endpoint list`/`whoami`); status stays online (liveness authoritative). Forced fast-exit confirmed it | Silent-exit still maskable: `psyche_host_error` stays clear when the detached spawn() succeeds but the child exits IMMEDIATELY (e.g. arg-parse exit 2). A crash-on-startup host looks identical to a healthy one |
 | F-013 | 2026-06-17 | **ROOT-CAUSED (perri) → RULED spt-core BUG (doyle 2026-06-17): fork (a)**. spt-core must honor `[env].value` substitution in endpoint-run (the schema already promises "with substitution"; not applying it is a silent correctness bug). **Adapter manifest is CORRECT as-is — no wrapper** (b rejected: a shim would dodge a bug every `[env]`-routing adapter hits). Dispatched **`REQ-HAZARD-ENV-SUBST` → todlando, v0.11.0-findings** (pairs with REQ-SEND-SPT-HOSTED). **VERIFIED FIXED + INT LANDED (spt v0.11.0, 2026-06-17)** — endpoint run → populated `SPT_ENDPOINT_ID` → bind → BOUND perch → `spt send` SENT (live PTY inject); missing int landed = `ci/launcher/bind-int.sh` (REQ-CC-LAUNCHER-BIND, 4/4 green); `<0.11.0` silent-seed = doc-noted KNOWN-MINOR (no floor-bump / no guard — env-indistinguishable, ruled); ghost-roster self-healed (REQ-HAZARD-ROSTER-GHOST). **CLOSED.** `spt endpoint run` threads the endpoint `{id}` to the `[session.self]` spawn **ONLY** via `{id}` substitution in the command **argv**; `[env.<VAR>].value = "{id}"` is **NOT** substituted (injects empty) — although the schema documents `value` as "Value to inject (**with substitution**)". A flagless harness (bare `claude`, no CLI flag for an id) cannot place `{id}` on argv → SessionStart sees empty `$SPT_ENDPOINT_ID` → `sptc_register_verb` returns **`seed` not `bind`** → endpoint-run yields **ZERO perch** (the operator's wall-b `NO_PERCH`). bind itself is fine (a direct `api bind` builds a fully reachable perch). Fix fork: (a) spt-core honors `[env].value` substitution → current manifest becomes correct, or (b) adapter ships a wrapper launcher that takes `{id}` on argv and exports `SPT_ENDPOINT_ID` before exec-ing claude |
 | F-011 | 2026-06-17 | **CONFIRMED + ROOT-CAUSED (doyle, spt-core source) — case-3 robustness, NON-blocking**. doyle: `registry.rs` `manifest_dir` — Pointer/GhReleaseManaged adapters read the manifest LIVE from `source_dir`; a deferred install whose manifest isn't extracted yet → `load_manifest` fails → `registered()` `filter_map(...ok())` **SILENTLY DROPS** the adapter → zero host_binaries candidates (`ADAPTER_UNRESOLVED`) AND `resolve_option/set_active` reads the absent manifest → bare **os-error-2**. Fix shape (doyle minting REQ-HAZARD→todlando): clear diagnostic at resolver + `adapter use` instead of silent-drop/cryptic-os2, possibly eager manifest extract at register. Real `--release`/extracted-dir installs work (v0.3.0 dogfooded clean) | A registered **Pointer**-mode adapter whose deferred install dir lacks the extracted manifest vanishes from the active set: bare resolution fails `ADAPTER_UNRESOLVED` (host_binaries never consulted) and `spt adapter use <adapter>` fails cryptic `os error 2` (no path/cause), even though the manifest declares everything needed |
+| F-016 | 2026-06-22 | **CONFIRMED public-contract DEFECT (doyle, broker.rs) → FIX IN FLIGHT**. The published `[message-idle-translation-binary]` doc omits `{commit}` from the stdout vocabulary AND its degenerate baseline `{text}{key:enter}` would itself FAULT. doyle confirmed `{commit:true}` is the MANDATORY inject-sequence terminator (`run_inject_worker` broker.rs:1075-1090; no-commit → 5s `INJECT_COMMIT_DEADLINE` FAULT, broker.rs:151-169; reference `{text}{key:enter}{commit:true}` translation.rs:74-78). **Two fixes: (i) adapter binary appends trailing `{commit:true}` — DONE (cc-spt-idle-translate, 11 tests); (ii) doyle republishing manifest.md with `{commit}` vocabulary + commit-deadline/InjectFloor semantics + corrected degenerate.** Caught by the blind-build BEFORE a live FAULT; `translate-proof`'s no-commit gate would also catch it (validates post-release) | The published harness-contract documents the idle-translation binary's stdout vocabulary as `{key}`/`{delay_ms}`/`{text}` only, with a `{text}{key:enter}` degenerate example — but the broker requires a trailing `{commit:true}` terminator or every delivery FAULTs at the 5s commit deadline. A harness author building from the public surface alone ships a binary that faults live |
 
 > **F-012 (NOT logged as spt-core)** — legacy-owl 1.11.25 poll-loop exits 1 / orphans the Psyche across daemon churn (`/spt:revive` started gen-7 wrapper+psyche fine but the foreground poll died with a non-fatal `sessions log seal failed: git failed (continuing)` line). doyle ruled this is the **legacy owl listener** (a separate daemon from spt-core), NOT an spt-core public-surface finding; the seal line is non-fatal/continues so isn't the exit cause; it dies with legacy owl's retirement. Re-open as spt-core ONLY if repro'd clean-room (sptc listener, zero legacy owl). No spt-core action.
 
@@ -878,3 +879,47 @@ psyche that `exit(2)`s at startup: the parent perch got
 `psyche_host_error{reason:"host not resident within 5s (psyche perch missing/dead pid)", attempts:2}`,
 and both `spt endpoint list` and `spt whoami` rendered `psyche-host: FAILED (...)` after the liveness
 line (status itself stays `online` — liveness remains authoritative). No more silent phantom.
+
+---
+
+## F-016 — published `[message-idle-translation-binary]` contract omits the mandatory `{commit}` terminator
+
+**Surfaced:** 2026-06-22, building the `[message-idle-translation-binary]` seam (v0.13.0 harness
+contract) public-surface-only. This is the flagship case for the blind-build: a binary authored
+strictly from the published contract would FAULT live, because the contract is incomplete.
+
+**The gap.** The published harness-contract
+(`sabermage.github.io/spt-releases/harness-contract/manifest.html`, `[message-idle-translation-binary]`)
+documents the translation binary's stdout command vocabulary as exactly `{"key":…}` / `{"delay_ms":…}`
+/ `{"text":…}`, and gives the degenerate baseline verbatim as `{"text":payload}{"key":"enter"}`. It
+makes **no mention** of `{"commit":true}`, an `InjectFloor`, or a commit deadline. But the broker
+requires a trailing `{commit}` to terminate an inject sequence — so a binary built faithfully from the
+published vocabulary (including the doc's own degenerate example) emits no terminator and **faults on
+every delivery**.
+
+**Confirmed from source (doyle, 2026-06-22).** `run_inject_worker` (broker.rs:1075-1090) ends an
+inject sequence ONLY on an explicit `{commit}`; `Text`/`Key`/`Delay` just enqueue. With no `{commit}`,
+the sequence hits `INJECT_COMMIT_DEADLINE` (5s, broker.rs:151-169) and FAULTs (broker.rs:832-846;
+Layer-G "no-commit FAULT test"). On the fault the broker flushes + releases anyway (1015-1022) so
+input is not lost, but every delivery faults and stalls to the 5s deadline. The reference response IS
+`{text:payload}{key:enter}{commit:true}` (translation.rs:74-78) — `{commit}` is separate from, and
+after, the submit. Two distinct signals: the trailing `\r` (or `{key:enter}`) submits the PTY *line*
+(verbatim — broker.rs:1066); `{commit}` terminates the *sequence* and releases the InjectFloor that
+buffers the live controller's input during emission.
+
+**Resolution — two fixes:**
+- **(i) Adapter binary — DONE.** `tools/cc-spt-idle-translate` now appends a trailing `{"commit":true}`
+  after the `\r`-submit (sequence: `ctrl+s` · 50ms · `{text:"<envelope>\r"}` · `{commit:true}`). 11
+  cargo tests, incl. `sequence_terminates_with_a_mandatory_commit`. The `\r`-in-text submit is
+  unchanged (correct + verbatim); `{commit}` is the additive terminator.
+- **(ii) spt-core contract — doyle, in flight.** Republishing `manifest.md` to add `{commit}` to the
+  stdout vocabulary as the mandatory terminator, document the commit-deadline + InjectFloor semantics,
+  and fix the degenerate example to `{text}{key:enter}{commit:true}`. (Re-cite the corrected contract
+  in the binary once it is live on gh-pages.)
+
+**Status:** **CONFIRMED public-contract defect; adapter fixed, contract republish in flight.** Also
+spawned the sibling DX win F-DX (no `translate-proof`): doyle triaged the missing author-time proof
+(`spt adapter translate-proof`, the EMIT-half mirror of `digest-proof`) → todlando built it (PR #28).
+Its no-commit gate would have caught this same defect at author time; runs post-release (counter 28+)
+to confirm the fixed binary green. Caught here BEFORE any live FAULT — exactly what the blind-build
+exists to surface.

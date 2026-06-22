@@ -15,23 +15,35 @@
 //! Output protocol (stdout, one JSON object per line):
 //!   {"key":"ctrl+s"}     — keystroke command (Claude Code: STASH the current draft input)
 //!   {"delay_ms":50}      — inter-command pause
-//!   {"text":"<payload>"} — text injection (the envelope; a trailing \r submits it)
+//!   {"text":"<payload>"} — text injection (the envelope; a trailing \r submits the PTY line)
+//!   {"commit":true}      — MANDATORY sequence terminator (release the InjectFloor; see below)
 //!
-//! The per-event choreography (operator-specified) delivers the message WITHOUT clobbering a
-//! half-typed draft the operator may have in the input box:
+//! The per-event choreography delivers the message WITHOUT clobbering a half-typed draft the operator
+//! may have in the input box, then terminates the inject sequence:
 //!   1. ctrl+s              stash any existing draft
 //!   2. delay 50ms
-//!   3. <envelope>\r        type the envelope, the carriage return submits it
+//!   3. <envelope>\r        type the envelope, the carriage return submits the line
+//!   4. {"commit":true}     terminate the inject sequence
 //! No trailing restore keystroke: Claude Code AUTO-RESTORES the stashed draft after the submit, so a
 //! second ctrl+s would be redundant (it would re-stash, not restore).
 //!
-//! spt-core applies a `{"text":…}` command VERBATIM to the PTY — no control-char stripping
-//! (broker.rs:1016-1017, doyle-confirmed 2026-06-20). So the trailing `\r` in step 3 IS the submit,
-//! exactly equivalent to a separate `{"key":"enter"}` (`key_to_bytes("enter") -> b"\r"`). That same
-//! verbatim application is WHY `commands_for_event` must neutralize the envelope's INTERNAL CR/LF —
-//! an un-neutralized `\n`/`\r` in the payload would reach the PTY and submit early.
+//! TWO DISTINCT SIGNALS — do not conflate them (doyle-confirmed from broker.rs, 2026-06-20/22):
+//!  - The trailing `\r` in step 3 is the HARNESS-level submit: spt-core enqueues a `{"text":…}`
+//!    command VERBATIM to the PTY (no control-char stripping; broker.rs:1066, :1016-1017), so the `\r`
+//!    byte submits the line exactly like a separate `{"key":"enter"}` (`key_to_bytes("enter")->b"\r"`).
+//!    That verbatim application is also WHY `commands_for_event` neutralizes the envelope's INTERNAL
+//!    CR/LF — an un-neutralized `\n`/`\r` would reach the PTY and submit early.
+//!  - The `{"commit":true}` in step 4 is the PROTOCOL-level terminator: `run_inject_worker`
+//!    (broker.rs:1075-1090) ends an inject sequence ONLY on an explicit `{commit}`. Text/Key/Delay
+//!    just enqueue; a sequence that emits no `{commit}` hits `INJECT_COMMIT_DEADLINE` (5s,
+//!    broker.rs:151-169) and FAULTS on every delivery (reverts to raw inject — input isn't lost but
+//!    each delivery stalls to the deadline). `{commit}` flushes the live controller's buffered input
+//!    and releases the InjectFloor race-free. `\r` submits the line; `{commit}` ends the sequence.
 //!
-//! Degenerate fallback (per contract): emit `{"text":payload}{"key":"enter"}` with no choreography.
+//! Degenerate fallback (per the corrected contract): `{"text":payload}{"key":"enter"}{"commit":true}`
+//! with no choreography — even the bare form MUST commit. (The published manifest doc historically
+//! omitted `{commit}` from the vocabulary and its degenerate example — a public-surface defect this
+//! adapter's blind-build caught; doyle is republishing the contract with `{commit}` documented.)
 //! We choreograph because Claude Code's input box supports the ctrl+s draft stash/restore, so an
 //! inbound message never eats an in-progress draft.
 //!
@@ -49,9 +61,11 @@ const DELAY_MS: u64 = 50;
 ///
 /// `envelope` is the full `<EVENT…>…</EVENT>` string. The envelope is single-line by contract (it
 /// encodes newlines as the literal `<br>` token), but we defensively strip any raw CR/LF so a stray
-/// newline can never submit early or split the injection — our single trailing `\r` is the ONLY
-/// submit. (Necessary because spt-core applies `{"text"}` verbatim — broker.rs:1016-1017, doyle
-/// 2026-06-20 — so any internal CR/LF would otherwise reach the PTY.) [impl->REQ-DIST-IDLE-TRANSLATE]
+/// newline can never submit early or split the injection — the single trailing `\r` we append is the
+/// ONLY submit. (Necessary because spt-core applies `{"text"}` verbatim — broker.rs:1066/:1016-1017,
+/// doyle 2026-06-20 — so any internal CR/LF would otherwise reach the PTY.) The closing `{"commit"}`
+/// is the MANDATORY inject-sequence terminator (broker.rs:1075-1090; no-commit FAULTs at the 5s
+/// INJECT_COMMIT_DEADLINE). [impl->REQ-DIST-IDLE-TRANSLATE]
 fn commands_for_event(envelope: &str) -> Vec<Value> {
     let sanitized: String = envelope
         .chars()
@@ -60,7 +74,8 @@ fn commands_for_event(envelope: &str) -> Vec<Value> {
     vec![
         json!({ "key": "ctrl+s" }),                  // 1. stash any existing draft
         json!({ "delay_ms": DELAY_MS }),             // 2. let the stash settle
-        json!({ "text": format!("{sanitized}\r") }), // 3. envelope + CR submits; CC auto-restores draft
+        json!({ "text": format!("{sanitized}\r") }), // 3. envelope + CR submits the line; CC auto-restores draft
+        json!({ "commit": true }),                   // 4. terminate the inject sequence (release the InjectFloor)
     ]
 }
 
@@ -121,6 +136,8 @@ mod tests {
                     format!("delay:{d}")
                 } else if let Some(t) = c.get("text").and_then(Value::as_str) {
                     format!("text:{t}")
+                } else if c.get("commit").and_then(Value::as_bool) == Some(true) {
+                    "commit".into()
                 } else {
                     "?".into()
                 }
@@ -129,7 +146,7 @@ mod tests {
     }
 
     #[test]
-    fn event_emits_the_stash_then_submit_choreography() {
+    fn event_emits_the_stash_submit_commit_choreography() {
         let cmds = commands_for_event("<EVENT type=\"msg\" from=\"doyle\">hi</EVENT>");
         assert_eq!(
             keys(&cmds),
@@ -137,19 +154,29 @@ mod tests {
                 "key:ctrl+s".to_string(),
                 "delay:50".to_string(),
                 "text:<EVENT type=\"msg\" from=\"doyle\">hi</EVENT>\r".to_string(),
+                "commit".to_string(),
             ]
         );
     }
 
     #[test]
+    fn sequence_terminates_with_a_mandatory_commit() {
+        // broker.rs run_inject_worker ends a sequence ONLY on {commit:true}; without it the broker
+        // FAULTs at the 5s INJECT_COMMIT_DEADLINE on every delivery. The terminator MUST be last.
+        let cmds = commands_for_event("m");
+        assert_eq!(cmds.last().unwrap().get("commit").and_then(Value::as_bool), Some(true));
+        // Exactly one commit, and it is the final command (nothing emits after the terminator).
+        let commits = cmds.iter().filter(|c| c.get("commit").is_some()).count();
+        assert_eq!(commits, 1, "exactly one terminating commit");
+    }
+
+    #[test]
     fn no_trailing_restore_keystroke() {
         // CC auto-restores the stashed draft after the submit, so there is EXACTLY ONE ctrl+s (the
-        // stash) and it is the LAST command's predecessor — never a trailing restore.
+        // stash) — never a trailing restore. (The sequence ends with the {commit} terminator.)
         let cmds = commands_for_event("m");
         let ctrl_s = cmds.iter().filter(|c| c.get("key").and_then(Value::as_str) == Some("ctrl+s")).count();
         assert_eq!(ctrl_s, 1, "exactly one ctrl+s (stash only); CC auto-restores");
-        // The submit (text) is the final command — nothing follows it.
-        assert!(cmds.last().unwrap().get("text").is_some(), "last command is the text submit");
     }
 
     #[test]
@@ -165,10 +192,10 @@ mod tests {
     #[test]
     fn stash_precedes_the_submit() {
         let cmds = commands_for_event("x");
-        // ctrl+s (stash) is FIRST; the text submit is the final command (CC auto-restores after).
+        // ctrl+s (stash) is FIRST; the text submit is cmds[2]; the {commit} terminator is last.
         assert_eq!(cmds.first().unwrap().get("key").and_then(Value::as_str), Some("ctrl+s"));
         assert!(cmds[2].get("text").is_some());
-        assert_eq!(cmds.len(), 3);
+        assert_eq!(cmds.len(), 4);
     }
 
     #[test]
@@ -189,7 +216,7 @@ mod tests {
         )
         .unwrap();
         let cmds = commands_for_line(&v);
-        assert_eq!(cmds.len(), 3);
+        assert_eq!(cmds.len(), 4);
         assert_eq!(cmds[0].get("key").and_then(Value::as_str), Some("ctrl+s"));
     }
 
@@ -219,17 +246,17 @@ mod tests {
             r#"{"type":"event","envelope":"<EVENT>z</EVENT>","priority":9,"trace_id":"t"}"#,
         )
         .unwrap();
-        assert_eq!(commands_for_line(&v).len(), 3);
+        assert_eq!(commands_for_line(&v).len(), 4);
     }
 
     #[test]
-    fn output_commands_are_single_key_objects() {
-        // Each emitted command is exactly one of the contract shapes (key | delay_ms | text).
+    fn output_commands_are_single_field_objects() {
+        // Each emitted command is exactly one of the contract shapes (key | delay_ms | text | commit).
         for c in commands_for_event("m") {
             let obj = c.as_object().unwrap();
             assert_eq!(obj.len(), 1, "each command carries exactly one field: {c}");
             let k = obj.keys().next().unwrap().as_str();
-            assert!(matches!(k, "key" | "delay_ms" | "text"), "unexpected field {k}");
+            assert!(matches!(k, "key" | "delay_ms" | "text" | "commit"), "unexpected field {k}");
         }
     }
 }
