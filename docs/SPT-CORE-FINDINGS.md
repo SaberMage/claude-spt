@@ -1122,3 +1122,63 @@ negotiated key records instead of raw `\r` / `0x13`. Handed to doyle to repro un
 the FULL post-DA handshake, and confirm the exact encoding; perri to verify on a fresh endpoint.
 `claude-spt` stays at published v0.6.2 (contract-correct `{text}{key:enter}{commit}` — correct the
 moment the broker encodes keys for the negotiated mode). No adapter-side byte choice can fix this.
+
+---
+
+### F-019 RESOLVED — actual root cause: the translation binary NEVER SPAWNED (relative path not resolved against install_dir)
+
+**Every theory above (win32-input-mode, coalescing, bracketed-paste, focus/attach-state) was a RED
+HERRING.** The decisive find (doyle, source-traced, 2026-06-23): the manifest declares
+
+```toml
+[message-idle-translation-binary]
+path = "cc-spt-idle-translate"      # RELATIVE — bare name
+```
+
+and spt-core spawns it as `Command::new(path)` **without joining it against the adapter install_dir**
+(harnesshost.rs:142-145 passes the path verbatim into the SpawnReq; broker.rs:1677 `Command::new`).
+A relative path therefore resolves against the **daemon's cwd / PATH** — NOT the
+`…/adapters/_github/SaberMage-spt-claude-code/` dir where the binary actually lives. `cc-spt-idle-translate`
+is on neither, so **the spawn fails**, and `build_translation` **fails closed to RAW INJECT**
+(broker.rs:1671-1677) — which types the message + a raw `\r` as one burst → the exact "envelope stacks
+in the box, unsent" symptom. **The choreography binary never executed.** That is why every per-binary
+probe behaved identically (they were all raw-inject) and why no byte/shape/timing changed anything.
+
+**Proof (perri, on-node):**
+- Edited the *installed* manifest path to the ABSOLUTE exe (`C:/…/_github/…/cc-spt-idle-translate.exe`),
+  brought up a fresh endpoint → a deliberately-distinct "minimal" binary (emits a fixed token, ignoring
+  the envelope) **ran and SUBMITTED** (token appeared as a CC user turn; CC began responding). Before the
+  edit, fresh endpoints ignored every binary variant (raw-inject).
+- Restored the real **shipped v0.6.2** binary, fresh endpoint, normal message → **SUBMITTED** (full
+  choreography: `ctrl+s` · `{text:envelope}` · `{key:enter}` · `{commit}`). A resident
+  `cc-spt-idle-translate.exe` child now spawns per endpoint (it was 0 = failed-spawn before).
+
+**So the adapter choreography was CORRECT ALL ALONG** — `{text}{key:enter}{commit}` submits CC fine once
+the binary actually runs. (Corollary: the v0.6.1→v0.6.2 `\r`→`{key:enter}` change was moot — neither ran.)
+
+**THE FIX (spt-core, F-019 → v0.14.2, doyle owns):**
+1. **Resolve a relative `[message-idle-translation-binary].path` against the adapter install_dir** at
+   spawn (same as bare-name `digest`/`psyche` command resolution, REQ-INSTALL-11). Then the shipped
+   `path = "cc-spt-idle-translate"` works as authored, host-agnostic.
+2. **Log loudly on translation-binary spawn failure** instead of silently falling back to raw-inject —
+   the silent fail-closed is what turned this into a multi-hour black-box hunt. One line
+   (`translation binary <path> failed to spawn: <err>; falling back to raw inject`) would have named it
+   instantly.
+3. Contract note: document that the path resolves against install_dir.
+
+**INTERIM (this node only):** the installed manifest path is left set to the absolute exe so the operator
+has working idle delivery now — a machine-specific hack that reverts on the next `spt adapter update`.
+There is **no portable adapter-side fix** (the bare name needs spt-core's install_dir resolution); the
+published manifest stays relative pending the spt-core fix.
+
+**Status:** **ROOT-CAUSED + FIX DESIGNED + DISPATCHED — spt-core v0.14.2 (doyle/todlando).** Adapter
+requires no logic change. doyle's design (`F-019-TRANSLATION-BINARY-INSTALL-DIR-RESOLVE-DESIGN.md`,
+spt-core @1941eb8) covers all four points: (1) route the translation binary through the existing
+`resolve_program_in_dir` (REQ-INSTALL-11) so the shipped bare `path = "cc-spt-idle-translate"` resolves
+to `<install_dir>/cc-spt-idle-translate.exe`; (2) `build_translation` logs `TRANSLATION_SPAWN_FAILED:<path>:<err>`
+loudly instead of silent raw-inject fallback (+ KNOWN-HAZARDS note); (3) contract doc note that the path
+resolves against install_dir; (4) sibling-surface audit that every adapter-shipped program
+(session/psyche/digest/runners/hooks) resolves against install_dir. todlando building for v0.14.2; perri
+to verify on real CC-on-Windows when it lands (revert the abs-path interim, confirm the bare name resolves
++ submits on a clean install, and that the loud log fires on a bad path). Interim abs-path workaround stays
+on this node until then.
