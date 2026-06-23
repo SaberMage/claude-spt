@@ -1,33 +1,40 @@
 #!/bin/sh
 # Unit test for the adapter.spt packer (ci/publish/package-adapter.sh).
-# Asserts the archive-ROOT invariant that `spt adapter add --release` depends on: the packed .spt
-# holds manifest.toml (named exactly) + strings/ + the three tool binaries at the archive root.
-# [unit->REQ-DIST-ADAPTER-RELEASE]
+# Asserts the MULTI-PLATFORM fat-archive invariants `spt adapter add --release` depends on (ADR-0024
+# W1, spt-core >= 0.13.2): one .spt holds the SHARED manifest.toml (named exactly) + strings/ at the
+# archive ROOT, plus each recognized target-triple's binaries under a <triple>/ dir mirroring the
+# flat-root tree. spt-core classifies on the top-level triple dir and flattens this node's triple into
+# the install dir, so a bare-name command token still resolves. [unit->REQ-DIST-ADAPTER-RELEASE]
+# [unit->REQ-DIST-ADAPTER-PEROS]
 set -u
 ROOT=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 PACKER="$ROOT/ci/publish/package-adapter.sh"
+WIN_TRIPLE=x86_64-pc-windows-msvc
+LINUX_TRIPLE=x86_64-unknown-linux-gnu
+BINS="claude-spt-digest claude-spt-psyche cc-spt-idle-translate"
 rc=0
 fail() { printf 'FAIL: %s\n' "$1"; rc=1; }
 
-EXE=""
-[ -f "$ROOT/tools/claude-spt-digest/target/release/claude-spt-digest.exe" ] && EXE=".exe"
-DIGEST="$ROOT/tools/claude-spt-digest/target/release/claude-spt-digest$EXE"
-PSYCHE="$ROOT/tools/claude-spt-psyche/target/release/claude-spt-psyche$EXE"
-IDLE="$ROOT/tools/cc-spt-idle-translate/target/release/cc-spt-idle-translate$EXE"
+# The fat archive needs BOTH platforms' release binaries. Probe both triples.
+have_all=1
+for b in $BINS; do
+  [ -f "$ROOT/tools/$b/target/release/$b.exe" ] || have_all=0
+  [ -f "$ROOT/tools/$b/target/$LINUX_TRIPLE/release/$b" ] || have_all=0
+done
 
-if [ ! -f "$DIGEST" ] || [ ! -f "$PSYCHE" ] || [ ! -f "$IDLE" ]; then
-  # No release binaries on this host yet → assert the packer's REFUSE guard fires (no silent pass),
-  # and announce the skip of the build-the-archive assertion (no hidden coverage gap).
-  if sh "$PACKER" >/dev/null 2>&1; then
-    fail "packer should refuse (exit!=0) when release binaries are absent"
+if [ "$have_all" -ne 1 ]; then
+  # Missing a platform → assert the packer's REFUSE guard fires (no silent pass), then skip the
+  # archive-build assertion (no hidden coverage gap). Both platforms are required for a fat archive.
+  if sh "$PACKER" --apply >/dev/null 2>&1; then
+    fail "packer should refuse (exit!=0) when a platform's binaries are absent"
   else
-    echo "ok   packer refuses when binaries absent (guard works)"
+    echo "ok   packer refuses --apply when a platform's binaries absent (guard works)"
   fi
-  echo "SKIP: archive-build assertion — release binaries not present (run ci/{digest,psyche,idle-translate}/build.sh)"
+  echo "SKIP: archive-build assertion — need BOTH platforms (win native + linux cross-build) present"
   exit "$rc"
 fi
 
-# Binaries present → build a real archive to a temp file and assert its structure.
+# Both platforms present → build a real fat archive to a temp file and assert its structure.
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/sptc-archtest.XXXXXX") || { echo "FAIL: mktemp"; exit 1; }
 trap 'rm -rf "$TMP"' EXIT
 OUT="$TMP/adapter.spt"
@@ -38,50 +45,46 @@ else
   fail "packer --apply exited non-zero"
   exit "$rc"
 fi
-
 [ -f "$OUT" ] || { fail "no archive written at $OUT"; exit "$rc"; }
 
 LIST=$(tar -tzf "$OUT")
-# manifest.toml MUST be at the root (exact, no leading path) — the add --release contract.
+# SHARED manifest.toml MUST be at the root (exact, no leading path) — the add --release contract.
 echo "$LIST" | grep -qx "manifest.toml" \
-  && echo "ok   manifest.toml at archive root" \
+  && echo "ok   shared manifest.toml at archive root" \
   || fail "manifest.toml not at archive root (add --release would reject)"
-# strings/ present (any entry under strings/).
+# SHARED strings/ at root (not under a triple).
 echo "$LIST" | grep -q "^strings/" \
-  && echo "ok   strings/ present" \
-  || fail "strings/ missing from archive"
-# all three tool binaries present at root.
-echo "$LIST" | grep -qx "claude-spt-digest$EXE" \
-  && echo "ok   claude-spt-digest$EXE at root" \
-  || fail "claude-spt-digest$EXE missing from archive"
-echo "$LIST" | grep -qx "claude-spt-psyche$EXE" \
-  && echo "ok   claude-spt-psyche$EXE at root" \
-  || fail "claude-spt-psyche$EXE missing from archive"
-echo "$LIST" | grep -qx "cc-spt-idle-translate$EXE" \
-  && echo "ok   cc-spt-idle-translate$EXE at root" \
-  || fail "cc-spt-idle-translate$EXE missing from archive"
-# negative: no stray leading-dir wrapper (e.g. "adapter/manifest.toml").
-if echo "$LIST" | grep -q "/manifest.toml"; then
-  fail "manifest.toml appears under a subdir — archive root is wrong"
+  && echo "ok   shared strings/ at root" \
+  || fail "strings/ missing from archive root"
+# Each triple carries all three binaries, under its <triple>/ dir, mirroring the flat-root tree.
+for b in $BINS; do
+  echo "$LIST" | grep -qx "$WIN_TRIPLE/$b.exe" \
+    && echo "ok   $WIN_TRIPLE/$b.exe present" \
+    || fail "$WIN_TRIPLE/$b.exe missing from archive"
+  echo "$LIST" | grep -qx "$LINUX_TRIPLE/$b" \
+    && echo "ok   $LINUX_TRIPLE/$b present" \
+    || fail "$LINUX_TRIPLE/$b missing from archive"
+done
+# Negative: the SHARED files must NOT sit under a triple (would not be shared), and no nested wrapper.
+if echo "$LIST" | grep -qE "^$WIN_TRIPLE/(manifest\.toml|strings/)"; then
+  fail "manifest/strings duplicated under a triple — they must be shared at root only"
 else
-  echo "ok   no nested manifest.toml"
+  echo "ok   manifest/strings not duplicated under a triple"
+fi
+# Negative: no UNRECOGNIZED top-level dir (spt-core would silently flatten it as a shared-root entry).
+badtop=$(echo "$LIST" | awk -F/ 'NF>1 {print $1}' | sort -u | grep -vE "^(strings|$WIN_TRIPLE|$LINUX_TRIPLE)$" || true)
+if [ -n "$badtop" ]; then
+  fail "unrecognized top-level dir(s) [$badtop] — spt-core would mis-place them flat (silent footgun)"
+else
+  echo "ok   no stray/unrecognized top-level dirs (only strings/ + the two recognized triples)"
 fi
 
-# Per-OS asset NAMING (REQ-DIST-ADAPTER-PEROS): the default asset is adapter-<os>-<arch>.spt and the
-# name follows SPTC_OS/SPTC_ARCH overrides; the dry-run plan advertises the matching end-user
-# `--asset`. (Dry-run = no write; the cross-OS WARN to stderr on a mismatched host is non-fatal.)
-# [unit->REQ-DIST-ADAPTER-PEROS]
-plan=$(SPTC_OS=linux SPTC_ARCH=aarch64 sh "$PACKER" 2>&1)
-echo "$plan" | grep -q "adapter-linux-aarch64\.spt" \
-  && echo "ok   per-OS asset name honors SPTC_OS/SPTC_ARCH (adapter-linux-aarch64.spt)" \
-  || fail "per-OS override name wrong; plan=[$plan]"
-echo "$plan" | grep -q -- "--asset adapter-linux-aarch64\.spt" \
-  && echo "ok   dry-run advertises the end-user --asset for that OS" \
-  || fail "dry-run missing '--asset adapter-linux-aarch64.spt'; plan=[$plan]"
-hostplan=$(sh "$PACKER" 2>&1)
-echo "$hostplan" | grep -qE "adapter-(windows|linux|macos|unknown)-[A-Za-z0-9_]+\.spt" \
-  && echo "ok   host default asset name matches adapter-<os>-<arch>.spt" \
-  || fail "host default asset name not adapter-<os>-<arch>.spt; plan=[$hostplan]"
+# A fat archive REQUIRES min_spt_core_version >= 0.13.2 — the packer must refuse a lower floor.
+# (Smoke the guard by reading the dry-run plan's advertised floor.)
+plan=$(sh "$PACKER" 2>&1)
+echo "$plan" | grep -qE "min_spt_core 0\.(1[3-9]|[2-9][0-9])" \
+  && echo "ok   packer advertises a fat-capable floor (>= 0.13.2)" \
+  || fail "packer floor advertisement missing/too low; plan=[$plan]"
 
 [ "$rc" -eq 0 ] && echo "PASS: adapter-archive"
 exit "$rc"

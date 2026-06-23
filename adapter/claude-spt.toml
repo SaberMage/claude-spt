@@ -31,16 +31,19 @@ kind = "harness"
 # 0.6.0 (2026-06-21): adds the v0.13.0 harness-contract RUN-group seams [session.resume] +
 # [message-idle-translation-binary]. Bumped off 0.5.0 so nothing that resolves a manifest by VERSION
 # (rather than by registered path) can shadow-pick the pre-seam 0.5.0 _github copy (doyle note,
-# 2026-06-21). The new seams are ADDITIVE — older spt-core (<0.13.0) ignores both tables (resume
-# falls back to [session.self]; the idle-translation table is unread), so min_spt_core_version stays
-# 0.9.0 (a 0.13.0 floor would needlessly block the ready/live flows on older nodes — same additive
-# philosophy as host_binaries / F-013).
+# 2026-06-21). The seams themselves are ADDITIVE, but the v0.6.0 release now ships a single
+# MULTI-PLATFORM fat .spt (per-triple subdirs, ADR-0024 W1) which only spt-core >= 0.13.2 can extract
+# — so the floor moves to 0.13.2 (see below). Packaging-only modernization; the [adapter].version
+# stays 0.6.0 (the seam surface is unchanged).
 version = "0.6.0"
-# Floor BUMPED to 0.9.0 (2026-06-17, PREP-4): the legacy-parity bringup requires spt-core's
-# adapter-agnostic seed + bind-time resolution by [adapter] host_binaries (shipped v0.9.0).
-# On <0.9.0 `api seed`/`listen` still mandate --adapter, so the bare flow this manifest now wires
-# would break — the compat gate refuses the adapter on older spt-core rather than misbehave.
-min_spt_core_version = "0.9.0"
+# Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
+# stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
+# bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
+# top-level triple dirs → flatten this node's triple into the install dir, preserving bare-name
+# resolution) ONLY on >= 0.13.2 (doyle, extract_release_archive); an older node cannot read the asset
+# at all, so declaring the floor is honest, not a needless block. (Prior floor 0.9.0 was the
+# adapter-agnostic seed/listen-by-host_binaries requirement, PREP-4 — still satisfied, just superseded.)
+min_spt_core_version = "0.13.2"
 hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # host_binaries — STAGED ahead of spt-core v0.9.0 (doyle 2026-06-16). The pid→binary match-key for
 # adapter-agnostic resolution: `spt api listen <id>` resolves the owning adapter/profile by walking
@@ -60,8 +63,11 @@ shortcut_basename = "cc"
 # Adapter self-update via OUR GitHub releases (gh_release avenue, spt v0.8.0). `spt adapter update`
 # pulls the adapter `.spt` asset from this repo's releases through the same `--release` machinery —
 # no signing infra (closes the F-005 file_pull/delegated blockers). `asset` omitted ⇒ spt's default
-# (adapter.spt); the per-OS auto-update asset selection (REQ-DIST-ADAPTER-PEROS) is a flagged
-# question to doyle, so we do not pin a single-OS asset here. [impl->REQ-DIST-ADAPTER-RELEASE]
+# (adapter.spt), which is now the SINGLE MULTI-PLATFORM fat archive (both x86_64 triples + shared
+# manifest, ADR-0024 W1) — so one asset name auto-resolves the host's binaries. This RETIRES the F-014
+# per-OS stopgap (the old `asset`-less default fetched a windows-only `adapter.spt` that broke on a
+# linux host); no `{os}/{arch}` placeholder is needed since the fat archive is host-agnostic.
+# [impl->REQ-DIST-ADAPTER-RELEASE]
 [update]
 avenue = "gh_release"
 repo = "SaberMage/spt-claude-code"

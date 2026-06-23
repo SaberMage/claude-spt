@@ -660,6 +660,22 @@ manifest `[update]` has no `{os}`/`{arch}` placeholder. So the avenue cannot tar
 OS; the active fleet is windows). **Needs (doyle):** per-OS resolution in the gh_release update avenue
 — an `asset = "adapter-{os}-{arch}.spt"` placeholder, or host-derive like `--release` acquisition.
 
+- **RESOLVED-SHIPPED (spt-core v0.13.2, ADR-0024 W1) — applied to claude-spt 2026-06-22 (perri, C).**
+  doyle's fix took the third path: NOT a per-OS asset placeholder, but **one host-agnostic
+  multi-platform fat `.spt`** — a single archive bundles each recognized target-triple's binaries
+  under a `<triple>/` dir beside the SHARED `manifest.toml` + `strings/` at root; install classifies
+  the triple dirs and flattens this node's triple into the install dir (bare-name resolution
+  preserved). So the `[update]` avenue's single fixed `asset = adapter.spt` is now correct on every
+  host — no `{os}/{arch}` placeholder needed. **Adapter change (C):** `ci/publish/package-adapter.sh`
+  now emits the single fat `dist/adapter.spt` (win `x86_64-pc-windows-msvc/` + linux
+  `x86_64-unknown-linux-gnu/`), `min_spt_core_version` → 0.13.2 (mandatory for a fat archive), the
+  F-014 windows-copy `adapter.spt` stopgap DROPPED. Win-triple flatten LOCAL-dogfooded (extract →
+  flatten → translate-proof + digest-proof OK). **Layout was a published-docs GAP** (only in spt-core
+  internal CONTEXT.md; not on docs-site/llms — confirmed with doyle, who is adding it to
+  harness-contract + llms; not separately logged per his call). Constraint: only the two x86_64 triples
+  are recognized in a fat archive today (an unrecognized dir silently flattens as a shared-root entry —
+  the packer guards it); platforms beyond those ship a separate single-triple asset via `--asset`.
+
 ## F-015 — Windows update-extract fails (`tar exit 1`) when a live agent locks a bundled binary; whole update reported failed despite manifest+strings applying
 
 **Surfaced:** 2026-06-20 — after the F-014 stopgap, update got past fetch but →

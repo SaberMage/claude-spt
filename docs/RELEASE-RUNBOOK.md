@@ -133,33 +133,27 @@ The CC adapter manifest (publish target #2) ships to end users as an **`adapter.
 (doyle's `--release` source; needs **spt v0.7.3+ / counter 15** — not in 0.7.2). No dedicated
 adapter repo: the asset is packed straight from `adapter/`.
 
-- **Pack:** `sh ci/publish/package-adapter.sh` (DRY-RUN) → `--apply` writes
-  `dist/adapter-<os>-<arch>.spt`. It validates the manifest, requires the built tool binaries (`sh
-  ci/digest/build.sh && sh ci/psyche/build.sh`), and tars the archive **ROOT** = `manifest.toml`
-  (renamed from `claude-spt.toml` — `adapter add` is root-only + exact-name), `strings/`, and the two
-  binaries. Never uploads (operator's step).
-- **Publish:** attach every per-OS `adapter-<os>-<arch>.spt` to the SAME GitHub release on
-  `SaberMage/spt-claude-code`. End users `spt adapter add --release SaberMage/spt-claude-code --asset
-  adapter-<os>-<arch>.spt` (or `--tag <ver>` to pin). `/sptc:setup` derives the host's os/arch and
-  passes the matching `--asset` automatically.
-- **ALSO attach a default `adapter.spt`** (a copy of the host-OS build — windows for the windows-centric
-  fleet) **until F-014 lands.** The `[update] avenue = "gh_release"` self-update fetches the fixed default
-  asset name `adapter.spt` (no per-OS resolution, no `--asset` override — F-014). Without it,
-  `spt adapter update` 404s even though acquisition via `--asset adapter-<os>-<arch>.spt` works. Verified
-  the hard way on v0.5.0 (2026-06-20). Drop this once F-014 ships per-OS update resolution. Note F-015:
-  on Windows the update can't overwrite a binary locked by a running live agent (`tar exit 1`) — manifest
-  + strings still apply, so a strings/hook-only release lands fine; a binary-changing release needs every
-  live claude-spt agent stopped first.
+Since v0.6.0 the asset is **ONE multi-platform fat `adapter.spt`** (ADR-0024 W1, spt-core ≥ 0.13.2):
+a single archive bundles every supported platform's binaries, and install auto-resolves the host's.
+This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS-asset split.
+
+- **Pack:** `sh ci/publish/package-adapter.sh` (DRY-RUN) → `--apply` writes the single
+  `dist/adapter.spt`. It validates the manifest, refuses a `min_spt_core_version < 0.13.2` (a fat
+  archive needs it), requires **both** platforms' built tool binaries, and tars the archive **ROOT** =
+  `manifest.toml` (renamed from `claude-spt.toml` — `adapter add` is root-only + exact-name) +
+  `strings/` **shared at root**, plus each recognized target-triple's binaries under a `<triple>/` dir.
+  Never uploads (operator's step).
 <!-- [doc->REQ-DIST-ADAPTER-PEROS] -->
-- **Per-OS (REQ-DIST-ADAPTER-PEROS) — the asset carries native binaries, so it is platform-specific.**
-  v1 ships **windows + linux**. spt's `--release` takes a caller-named `--asset` (default
-  `adapter.spt`) — it does NOT auto-pick per-OS, so we name + select. Naming: `adapter-<os>-<arch>.spt`
-  (os ∈ windows|linux|macos, arch ∈ x86_64|aarch64), host-derived from `uname`, overridable with
-  `SPTC_OS` / `SPTC_ARCH` (+ `SPTC_TARGET` = the cargo target triple for a cross build). Per-OS publish:
+- **Fat layout (REQ-DIST-ADAPTER-PEROS).** Recognized triples = **`x86_64-pc-windows-msvc`** (win
+  `.exe`) + **`x86_64-unknown-linux-gnu`** (linux ELF) — the ONLY two spt-core classifies in a fat
+  archive. On install it places the shared root + **flattens this node's `<triple>/*` into the install
+  dir**, so the bare-name command tokens (`claude-spt-digest`, …) still resolve at `<install_dir>/`
+  (REQ-INSTALL-11). **Footgun:** an unrecognized top-level dir is silently treated as a shared-root
+  entry and lands flat — the packer guards this (refuses any stray top-level dir); for a platform
+  beyond the two triples, ship a *separate* single-triple asset via `--asset`, never a third dir here.
+- **Build both platforms first** (the packer needs both binary sets present):
   - **Windows (native):** `sh ci/digest/build.sh && sh ci/psyche/build.sh && sh
-    ci/publish/package-adapter.sh --apply` → `dist/adapter-windows-x86_64.spt`.
-  - **Linux on a Linux host/runner (native):** the identical commands (the build scripts are portable
-    — cargo, no `.exe`) → `dist/adapter-linux-x86_64.spt`.
+    ci/idle-translate/build.sh` → `tools/*/target/release/*.exe`.
   - **Linux cross-built FROM Windows (proven 2026-06-16):** bare `cargo build --target
     x86_64-unknown-linux-gnu` fails (`error: linker 'cc' not found` — the crate compiles, only the
     link needs a Linux linker), so use **`cargo-zigbuild`** (zig supplies the cross-linker):
@@ -170,19 +164,28 @@ adapter repo: the asset is packed straight from `adapter/`.
     # traceable-reqs scan root and zig's bundled libc C-headers trip the scanner), put zig.exe on PATH:
     #   e.g. ~/.sptc-zig/zig-x86_64-windows-0.14.1/zig.exe  →  export PATH="$HOME/.sptc-zig/...:$PATH"
     rustup target add x86_64-unknown-linux-gnu
-    # cross-build both tool crates with zig as the linker
     cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/claude-spt-digest/Cargo.toml
     cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/claude-spt-psyche/Cargo.toml
-    # pack the linux asset (SPTC_TARGET points the packer at target/<triple>/release)
-    SPTC_OS=linux SPTC_ARCH=x86_64 SPTC_TARGET=x86_64-unknown-linux-gnu sh ci/publish/package-adapter.sh --apply
+    cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/cc-spt-idle-translate/Cargo.toml
     ```
-    → `dist/adapter-linux-x86_64.spt` carrying real `ELF x86-64 GNU/Linux` binaries (verified).
-  - Attach BOTH assets to the one release.
-  - **Coupling (do not skew):** the os-detecting `/sptc:setup` floor (cplugs skeleton + adapter
-    strings) requests `--asset adapter-<os>-<arch>.spt`, so it must ship **with** a release that
-    carries those per-OS assets — never before. Sequence: cut the per-OS-asset release FIRST, then
-    republish the cplugs skeleton (next `plugin.json` bump) that points at it. A skeleton bump ahead
-    of the assets would 404 end-user setup.
+    → `tools/*/target/x86_64-unknown-linux-gnu/release/*` carrying real `ELF x86-64 GNU/Linux`
+    binaries (verified). Then `sh ci/publish/package-adapter.sh --apply` packs BOTH into one
+    `dist/adapter.spt`.
+- **Publish:** attach the single `dist/adapter.spt` to the GitHub release on `SaberMage/spt-claude-code`.
+  End users `spt adapter add --release SaberMage/spt-claude-code` (default asset `adapter.spt`, or
+  `--tag <ver>` to pin) — the fat archive auto-resolves the host's binaries, no `--asset` needed. The
+  `[update] avenue = "gh_release"` self-update fetches the same default `adapter.spt`, host-agnostic.
+  - **F-015 note (Windows):** a binary-changing update still can't overwrite a binary a running live
+    agent locks — but spt-core ≥ 0.13.2's W3 fix runs the live psyche from a `<perch>/.live-bin`
+    own-copy, so the install-dir binary stays lock-free (validated 2026-06-22). Strings/hook-only
+    releases always land fine.
+  - **Local dogfood before upload (recommended):** extract `dist/adapter.spt`, flatten this node's
+    triple into a dir (`cp <triple>/* .`), then `spt adapter {translate,digest}-proof claude-spt --dir
+    <dir> --manifest <dir>/manifest.toml` — proves the flattened binaries resolve + run without any
+    upload or registry mutation.
+  - **`/sptc:setup` coupling.** The fat default is host-agnostic, so setup needs no os-detection /
+    `--asset` — a bare `adapter add --release` suffices. (The current setup body still detects os/arch
+    + passes `--asset`; harmless, simplifying it to the bare default is a follow-on.)
 - **Binaries (install-dir resolution — REQ-INSTALL-11).** A `--release`/`--github` acquisition extracts
   the `.spt` archive's `manifest.toml` + `strings/` **+ both tool binaries** into the adapter install
   dir (`…/adapters/_github/<safe>/`). The command templates use **bare names** (`claude-spt-digest`,

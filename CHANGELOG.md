@@ -10,8 +10,9 @@ public release body verbatim.
 
 ## [0.6.0] - 2026-06-22
 
-> Requires spt-core **v0.13.0 or newer** for the two new capabilities below. On older spt-core
-> they're simply inactive — nothing else changes, so this release is safe to take on any version.
+> Requires spt-core **v0.13.2 or newer**. The two capabilities below need v0.13.0; the v0.6.0 release
+> now also ships as a single multi-platform package (see *Packaging*) that only spt-core ≥ 0.13.2 can
+> install, so 0.13.2 is the effective floor.
 
 ### Added
 - **Idle agents now receive your messages.** When an spt-hosted agent is sitting at its prompt
@@ -26,6 +27,14 @@ public release body verbatim.
 ### Changed
 - Adapter version of truth is now **0.6.0** (shown in `/sptc:version` and the release tag). The
   cplugs plugin skeleton is unchanged (still on its own slower track).
+
+### Packaging
+- **One download now covers every platform.** The adapter ships as a single multi-platform
+  `adapter.spt` that bundles both the Windows and Linux builds beside one shared manifest; installing
+  picks your platform automatically. This replaces the previous per-OS files and the Windows-only
+  stopgap `adapter.spt` (which broke self-update on Linux), so `spt adapter add --release …` and
+  `spt adapter update` now just work on either OS with no `--asset` to choose. Requires spt-core
+  **v0.13.2+** (the version that can read a multi-platform package).
 
 ## [0.5.0] - 2026-06-19
 
