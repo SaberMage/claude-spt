@@ -34,7 +34,12 @@ kind = "harness"
 # is host-agnostic). The seam surface is unchanged from 0.6.0 (the v0.13.0 RUN-group seams
 # [session.resume] + [message-idle-translation-binary], added in 0.6.0). Fresh tag, not an in-place
 # v0.6.0 re-cut (a re-cut asset on the same tag is ambiguous — operator + doyle call).
-version = "0.6.1"
+# 0.6.2 (2026-06-23): FIX — idle message delivery now submits with a discrete Enter keypress instead of
+# a trailing carriage return in the injected text. A `\r` byte does NOT trigger Claude Code's message
+# submission (newly discovered), so idle-delivered messages typed into the input box but never sent;
+# the [message-idle-translation-binary] choreography now ends with {key:enter} after the text. Binary
+# rebuild only — manifest seams + floor unchanged.
+version = "0.6.2"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify

@@ -14,9 +14,10 @@
 # spt >= 0.13.2 (the --dir/--manifest options) + a built binary. Idempotent.
 # Run: sh ci/idle-translate/translate-proof-int.sh   (exit 0 = pass).
 #
-# GREEN against the {commit}-terminated binary: emits the 4-command choreography ctrl+s · 50ms ·
-# {text:"<envelope>\r"} · {commit:true}, exit 0 / TRANSLATE_PROOF_OK / "commit: yes". The no-{commit}
-# form FAULTs (the F-016 defect the proof's no-commit gate catches).
+# GREEN against the {commit}-terminated binary: emits the 6-command choreography ctrl+s · 50ms ·
+# {text:"<envelope>"} · 50ms · {key:enter} · {commit:true}, exit 0 / TRANSLATE_PROOF_OK / "commit: yes".
+# The submit is a discrete {key:enter} AFTER the text (a trailing \r byte does NOT submit a CC message,
+# corrected 2026-06-23). The no-{commit} form FAULTs (the F-016 defect the proof's no-commit gate catches).
 set -u
 ROOT=$(CDPATH= cd "$(dirname "$0")/../.." && pwd)
 MANIFEST="$ROOT/adapter/claude-spt.toml"
@@ -48,10 +49,15 @@ case "$out" in
   *"commit: yes"*) echo "ok  emitted the mandatory {commit} terminator (commit: yes)" ;;
   *) echo "FAIL: proof reports no commit terminator (the F-016 fault condition):"; printf '%s\n' "$out"; rc=1 ;;
 esac
-# And the verbatim \r submit rides inside the text command (not a separate enter key).
+# The submit is a discrete enter keypress (NOT a trailing \r in the text — a \r byte does not submit CC).
 case "$out" in
-  *'\r"'*) echo "ok  text command carries the trailing \\r submit" ;;
-  *) echo "FAIL: no trailing \\r in the text command:"; printf '%s\n' "$out"; rc=1 ;;
+  *enter*) echo "ok  emitted the discrete {key:enter} submit" ;;
+  *) echo "FAIL: no {key:enter} submit in the command stream:"; printf '%s\n' "$out"; rc=1 ;;
+esac
+# ...and the text command must NOT carry a trailing \r anymore.
+case "$out" in
+  *'\r"'*) echo "FAIL: text still carries a trailing \\r (should be a discrete enter):"; printf '%s\n' "$out"; rc=1 ;;
+  *) echo "ok  text command carries no trailing \\r" ;;
 esac
 
 [ "$rc" -eq 0 ] && { echo "TRANSLATE-PROOF-INT OK"; exit 0; } || { echo "TRANSLATE-PROOF-INT FAIL"; exit 1; }

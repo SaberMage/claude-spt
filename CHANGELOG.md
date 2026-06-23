@@ -8,6 +8,18 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.6.2] - 2026-06-23
+
+> Requires spt-core **v0.13.2 or newer** (unchanged). A small but important delivery fix — no
+> change to commands or setup.
+
+### Fixed
+- **Messages delivered while you're idle now actually send.** Previously an incoming message from
+  another agent could be typed into your Claude Code input box but never submitted — it just sat
+  there as an unsent draft. The delivery now presses **Enter** to send it, so idle-delivered
+  messages arrive and run on their own. Your half-typed draft is still stashed and restored around
+  the delivery, exactly as before.
+
 ## [0.6.1] - 2026-06-22
 
 > Requires spt-core **v0.13.2 or newer** (the version that can install a multi-platform package).

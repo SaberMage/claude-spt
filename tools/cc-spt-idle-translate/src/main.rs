@@ -14,31 +14,39 @@
 //!
 //! Output protocol (stdout, one JSON object per line):
 //!   {"key":"ctrl+s"}     — keystroke command (Claude Code: STASH the current draft input)
+//!   {"key":"enter"}      — keystroke command (submit the PTY line; see SUBMIT note below)
 //!   {"delay_ms":50}      — inter-command pause
-//!   {"text":"<payload>"} — text injection (the envelope; a trailing \r submits the PTY line)
+//!   {"text":"<payload>"} — text injection (the envelope; NO trailing \r — it does not submit CC)
 //!   {"commit":true}      — MANDATORY sequence terminator (release the InjectFloor; see below)
 //!
 //! The per-event choreography delivers the message WITHOUT clobbering a half-typed draft the operator
 //! may have in the input box, then terminates the inject sequence:
 //!   1. ctrl+s              stash any existing draft
-//!   2. delay 50ms
-//!   3. <envelope>\r        type the envelope, the carriage return submits the line
-//!   4. {"commit":true}     terminate the inject sequence
+//!   2. delay 50ms          let the stash settle
+//!   3. <envelope>          type the envelope (no trailing CR)
+//!   4. delay 50ms          let the text land in CC's input box before the submit key
+//!   5. {"key":"enter"}     submit the line
+//!   6. {"commit":true}     terminate the inject sequence
 //! No trailing restore keystroke: Claude Code AUTO-RESTORES the stashed draft after the submit, so a
 //! second ctrl+s would be redundant (it would re-stash, not restore).
 //!
-//! TWO DISTINCT SIGNALS — do not conflate them (doyle-confirmed from broker.rs, 2026-06-20/22):
-//!  - The trailing `\r` in step 3 is the HARNESS-level submit: spt-core enqueues a `{"text":…}`
-//!    command VERBATIM to the PTY (no control-char stripping; broker.rs:1066, :1016-1017), so the `\r`
-//!    byte submits the line exactly like a separate `{"key":"enter"}` (`key_to_bytes("enter")->b"\r"`).
-//!    That verbatim application is also WHY `commands_for_event` neutralizes the envelope's INTERNAL
-//!    CR/LF — an un-neutralized `\n`/`\r` would reach the PTY and submit early.
-//!  - The `{"commit":true}` in step 4 is the PROTOCOL-level terminator: `run_inject_worker`
+//! SUBMIT IS A REAL ENTER KEY, NOT A TRAILING `\r` (corrected 2026-06-23): we previously rode the
+//! submit IN the text as a trailing `\r`, on the assumption that spt-core applies `{"text"}` VERBATIM
+//! to the PTY (broker.rs:1066, :1016-1017) and a `\r` byte == `{"key":"enter"}`
+//! (`key_to_bytes("enter")->b"\r"`). Empirically that is NOT enough: a `\r` byte in injected text does
+//! NOT trigger Claude Code's message submission — CC needs the discrete Enter KEY event. So step 5 is
+//! now a separate `{"key":"enter"}` after the text lands. The verbatim-text application still REQUIRES
+//! `commands_for_event` to neutralize the envelope's INTERNAL CR/LF (an un-neutralized `\n`/`\r` would
+//! reach the PTY and could split or corrupt the injection) — only the discrete Enter submits.
+//!
+//! TWO DISTINCT SIGNALS — do not conflate them:
+//!  - The `{"key":"enter"}` in step 5 is the HARNESS-level submit (the discrete keypress CC needs).
+//!  - The `{"commit":true}` in step 6 is the PROTOCOL-level terminator: `run_inject_worker`
 //!    (broker.rs:1075-1090) ends an inject sequence ONLY on an explicit `{commit}`. Text/Key/Delay
 //!    just enqueue; a sequence that emits no `{commit}` hits `INJECT_COMMIT_DEADLINE` (5s,
 //!    broker.rs:151-169) and FAULTS on every delivery (reverts to raw inject — input isn't lost but
 //!    each delivery stalls to the deadline). `{commit}` flushes the live controller's buffered input
-//!    and releases the InjectFloor race-free. `\r` submits the line; `{commit}` ends the sequence.
+//!    and releases the InjectFloor race-free. Enter submits the line; `{commit}` ends the sequence.
 //!
 //! Degenerate fallback (per the published contract): `{"text":payload}{"key":"enter"}{"commit":true}`
 //! with no choreography — even the bare form MUST commit. (The published manifest doc ORIGINALLY
@@ -63,9 +71,10 @@ const DELAY_MS: u64 = 50;
 ///
 /// `envelope` is the full `<EVENT…>…</EVENT>` string. The envelope is single-line by contract (it
 /// encodes newlines as the literal `<br>` token), but we defensively strip any raw CR/LF so a stray
-/// newline can never submit early or split the injection — the single trailing `\r` we append is the
-/// ONLY submit. (Necessary because spt-core applies `{"text"}` verbatim — broker.rs:1066/:1016-1017,
-/// doyle 2026-06-20 — so any internal CR/LF would otherwise reach the PTY.) The closing `{"commit"}`
+/// newline can never split or corrupt the injection. (Necessary because spt-core applies `{"text"}`
+/// verbatim — broker.rs:1066/:1016-1017, doyle 2026-06-20 — so any internal CR/LF would otherwise
+/// reach the PTY.) The submit is a DISCRETE `{"key":"enter"}` AFTER the text — a trailing `\r` byte in
+/// the text does NOT submit a Claude Code message (corrected 2026-06-23). The closing `{"commit"}`
 /// is the MANDATORY inject-sequence terminator (broker.rs:1075-1090; no-commit FAULTs at the 5s
 /// INJECT_COMMIT_DEADLINE). [impl->REQ-DIST-IDLE-TRANSLATE]
 fn commands_for_event(envelope: &str) -> Vec<Value> {
@@ -74,10 +83,12 @@ fn commands_for_event(envelope: &str) -> Vec<Value> {
         .map(|c| if c == '\r' || c == '\n' { ' ' } else { c })
         .collect();
     vec![
-        json!({ "key": "ctrl+s" }),                  // 1. stash any existing draft
-        json!({ "delay_ms": DELAY_MS }),             // 2. let the stash settle
-        json!({ "text": format!("{sanitized}\r") }), // 3. envelope + CR submits the line; CC auto-restores draft
-        json!({ "commit": true }),                   // 4. terminate the inject sequence (release the InjectFloor)
+        json!({ "key": "ctrl+s" }),      // 1. stash any existing draft
+        json!({ "delay_ms": DELAY_MS }), // 2. let the stash settle
+        json!({ "text": sanitized }),    // 3. type the envelope — NO trailing CR (a \r byte does not submit CC)
+        json!({ "delay_ms": DELAY_MS }), // 4. let the text land in CC's input box before the submit key
+        json!({ "key": "enter" }),       // 5. submit — a real Enter keypress (CC needs the key event, not a \r byte)
+        json!({ "commit": true }),       // 6. terminate the inject sequence (release the InjectFloor)
     ]
 }
 
@@ -155,7 +166,9 @@ mod tests {
             vec![
                 "key:ctrl+s".to_string(),
                 "delay:50".to_string(),
-                "text:<EVENT type=\"msg\" from=\"doyle\">hi</EVENT>\r".to_string(),
+                "text:<EVENT type=\"msg\" from=\"doyle\">hi</EVENT>".to_string(),
+                "delay:50".to_string(),
+                "key:enter".to_string(),
                 "commit".to_string(),
             ]
         );
@@ -182,32 +195,38 @@ mod tests {
     }
 
     #[test]
-    fn submit_is_a_trailing_carriage_return_on_the_text() {
+    fn submit_is_a_discrete_enter_key_not_a_trailing_cr() {
         let cmds = commands_for_event("payload");
+        // The text carries NO trailing \r — a \r byte does not submit a Claude Code message.
         let text = cmds[2].get("text").and_then(Value::as_str).unwrap();
-        assert!(text.ends_with('\r'), "text must end with the submit \\r");
-        assert_eq!(text, "payload\r");
-        // The submit is carried IN the text, not a separate enter key (operator spec: text+\r).
-        assert!(cmds.iter().all(|c| c.get("key").and_then(Value::as_str) != Some("enter")));
+        assert_eq!(text, "payload");
+        assert!(!text.contains('\r'), "text must NOT carry a submit \\r");
+        // The submit is a discrete enter keypress, after the text.
+        let enters = cmds.iter().filter(|c| c.get("key").and_then(Value::as_str) == Some("enter")).count();
+        assert_eq!(enters, 1, "exactly one enter key (the submit)");
+        // ...and it comes AFTER the text command.
+        let text_idx = cmds.iter().position(|c| c.get("text").is_some()).unwrap();
+        let enter_idx = cmds.iter().position(|c| c.get("key").and_then(Value::as_str) == Some("enter")).unwrap();
+        assert!(enter_idx > text_idx, "the enter submit must follow the text");
     }
 
     #[test]
     fn stash_precedes_the_submit() {
         let cmds = commands_for_event("x");
-        // ctrl+s (stash) is FIRST; the text submit is cmds[2]; the {commit} terminator is last.
+        // ctrl+s (stash) is FIRST; the text is cmds[2]; enter submits; the {commit} terminator is last.
         assert_eq!(cmds.first().unwrap().get("key").and_then(Value::as_str), Some("ctrl+s"));
         assert!(cmds[2].get("text").is_some());
-        assert_eq!(cmds.len(), 4);
+        assert_eq!(cmds.len(), 6);
     }
 
     #[test]
     fn raw_newlines_in_envelope_are_neutralized() {
-        // A stray CR/LF must not produce an early submit or split the injection — only the trailing
-        // \r submits. Embedded newlines collapse to spaces; the single submit \r is the LAST char.
+        // A stray CR/LF must not split or corrupt the injection — only the discrete enter submits.
+        // Embedded newlines collapse to spaces; NO \r survives in the text (the submit is enter).
         let cmds = commands_for_event("a\nb\r\nc");
         let text = cmds[2].get("text").and_then(Value::as_str).unwrap();
-        assert_eq!(text, "a b  c\r");
-        assert_eq!(text.matches('\r').count(), 1, "exactly one (submit) CR");
+        assert_eq!(text, "a b  c");
+        assert_eq!(text.matches('\r').count(), 0, "no raw CR survives");
         assert_eq!(text.matches('\n').count(), 0, "no raw LF survives");
     }
 
@@ -218,7 +237,7 @@ mod tests {
         )
         .unwrap();
         let cmds = commands_for_line(&v);
-        assert_eq!(cmds.len(), 4);
+        assert_eq!(cmds.len(), 6);
         assert_eq!(cmds[0].get("key").and_then(Value::as_str), Some("ctrl+s"));
     }
 
@@ -248,7 +267,7 @@ mod tests {
             r#"{"type":"event","envelope":"<EVENT>z</EVENT>","priority":9,"trace_id":"t"}"#,
         )
         .unwrap();
-        assert_eq!(commands_for_line(&v).len(), 4);
+        assert_eq!(commands_for_line(&v).len(), 6);
     }
 
     #[test]
