@@ -1050,8 +1050,43 @@ keystroke), no choice of command shape submits. v0.6.2 stays as-is (it emits the
 `{text}{key:enter}{commit}` degenerate form, which becomes correct the moment the broker delivers
 `{key:enter}` as a real Enter); the symptom resolution is **doyle's court**.
 
-**Status:** **OPEN — reported to doyle (2026-06-23), spt-core/broker fix required.** Root cause is in
-spt-core's keystroke-command → PTY delivery (and the contract's submit documentation), not in
-`claude-spt`. Repro is deterministic (`spt send call-a` → envelope stacks unsent in CC's input box;
-verifiable by screen capture / by the transcript not gaining a user turn). Awaiting doyle's
-confirmation of the bracketed-paste mechanism and the corrected submit avenue.
+**doyle's first answer (2026-06-23) — bracketed-paste DISPROVEN; coalesce-delay theory.** doyle read
+the inject path: NO bracketed-paste wrapping (broker.rs:1131-1138 — `{text}`/`{key}` both enqueue raw
+to one per-session FIFO, zero `ESC[200~`; bracketing exists only on the `rc` Windows-clipboard path).
+The `ctrl+s` (0x13) failure rules out a CR-vs-LF issue. His theory: `{key:*}` bytes reach the PTY but
+**coalesce** with the preceding `{text}` into one fast burst; CC's ink/React-TUI parser literalizes
+the burst (`\r`→newline, 0x13 swallowed). Proposed adapter fix: insert `{delay_ms}` between `{text}`
+and each `{key}` (the broker `thread::sleep`s on it, broker.rs:1139, physically spacing PTY writes) —
+try 120ms, climb 200/300; *"if a 300ms-spaced `\r` still won't submit, escalate — deeper dig."*
+
+**Empirically tested live against call-a (real CC v2.1.186), screen-captured each — the delay theory
+DOES NOT HOLD:**
+
+| submit attempt | delay between text & submit | result |
+| --- | --- | --- |
+| `{key:enter}` (`\r`, 0x0D) | 50ms (v0.6.2) | newline in box, no submit |
+| `{key:enter}` (`\r`) | 120ms | newline, no submit |
+| `{key:enter}` (`\r`) | 300ms | newline, no submit |
+| `{text:"\n"}` (LF, 0x0A) | 300ms | newline, no submit |
+| `{text:"\x1b[13u"}` (kitty/CSI-u Enter) | 300ms | newline/no-op, no submit |
+| `{key:ctrl+s}` (0x13, stash) | 50–300ms | never stashes (drafts keep stacking) |
+
+So: **300ms behaves identically to 50ms** (the delay is not the variable), and **CR, LF, and CSI-u
+Enter all insert a newline rather than submit** — while `ctrl+s` never stashes at any delay. Test rig:
+hot-swap the install-dir binary (per-delivery spawn — no resident child, verified via process list, so
+each `spt send` picks up the new binary), `spt send call-a <probe>`, screen-capture the input box +
+grep the transcript for the probe (absent = not submitted). Every probe stacked as an unsent draft.
+
+**This is the "deeper dig" doyle named.** The coalesce-delay hypothesis is disproven. Open questions
+for doyle: (1) are the `{delay_ms}` actually spacing the PTY writes in real time, or is the sequence
+batched (the module-doc/contract word is *"applied ATOMICALLY"*)? 300ms ≡ 50ms suggests the delay
+isn't taking effect, OR timing is simply not the cause. (2) How does a REAL operator Enter submit
+(it does) when no injected byte/sequence (CR/LF/CSI-u) does — i.e., what does the broker's PTY-write
+path NOT reproduce about a genuine keypress (raw-mode termios? an enhanced-keyboard handshake CC
+negotiated that the injection bypasses)? (3) Is there ANY injected sequence that submits CC v2.1.186?
+
+**Status:** **OPEN — escalated to doyle (2026-06-23) with the full matrix.** No adapter-side value
+(delay, key shape, CR/LF/CSI-u) submits CC v2.1.186; the fix is in spt-core's broker PTY-write /
+keystroke-delivery path (and the contract's submit documentation). `claude-spt` remains at the
+published v0.6.2 (contract-correct `{text}{key:enter}{commit}` — becomes correct the moment the broker
+can deliver a real submit). Repro is deterministic and screen-verifiable.
