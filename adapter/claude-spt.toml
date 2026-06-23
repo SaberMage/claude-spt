@@ -28,14 +28,13 @@
 [adapter]
 name = "claude-spt"
 kind = "harness"
-# 0.6.0 (2026-06-21): adds the v0.13.0 harness-contract RUN-group seams [session.resume] +
-# [message-idle-translation-binary]. Bumped off 0.5.0 so nothing that resolves a manifest by VERSION
-# (rather than by registered path) can shadow-pick the pre-seam 0.5.0 _github copy (doyle note,
-# 2026-06-21). The seams themselves are ADDITIVE, but the v0.6.0 release now ships a single
-# MULTI-PLATFORM fat .spt (per-triple subdirs, ADR-0024 W1) which only spt-core >= 0.13.2 can extract
-# — so the floor moves to 0.13.2 (see below). Packaging-only modernization; the [adapter].version
-# stays 0.6.0 (the seam surface is unchanged).
-version = "0.6.0"
+# 0.6.1 (2026-06-22): PACKAGING modernization — the release now ships a single MULTI-PLATFORM fat
+# .spt (per-triple subdirs, ADR-0024 W1) which only spt-core >= 0.13.2 can extract, so the floor moves
+# to 0.13.2 (see below) and /sptc:setup drops its now-redundant os-detection (`adapter add --release`
+# is host-agnostic). The seam surface is unchanged from 0.6.0 (the v0.13.0 RUN-group seams
+# [session.resume] + [message-idle-translation-binary], added in 0.6.0). Fresh tag, not an in-place
+# v0.6.0 re-cut (a re-cut asset on the same tag is ambiguous — operator + doyle call).
+version = "0.6.1"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify

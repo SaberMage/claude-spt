@@ -133,7 +133,7 @@ The CC adapter manifest (publish target #2) ships to end users as an **`adapter.
 (doyle's `--release` source; needs **spt v0.7.3+ / counter 15** — not in 0.7.2). No dedicated
 adapter repo: the asset is packed straight from `adapter/`.
 
-Since v0.6.0 the asset is **ONE multi-platform fat `adapter.spt`** (ADR-0024 W1, spt-core ≥ 0.13.2):
+Since v0.6.1 the asset is **ONE multi-platform fat `adapter.spt`** (ADR-0024 W1, spt-core ≥ 0.13.2):
 a single archive bundles every supported platform's binaries, and install auto-resolves the host's.
 This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS-asset split.
 

@@ -22,12 +22,11 @@ profiles/strings/hints/`[digest]`, so the `/sptc:*` surface is inert until activ
    - Missing or `deregistered` → activate it:
      - **Local dev / dogfooding a repo checkout** (an `adapter/claude-spt.toml` near cwd):
        `spt adapter add ./adapter/claude-spt.toml`.
-     - **End-user (plugin only):** the `.spt` carries native binaries, so it ships **per-OS** — pick
-       the host's. Detect: `os=$(uname -s)` → MINGW*/MSYS*/CYGWIN*=windows, Linux=linux, Darwin=macos;
-       `arch=$(uname -m)` → x86_64/amd64=x86_64, arm64/aarch64=aarch64. Then
-       `spt adapter add --release SaberMage/spt-claude-code --asset adapter-$os-$arch.spt` — fetches
-       the per-OS asset (tar root = `manifest.toml` + `strings/` + native tool binaries), extracts to
-       the durable home, registers. `--tag <ver>` pins a version. v1 ships windows + linux.
+     - **End-user (plugin only):** `spt adapter add --release SaberMage/spt-claude-code` — fetches the
+       single multi-platform `adapter.spt` (one archive bundling every supported platform's binaries
+       beside a shared manifest; install auto-resolves the host's), extracts to the durable home,
+       registers. No `--asset` / os-detection needed — the fat archive is host-agnostic (ADR-0024 W1).
+       `--tag <ver>` pins a version. Needs spt **v0.13.2+** (the version that reads a fat archive).
        <!-- [doc->REQ-DIST-ADAPTER-PEROS] -->
 
 3. **Verify + set active.** Re-run `spt adapter list` — `claude-spt` must read **active** (no
