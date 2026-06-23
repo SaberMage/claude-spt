@@ -1085,8 +1085,40 @@ isn't taking effect, OR timing is simply not the cause. (2) How does a REAL oper
 path NOT reproduce about a genuine keypress (raw-mode termios? an enhanced-keyboard handshake CC
 negotiated that the injection bypasses)? (3) Is there ANY injected sequence that submits CC v2.1.186?
 
-**Status:** **OPEN — escalated to doyle (2026-06-23) with the full matrix.** No adapter-side value
-(delay, key shape, CR/LF/CSI-u) submits CC v2.1.186; the fix is in spt-core's broker PTY-write /
-keystroke-delivery path (and the contract's submit documentation). `claude-spt` remains at the
-published v0.6.2 (contract-correct `{text}{key:enter}{commit}` — becomes correct the moment the broker
-can deliver a real submit). Repro is deterministic and screen-verifiable.
+**doyle's second answer (2026-06-23) — identical-path fact + the discriminator.** doyle: idle-inject
+and `spt rc` operator-input go through the IDENTICAL single PTY-write seam (broker.rs:994, "the ONE
+place that touches the PTY writer"); `{key:enter}` and a live operator's Enter both become a standalone
+`write_input(b"\r")` — byte-identical. So `{delay_ms}` DOES insert real sleeps (not one batched write;
+"applied atomically" = inject-FLOOR coordination, not a single syscall) — confirming timing was a red
+herring. His discriminator: attach `spt rc call-a` and press Enter; since rc-Enter ≡ inject-`\r`, it
+must behave identically. **Ran it — rc-Enter also did NOT submit** (transcript gained no turn),
+corroborating: CC rejects a raw `\r` over the broker PTY from *every* spt path. So the operator's
+working Enter is a NATIVE CC terminal, not the broker PTY.
+
+**BREAKTHROUGH — CC negotiates win32-input-mode (root cause).** Captured a fresh `claude.exe`
+v2.1.186 startup under a pywinpty ConPTY (call-a-independent). CC emits at startup:
+
+```
+ESC[1t   ESC[c   ESC[?1004h   ESC[?9001h
+```
+
+then stalls awaiting a DA reply (`ESC[c`) the bare ConPTY didn't send. **`ESC[?9001h` = DECSET 9001 =
+win32-input-mode.** With it on, the terminal must deliver keystrokes as win32 key RECORDS
+(`ESC[Vk;Sc;Uc;Kd;Cs;Rc_`), NOT a raw `\r`. That explains the whole matrix: CC parses for win32
+records, so a bare `\r`/`\n`/CSI-u is treated as content (→ newline) and `ctrl+s` (0x13) is swallowed.
+(`ESC[?1004h` = focus reporting, also enabled.) Predicted Enter = down+up records:
+`ESC[13;28;13;1;0;1_` then `ESC[13;28;13;0;0;1_` (Vk=13 VK_RETURN, Sc=28, Uc=13, Kd=1/0). A live test
+of that record against call-a was INCONCLUSIVE — call-a got repurposed to other work mid-test (window
+changed, draft box cleared) so injection was stopped to avoid disruption. (Audit: NO DIAG probe ever
+submitted anywhere — `grep -rl DIAG-PROBE` over all transcripts is empty — so the probing never
+polluted call-a's real work.)
+
+**Status:** **OPEN — root cause identified, owned by doyle (spt-core broker).** The published
+"enter→`\r` submits" holds ONLY in legacy mode; CC v2.1.186 enables win32-input-mode on Windows
+ConPTY. The broker (which hosts CC via ConPTY on Windows, so call-a almost certainly also enables
+`?9001h`) must (a) answer CC's terminal queries so CC completes its keyboard handshake, and (b) detect
+win32-input-mode (and/or kitty, if negotiated post-DA) and ENCODE `{key:enter}` / `{key:ctrl+s}` as the
+negotiated key records instead of raw `\r` / `0x13`. Handed to doyle to repro under the broker, capture
+the FULL post-DA handshake, and confirm the exact encoding; perri to verify on a fresh endpoint.
+`claude-spt` stays at published v0.6.2 (contract-correct `{text}{key:enter}{commit}` — correct the
+moment the broker encodes keys for the negotiated mode). No adapter-side byte choice can fix this.
