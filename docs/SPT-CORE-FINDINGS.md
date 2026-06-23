@@ -1003,3 +1003,55 @@ install. Tiny, and it un-stales `digest-proof-int.sh` too.
 
 **Status:** **acked + tracked by doyle (2026-06-22), batched into the v0.13.x adapter-DX scope.**
 Non-blocking — the disposable-install-dir staging is a clean workaround and the int is GREEN with it.
+
+---
+
+## F-019 — broker does not deliver `{key:*}` keystroke-commands to Claude Code: idle messages never submit (and the contract's `enter→\r` submit claim is false for CC)
+
+**Surfaced:** 2026-06-23, live diagnosis of idle delivery against a real Claude Code v2.1.186 endpoint
+(`call-a`, Opus 4.8). Operator report: idle-delivered messages are *typed into the input box but never
+sent* — they accumulate as an unsent multi-line draft.
+
+**Symptom (visually confirmed via screen capture of call-a's window).** On `spt send call-a <msg>`:
+- the `{text:"<envelope>"}` command **works** — the full envelope appears in CC's input box;
+- the `{key:"enter"}` submit produces a **literal newline** (cursor drops to a new line), **not a
+  submit** — the draft is never sent;
+- the `{key:"ctrl+s"}` stash **also has no effect** — a second delivery stacks a second envelope below
+  the first in the same input box (the prior draft was never stashed/cleared). *(operator-confirmed:
+  "ctrl+s isn't working either".)*
+
+So **`{text}` is honored but `{key:*}` commands are not** — both keystroke commands the choreography
+relies on (ctrl+s stash, enter submit) silently fail against current Claude Code.
+
+**Why the v0.6.2 adapter "fix" was a no-op.** We first changed the binary from a trailing `\r` in
+`{text}` to a discrete `{key:"enter"}` (v0.6.2), on the operator's hypothesis that a real Enter key
+differs from a CR byte. But the **published contract is explicit** that they are identical:
+`harness-contract/manifest.html` states *"enter → `\r`. Submit either way; just don't do both."* So
+`{key:enter}` emits the same `0x0D` the trailing `\r` did → byte-identical → same failure. The deeper
+problem (this finding) is that the keystroke-command *delivery path itself* doesn't reach CC as key
+events at all.
+
+**Two distinct contract problems for doyle (broker.rs / harness-contract):**
+1. **`{key:*}` delivery is broken for Claude Code.** `{key:ctrl+s}` and `{key:enter}` do not take
+   effect (stash no-op; enter→newline). `{text}` works. The most likely mechanism: the broker wraps
+   injected text in **bracketed paste** (`ESC[200~ … ESC[201~`) — inside which a CR is a literal
+   newline by design (so a multi-line paste never auto-submits) — and the following `{key:enter}`'s
+   CR lands inside/adjacent to that paste, so CC treats it as newline too. A real submit Enter must
+   arrive as a discrete keystroke **outside** any bracketed-paste wrapper. (Hypothesis pending doyle's
+   confirmation of the broker's PTY-write internals — does it bracket `{text}`? does it bracket or
+   coalesce `{key}`?)
+2. **The contract's submit claim is false for CC.** `enter→\r, submit either way` does not hold for
+   Claude Code v2.1.186 — a bare `\r` (from `{text}` or `{key:enter}`) inserts a newline, it does not
+   submit. The published submit recipe is unbuildable for this harness until (1) is fixed.
+
+**Adapter side.** No adapter fix can resolve this — every byte the binary emits flows through the same
+broker PTY-write path, so if that path brackets the input (or doesn't deliver `{key}` as a discrete
+keystroke), no choice of command shape submits. v0.6.2 stays as-is (it emits the contract-correct
+`{text}{key:enter}{commit}` degenerate form, which becomes correct the moment the broker delivers
+`{key:enter}` as a real Enter); the symptom resolution is **doyle's court**.
+
+**Status:** **OPEN — reported to doyle (2026-06-23), spt-core/broker fix required.** Root cause is in
+spt-core's keystroke-command → PTY delivery (and the contract's submit documentation), not in
+`claude-spt`. Repro is deterministic (`spt send call-a` → envelope stacks unsent in CC's input box;
+verifiable by screen capture / by the transcript not gaining a user turn). Awaiting doyle's
+confirmation of the bracketed-paste mechanism and the corrected submit avenue.
