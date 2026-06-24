@@ -59,7 +59,16 @@ if ! sptc_is_subagent "$(json_str "$input" agent_type)"; then
     bind|boundary)
       # id: the spt-hosted endpoint id if injected, else resolve our perch via whoami.
       bid="${SPT_ENDPOINT_ID:-$(sptc_self_id "$sid")}"
-      [ -n "$bid" ] && brief=$(sptc_perch_brief "$bid")
+      if [ -n "$bid" ]; then
+        brief=$(sptc_perch_brief "$bid")
+        # Durable RESUME context (F-020 fix, REQ-DIST-RESUME-CONTEXT): pull the agent's role/live/
+        # project tiers + freshest pending commune/signoff and inject it VERBATIM below the identity
+        # brief. Fires on a fresh spt-hosted bind AND on a post-/clear boundary — boundary IS the
+        # checkpoint re-seed path, where the just-cleared agent rebuilds from its latest commune. The
+        # `api boundary` rotation above is unchanged; this is an additive context pull. Empty on
+        # NO-CONTEXT or a pre-v0.15.0 node (verb absent) -> nothing appended.
+        brief=$(sptc_append_resume "$brief" "$(sptc_psyche_download "$bid" "$sid")")
+      fi
       ;;
     seed)
       sptc_node_has_peers && brief=$(sptc_noperch_brief)

@@ -200,6 +200,30 @@ sptc_noperch_brief() {
   sptc_assemble_noperch "$(sptc_brief messaging-no-perch)" "$(sptc_brief endpoint-list)"
 }
 
+# Impure: pull the live-agent durable RESUME context for endpoint id $1 (optional session id $2) via
+# `spt api psyche-download` — the spt-core v0.15.0 W5 verb that closes F-020 (claude-spt rehydrates NO
+# durable context today). stdout = durable role/live/project tiers + the freshest not-yet-synthesized
+# <pending-commune>/<pending-signoff> (trigger stripped core-side), to inject VERBATIM. Mirrors the
+# id-scoped `api poll` auth shape (--session-id proves association; project resolves from the bound
+# cwd, no --project). Empty on NO-CONTEXT (stderr) / the verb absent (pre-v0.15.0 node) / unregistered
+# — caller appends nothing. Also the checkpoint re-seed fast-path. [impl->REQ-DIST-RESUME-CONTEXT]
+sptc_psyche_download() {
+  _id="$1"; [ -z "$_id" ] && return 0
+  _psid="$2"; _spt="$(spt_bin)"
+  if [ -n "$_psid" ]; then
+    "$_spt" api --adapter "$ADAPTER" psyche-download "$_id" --session-id "$_psid" 2>/dev/null
+  else
+    "$_spt" api --adapter "$ADAPTER" psyche-download "$_id" 2>/dev/null
+  fi
+}
+
+# PURE: append resume context ($2) below a SessionStart brief ($1), skipping cleanly when the resume
+# is empty (NO-CONTEXT). Newline-joined so the verbatim XML resume sits below the identity brief.
+# [impl->REQ-DIST-RESUME-CONTEXT]
+sptc_append_resume() {
+  if [ -n "$2" ]; then printf '%s\n%s' "$1" "$2"; else printf '%s' "$1"; fi
+}
+
 # PURE predicate: should this SessionStart inject a brief? Subagent sessions (agent_type set) get
 # none. $1 = the stdin agent_type value (empty = a real user session). [impl->REQ-DIST-SESSIONSTART-BRIEF]
 sptc_is_subagent() { [ -n "$1" ]; }

@@ -155,4 +155,15 @@ check "commune_write not Write"   "no"  \
 check "commune_write empty id"    "no"  \
   "$(sptc_is_commune_write Write '/home/x/.claude/perri-commune.md' '' && echo yes || echo no)"
 
+# --- resume-context append: skip cleanly on NO-CONTEXT (REQ-DIST-RESUME-CONTEXT) ---
+# [unit->REQ-DIST-RESUME-CONTEXT]
+# Non-empty resume -> appended below the brief, newline-joined (verbatim XML sits under the identity).
+check "append resume present" \
+  "$(printf '<brief/>\n<live-context>ctx</live-context>')" \
+  "$(sptc_append_resume '<brief/>' '<live-context>ctx</live-context>')"
+# Empty resume (NO-CONTEXT) -> brief unchanged, no trailing newline injected.
+check "append resume empty -> brief verbatim" "<brief/>" "$(sptc_append_resume '<brief/>' '')"
+# Both empty -> empty.
+check "append resume both empty" "" "$(sptc_append_resume '' '')"
+
 [ "$fail" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "FAILURES"; exit 1; }
