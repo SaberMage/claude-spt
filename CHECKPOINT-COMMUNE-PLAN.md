@@ -135,8 +135,28 @@ DEFERRED Tier-2 (NOT in verb yet, additive-forward): `<psyche-stamp/>`/`<current
 - T2: live endpoint — flagged commune → `/clear` fires → wake turn appears (default + custom).
 - T3: deferred to W5 ship — `psyche-download` output injected at SessionStart, durable+pending present.
 
+## Deferred validations (dogfood-after-plugin-land — LOGGED, not CI)
+
+doyle's gate ruling (2026-06-24): the spt-core-owned halves are deterministic CI; the harness-glue
+E2Es genuinely need the NEW plugin installed + a real CC session, so they stay a dogfood tier —
+exercised once the v0.7.0 plugin is published/installed, not covered by an automated gate.
+
+- **T2 — PostToolUse write-detect E2E.** The hook (`post-tool-use.sh`) detecting `!!checkpoint!!` in
+  a live agent's own `Write` of `.claude/<id>-commune.md` and firing the self-send. Validated halves:
+  the binary clear+wake branch (CI, `translate-proof-int.sh`) and the LIVE self-send loopback
+  (manual, on-node 2026-06-24 — a real `spt send --json-payload` self-send drove a spt-hosted CC
+  through `/clear` + the wake turn). The remaining gap is only the hook's own detection+emit running
+  inside a real CC (the on-node validation issued the self-send manually = exactly what the hook emits).
+- **T3 — SessionStart injection E2E.** `session-start.sh` consuming `api psyche-download` and injecting
+  it as additionalContext into a live CC. Validated halves: the verb's full contract (CI,
+  `psyche-download-int.sh`) and the pure append/skip logic (`tests/hooks-parse.sh`). The remaining gap
+  is the hook calling the verb + emitting the result inside a real CC.
+
+Both light up when the v0.7.0 plugin lands on a node (the spt-hosted CC then runs THIS repo's hooks,
+not the older published `cplugs sptc`). Until then the spt-core-dependent behavior is fully proven.
+
 ## Open items
 
-- Exact `<id>` + auth-token threading for `api psyche-download` (mirror our other `api` calls).
-- Commune body format (two-slice envelope vs freeform) — confirm in T2a.
-- Macro 500ms timing adequacy post-`/clear` (validate in T2).
+- Macro 500ms timing adequacy post-`/clear` — validated on-node 2026-06-24 (the wake turn landed
+  cleanly after the clear); revisit only if a slower host shows a race.
+- Publishing the v0.7.0 adapter (`.spt` re-cut + release) so the new plugin/binary ship — operator call.

@@ -39,7 +39,18 @@ kind = "harness"
 # submission (newly discovered), so idle-delivered messages typed into the input box but never sent;
 # the [message-idle-translation-binary] choreography now ends with {key:enter} after the text. Binary
 # rebuild only — manifest seams + floor unchanged.
-version = "0.6.2"
+# 0.7.0 (2026-06-24): the CHECKPOINT-COMMUNE WAVE — three operator-requested deliverables. (T1) the
+# idle-translation binary now FRAMES each inbound <EVENT> across multiple lines (a raw \n after the
+# opening tag and before </EVENT>) for visual distinction — CC soft-newlines a bare \n, empirically
+# gated. (T2) AGENT-DRIVEN CHECKPOINT: a NEW [hooks.PostToolUse] (Write matcher) detects a `!!checkpoint!!`
+# trigger in a live agent's own `.claude/<id>-commune.md` and self-sends `spt send --json-payload
+# '{"checkpoint":"v1","wake":…}'`; the signal loops back through the endpoint's own translation binary,
+# which parses the structured json envelope-attr and fires a /clear + wake macro — the agent clearing +
+# rebuilding its own context from its freshest commune. (T3) RESUME parity: SessionStart now pulls
+# `spt api psyche-download <id>` and injects the durable role/live/project + pending commune/signoff as
+# additionalContext (closes F-020). These REQUIRE spt-core v0.15.0 (the `--json-payload` send axis + the
+# `psyche-download` verb), so the floor BUMPS to 0.15.0 below.
+version = "0.7.0"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
@@ -47,7 +58,12 @@ version = "0.6.2"
 # resolution) ONLY on >= 0.13.2 (doyle, extract_release_archive); an older node cannot read the asset
 # at all, so declaring the floor is honest, not a needless block. (Prior floor 0.9.0 was the
 # adapter-agnostic seed/listen-by-host_binaries requirement, PREP-4 — still satisfied, just superseded.)
-min_spt_core_version = "0.13.2"
+# Floor BUMPED to 0.15.0 (2026-06-24, the checkpoint-commune wave / v0.7.0): T2's checkpoint self-send
+# needs `spt send --json-payload` (the opaque-metadata send axis) and T3's resume pull needs the
+# `spt api psyche-download <id>` verb — BOTH land in spt-core v0.15.0 (counter 34, Latest). The
+# multi-line frame (T1) works on any node, but the wave ships as one unit, so the honest floor is the
+# verb floor. An older node can't fire checkpoint or pull resume context, so declaring 0.15.0 is honest.
+min_spt_core_version = "0.15.0"
 hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # host_binaries — STAGED ahead of spt-core v0.9.0 (doyle 2026-06-16). The pid→binary match-key for
 # adapter-agnostic resolution: `spt api listen <id>` resolves the owning adapter/profile by walking
