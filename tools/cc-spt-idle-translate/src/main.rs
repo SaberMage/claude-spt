@@ -7,6 +7,13 @@
 //! operator input is buffered during emission, so it coexists with an attached `spt rc` controller).
 //! Scope is IDLE delivery only — busy/mid-turn injection stays the adapter's `[inject]` hook path.
 //!
+//! CHECKPOINT BRANCH (agent-driven context reset): an inbound envelope carrying a
+//! `json="{"checkpoint":"v1",…}"` attribute (a self-sent signal from the PostToolUse commune hook,
+//! via `spt send --json-payload`) fires a `/clear` + wake macro INSTEAD of normal delivery — the
+//! agent clearing+rebuilding its own context from its freshest commune. The structured marker lives
+//! inside the opaque json attr spt-core carries verbatim, so a normal message can never forge it.
+//! See `checkpoint_wake` / `commands_for_checkpoint`. [impl->REQ-DIST-CHECKPOINT-COMMUNE]
+//!
 //! Input protocol (stdin, one JSON object per line):
 //!   {"type":"init","endpoint_id":…,"node":…}   — first message (handshake; no output)
 //!   {"type":"event","envelope":"<EVENT…>"}      — one inbound message; the full EVENT envelope
@@ -69,6 +76,84 @@ use std::io::{self, BufRead, Write};
 /// Inter-command pause spt-core honors between emitted keystroke/text commands (operator spec).
 const DELAY_MS: u64 = 50;
 
+/// Pause after `/clear` submits, before the wake text is typed — `/clear` rebuilds the session and
+/// needs longer to settle than a normal inter-command gap (operator spec, checkpoint macro).
+const CLEAR_DELAY_MS: u64 = 500;
+
+/// Wake directive used when a checkpoint carries no explicit `wake` (operator-specified default).
+const DEFAULT_WAKE: &str = "Proceed with next steps";
+
+/// Extract the raw (still XML-attr-escaped) value of the `json="…"` attribute from an EVENT
+/// envelope's opening tag, if present. Returns None when there is no such attribute. The attr value
+/// is the structured checkpoint payload spt-core carried verbatim from `spt send --json-payload`
+/// (doyle 2026-06-24): spt-core never parses it — it rides as an opaque envelope attribute. We only
+/// look inside the opening tag (before the first `>`), and an attr value is XML-escaped so it cannot
+/// contain a raw `"`, so the first `"` after `json="` terminates it. [impl->REQ-DIST-CHECKPOINT-COMMUNE]
+fn extract_json_attr(envelope: &str) -> Option<String> {
+    let gt = envelope.find('>')?; // opening tag ends at the first '>'
+    let opening = &envelope[..gt];
+    // Leading space ensures we match a real attribute, not a substring of some other name.
+    let key = " json=\"";
+    let ki = opening.find(key)?;
+    let rest = &opening[ki + key.len()..];
+    let end = rest.find('"')?;
+    Some(rest[..end].to_string())
+}
+
+/// Reverse XML attribute escaping. spt-core attr-escapes the `json` value; we must unescape it BEFORE
+/// JSON-parsing. `&amp;` is decoded LAST so an embedded `&amp;quot;` does not double-decode (doyle's
+/// caveat). This is a SEPARATE escape layer from the message body's `<br>`/HTML-unescape handling.
+/// [impl->REQ-DIST-CHECKPOINT-COMMUNE]
+fn xml_attr_unescape(s: &str) -> String {
+    s.replace("&quot;", "\"")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&amp;", "&") // LAST
+}
+
+/// If this envelope carries a `{"checkpoint":"v1", ...}` json attr, return the wake directive (the
+/// `wake` field, or DEFAULT_WAKE when absent/blank). Any other shape — no json attr, malformed JSON,
+/// a different/absent `checkpoint` marker — returns None so delivery falls through to the normal
+/// multi-line path. Collision-proof: the marker lives INSIDE the structured attr value, so a normal
+/// message body can never forge it. [impl->REQ-DIST-CHECKPOINT-COMMUNE]
+fn checkpoint_wake(envelope: &str) -> Option<String> {
+    let raw = extract_json_attr(envelope)?;
+    let v: Value = serde_json::from_str(&xml_attr_unescape(&raw)).ok()?;
+    if v.get("checkpoint").and_then(Value::as_str) != Some("v1") {
+        return None;
+    }
+    let wake = v
+        .get("wake")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .unwrap_or(DEFAULT_WAKE);
+    Some(wake.to_string())
+}
+
+/// The checkpoint clear+wake macro: stash any lingering draft, submit `/clear` to reset the session,
+/// wait for it to settle, then type + submit the wake directive as the first post-clear turn. This is
+/// the agent-driven context reset (the operator's manual `/clear` done by the agent itself) — fired
+/// when a self-sent checkpoint signal loops back through this binary. Stray CR/LF in the wake collapse
+/// to spaces so the wake submits as one turn. Terminated by the mandatory `{commit}` like every
+/// sequence. [impl->REQ-DIST-CHECKPOINT-COMMUNE]
+fn commands_for_checkpoint(wake: &str) -> Vec<Value> {
+    let wake_clean: String = wake
+        .chars()
+        .map(|c| if c == '\r' || c == '\n' { ' ' } else { c })
+        .collect();
+    vec![
+        json!({ "key": "ctrl+s" }),            // 1. stash any lingering input
+        json!({ "delay_ms": DELAY_MS }),       // 2. let the stash settle
+        json!({ "text": "/clear" }),           // 3. type the clear command
+        json!({ "key": "enter" }),             // 4. submit /clear (resets the session)
+        json!({ "delay_ms": CLEAR_DELAY_MS }), // 5. let /clear rebuild before typing the wake
+        json!({ "text": wake_clean }),         // 6. type the wake directive
+        json!({ "key": "enter" }),             // 7. submit the wake — the first post-checkpoint turn
+        json!({ "commit": true }),             // 8. terminate the inject sequence
+    ]
+}
+
 /// Frame a (CR/LF-sanitized) EVENT envelope across MULTIPLE LINES for visual distinction in CC's
 /// input box: a raw `\n` after the opening `<EVENT …>` tag and a raw `\n` before the closing
 /// `</EVENT>`, so an inbound idle message renders as
@@ -121,6 +206,11 @@ fn frame_envelope(s: &str) -> String {
 /// is the MANDATORY inject-sequence terminator (broker.rs:1075-1090; no-commit FAULTs at the 5s
 /// INJECT_COMMIT_DEADLINE). [impl->REQ-DIST-IDLE-TRANSLATE] [impl->REQ-DIST-IDLE-MULTILINE]
 fn commands_for_event(envelope: &str) -> Vec<Value> {
+    // Checkpoint branch FIRST: a self-sent {"checkpoint":"v1",…} json attr fires the clear+wake macro
+    // instead of normal delivery (the agent-driven context reset). Any other envelope falls through.
+    if let Some(wake) = checkpoint_wake(envelope) {
+        return commands_for_checkpoint(&wake);
+    }
     let sanitized: String = envelope
         .chars()
         .map(|c| if c == '\r' || c == '\n' { ' ' } else { c })
@@ -325,6 +415,108 @@ mod tests {
         assert_eq!(text, "<EVENT type=\"msg\">\na b  c\n</EVENT>");
         assert_eq!(text.matches('\r').count(), 0, "no raw CR survives");
         assert_eq!(text.matches('\n').count(), 2, "only the two framing newlines survive");
+    }
+
+    /// Build an EVENT envelope carrying a `json` attr whose value is the XML-attr-escaped form of
+    /// `obj` — mirrors what spt-core composes from `spt send --json-payload`.
+    fn envelope_with_json(obj: &str) -> String {
+        let escaped = obj
+            .replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+            .replace('"', "&quot;");
+        format!("<EVENT type=\"msg\" from=\"self\" json=\"{escaped}\">checkpoint</EVENT>")
+    }
+
+    // [unit->REQ-DIST-CHECKPOINT-COMMUNE]
+    #[test]
+    fn checkpoint_json_attr_fires_the_clear_wake_macro() {
+        let env = envelope_with_json(r#"{"checkpoint":"v1","wake":"Resume T2c now"}"#);
+        let cmds = commands_for_event(&env);
+        assert_eq!(
+            keys(&cmds),
+            vec![
+                "key:ctrl+s".to_string(),
+                "delay:50".to_string(),
+                "text:/clear".to_string(),
+                "key:enter".to_string(),
+                "delay:500".to_string(),
+                "text:Resume T2c now".to_string(),
+                "key:enter".to_string(),
+                "commit".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn checkpoint_without_wake_uses_the_default() {
+        let env = envelope_with_json(r#"{"checkpoint":"v1"}"#);
+        let cmds = commands_for_event(&env);
+        let wake = cmds[5].get("text").and_then(Value::as_str).unwrap();
+        assert_eq!(wake, "Proceed with next steps");
+        // Blank wake also falls back to the default.
+        let env2 = envelope_with_json(r#"{"checkpoint":"v1","wake":"   "}"#);
+        let wake2 = commands_for_event(&env2)[5].get("text").and_then(Value::as_str).unwrap().to_string();
+        assert_eq!(wake2, "Proceed with next steps");
+    }
+
+    #[test]
+    fn checkpoint_macro_submits_clear_then_wake_and_commits() {
+        let cmds = commands_for_checkpoint("go");
+        // /clear is typed+submitted BEFORE the wake text+submit; the 500ms settle sits between them.
+        let texts: Vec<&str> = cmds.iter().filter_map(|c| c.get("text").and_then(Value::as_str)).collect();
+        assert_eq!(texts, vec!["/clear", "go"]);
+        // Two discrete enter submits (clear, wake) and exactly one terminating commit, last.
+        let enters = cmds.iter().filter(|c| c.get("key").and_then(Value::as_str) == Some("enter")).count();
+        assert_eq!(enters, 2, "two submits: /clear and the wake");
+        assert_eq!(cmds.last().unwrap().get("commit").and_then(Value::as_bool), Some(true));
+        // The longer post-/clear settle is present.
+        assert!(cmds.iter().any(|c| c.get("delay_ms").and_then(Value::as_u64) == Some(500)));
+    }
+
+    #[test]
+    fn non_checkpoint_envelopes_deliver_normally() {
+        // A different marker, a plain message, and a body that merely MENTIONS the token all deliver
+        // normally (collision-proof: the marker only counts inside a structured json attr).
+        for env in [
+            envelope_with_json(r#"{"checkpoint":"v2"}"#),
+            envelope_with_json(r#"{"note":"hi"}"#),
+            "<EVENT type=\"msg\" from=\"a\">please run a checkpoint v1</EVENT>".to_string(),
+            "<EVENT type=\"msg\" from=\"a\">hi</EVENT>".to_string(),
+        ] {
+            let cmds = commands_for_event(&env);
+            // Normal delivery is the 6-step choreography ending text-then-enter-then-commit — NOT the
+            // 8-step macro; in particular it never types "/clear".
+            assert_eq!(cmds.len(), 6, "normal delivery for: {env}");
+            assert!(
+                !cmds.iter().any(|c| c.get("text").and_then(Value::as_str) == Some("/clear")),
+                "must NOT clear for: {env}"
+            );
+        }
+    }
+
+    #[test]
+    fn malformed_checkpoint_json_falls_through_to_normal_delivery() {
+        // A json attr that isn't valid JSON must not panic or macro — degrade to normal delivery.
+        let env = "<EVENT type=\"msg\" from=\"a\" json=\"{not valid json\">b</EVENT>";
+        let cmds = commands_for_event(env);
+        assert_eq!(cmds.len(), 6);
+        assert!(!cmds.iter().any(|c| c.get("text").and_then(Value::as_str) == Some("/clear")));
+    }
+
+    #[test]
+    fn xml_attr_unescape_decodes_amp_last() {
+        // &amp;quot; must decode to &quot; (one level), not "" — &amp; is applied LAST.
+        assert_eq!(xml_attr_unescape("&amp;quot;"), "&quot;");
+        assert_eq!(xml_attr_unescape("&quot;&lt;&gt;&amp;"), "\"<>&");
+    }
+
+    #[test]
+    fn extract_json_attr_pulls_the_attr_value() {
+        let env = "<EVENT type=\"msg\" from=\"a\" json=\"&quot;v&quot;\">b</EVENT>";
+        assert_eq!(extract_json_attr(env).as_deref(), Some("&quot;v&quot;"));
+        // No json attr → None.
+        assert_eq!(extract_json_attr("<EVENT type=\"msg\">b</EVENT>"), None);
     }
 
     #[test]

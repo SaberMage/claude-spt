@@ -119,6 +119,23 @@ fires = "api worker-stop {session_id}"
 reads = ["session_id"]
 can_inject = false
 
+# PostToolUse — the CHECKPOINT detector (Feature 2). On a Write to the live agent's own
+# `.claude/<id>-commune.md` whose content carries the literal `!!checkpoint!!` trigger, the hook
+# marks the perch idle (`api state idle`) then SELF-SENDS a reserved structured signal
+# (`spt send --from <id> <id> --json-payload {"checkpoint":"v1","wake":…}`) that loops back through
+# the endpoint's own [message-idle-translation-binary], which fires the clear+wake macro — an
+# agent-driven context reset (the operator's manual `/clear`, done by the agent). The `fires` line
+# below names the representative `api` action (the idle mark); the conditional self-send is the
+# wrapper's specialized behavior (plugin/sptc/hooks/post-tool-use.sh). `can_inject=false`: delivery
+# is the self-send loopback, not additionalContext. spt-hosted live sessions only. The `!!checkpoint!!`
+# file-content marker is the WRITE-side trigger; spt-core v0.15.0 strips it from the durable + pending
+# context on ingest, so it is one-shot (never persists in the resumed mind, never re-fires). The
+# `--json-payload` self-send is the DELIVERY-side trigger. [impl->REQ-DIST-CHECKPOINT-COMMUNE]
+[hooks.PostToolUse]
+fires = "api state idle {session_id}"
+reads = ["session_id", "tool_name", "tool_input"]
+can_inject = false
+
 # ── [identity] ─────────────────────────────────────────────────────────────────────────────
 [identity]
 # CC hands the session_id on hook stdin once running (discovered post-spawn, not injected).
@@ -392,3 +409,7 @@ text = "Tip: /sptc:send messages another spt agent; /sptc:ready first to receive
 [[hints]]
 keywords = ["another machine", "pair machine", "across machines", "subnet", "join my network"]
 text = "Tip: /sptc:subnet pairs machines into a private network so agents reach each other across nodes."
+
+[[hints]]
+keywords = ["checkpoint", "compact my context", "context is getting long", "clear and continue", "self clear"]
+text = "Tip: /sptc:commune --checkpoint writes a resume commune AND auto-clears+wakes you from it — an agent-driven context reset (live agents only)."

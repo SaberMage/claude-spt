@@ -68,4 +68,42 @@ case "$out" in
   *) echo "FAIL: text is not framed across lines (multi-line envelope missing):"; printf '%s\n' "$out"; rc=1 ;;
 esac
 
+# ── CHECKPOINT branch (Feature 2) ────────────────────────────────────────────────────────────────
+# An envelope carrying a `json="{"checkpoint":"v1",…}"` attr (what `spt send --json-payload` composes,
+# v0.15.0) fires the clear+wake macro INSTEAD of normal delivery. This is the EMIT half of the binary's
+# checkpoint branch — proven here by feeding translate-proof an envelope with the json attr directly
+# (no --json-payload needed, so it runs on the pre-0.15.0 daemon). The send-side composition + the live
+# self-send loopback stay the heavier real-claude int (deferred, like the multi-line APPLY half).
+# [int->REQ-DIST-CHECKPOINT-COMMUNE]
+CKPT='<EVENT type="msg" from="self" json="{&quot;checkpoint&quot;:&quot;v1&quot;,&quot;wake&quot;:&quot;Resume now&quot;}">checkpoint requested</EVENT>'
+ck=$(spt adapter translate-proof claude-spt --event "$CKPT" --manifest "$MANIFEST" --dir "$RELDIR" 2>&1)
+case "$ck" in
+  *'text  "/clear"'*) echo "ok  checkpoint envelope fires the /clear macro" ;;
+  *) echo "FAIL: checkpoint envelope did not emit /clear:"; printf '%s\n' "$ck"; rc=1 ;;
+esac
+case "$ck" in
+  *'text  "Resume now"'*) echo "ok  checkpoint macro types the custom wake directive" ;;
+  *) echo "FAIL: checkpoint macro missing the custom wake:"; printf '%s\n' "$ck"; rc=1 ;;
+esac
+case "$ck" in
+  *'delay 500ms'*) echo "ok  checkpoint macro waits for /clear to settle (500ms)" ;;
+  *) echo "FAIL: checkpoint macro missing the post-/clear settle:"; printf '%s\n' "$ck"; rc=1 ;;
+esac
+case "$ck" in
+  *'commit: yes'*) echo "ok  checkpoint macro terminates with the mandatory {commit}" ;;
+  *) echo "FAIL: checkpoint macro missing the {commit} terminator:"; printf '%s\n' "$ck"; rc=1 ;;
+esac
+# Default wake when the payload carries no `wake` field.
+CKPT_DEF='<EVENT type="msg" from="self" json="{&quot;checkpoint&quot;:&quot;v1&quot;}">checkpoint requested</EVENT>'
+ckd=$(spt adapter translate-proof claude-spt --event "$CKPT_DEF" --manifest "$MANIFEST" --dir "$RELDIR" 2>&1)
+case "$ckd" in
+  *'text  "Proceed with next steps"'*) echo "ok  checkpoint without a wake uses the default" ;;
+  *) echo "FAIL: default wake not applied:"; printf '%s\n' "$ckd"; rc=1 ;;
+esac
+# A normal (non-checkpoint) message must NOT fire the macro.
+case "$out" in
+  *'/clear'*) echo "FAIL: a normal message emitted /clear (checkpoint false-positive):"; printf '%s\n' "$out"; rc=1 ;;
+  *) echo "ok  normal delivery never fires the /clear macro" ;;
+esac
+
 [ "$rc" -eq 0 ] && { echo "TRANSLATE-PROOF-INT OK"; exit 0; } || { echo "TRANSLATE-PROOF-INT FAIL"; exit 1; }

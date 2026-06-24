@@ -124,4 +124,35 @@ check "emit json newline-escaped" \
   '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"a\nb"}}' \
   "$(sptc_emit_additional_context "$(printf 'a\nb')")"
 
+# --- checkpoint detection: trigger presence, custom-wake extraction, commune-write guard ---
+# [unit->REQ-DIST-CHECKPOINT-COMMUNE]
+check "has_checkpoint single"  "yes" "$(sptc_has_checkpoint 'delta ... !!checkpoint!!'        && echo yes || echo no)"
+check "has_checkpoint pair"    "yes" "$(sptc_has_checkpoint '!!checkpoint!! wake !!checkpoint!!' && echo yes || echo no)"
+check "has_checkpoint absent"  "no"  "$(sptc_has_checkpoint 'an ordinary commune delta'        && echo yes || echo no)"
+check "has_checkpoint empty"   "no"  "$(sptc_has_checkpoint ''                                  && echo yes || echo no)"
+
+# Single marker -> no custom wake (binary applies the default).
+check "wake single -> default(empty)" "" "$(sptc_checkpoint_wake 'work ... !!checkpoint!!')"
+# Paired markers -> the trimmed inner text is the custom wake.
+check "wake pair -> custom" "Resume T2c now" \
+  "$(sptc_checkpoint_wake 'body !!checkpoint!! Resume T2c now !!checkpoint!! more')"
+# Pair embedded in a realistic single-line JSON content blob.
+check "wake pair in json blob" "wire the hook" \
+  "$(sptc_checkpoint_wake '{"content":"delta\n!!checkpoint!! wire the hook !!checkpoint!!\nend"}')"
+check "wake none -> empty"     "" "$(sptc_checkpoint_wake 'no markers here')"
+
+# commune-write guard: Write to <id>-commune.md only (tolerates JSON-escaped Windows path).
+check "commune_write match unix"  "yes" \
+  "$(sptc_is_commune_write Write '/home/x/.claude/perri-commune.md' perri && echo yes || echo no)"
+check "commune_write match win"   "yes" \
+  "$(sptc_is_commune_write Write 'C:\\\\Users\\\\d\\\\.claude\\\\perri-commune.md' perri && echo yes || echo no)"
+check "commune_write wrong file"  "no"  \
+  "$(sptc_is_commune_write Write '/home/x/.claude/notes.md' perri && echo yes || echo no)"
+check "commune_write wrong id"    "no"  \
+  "$(sptc_is_commune_write Write '/home/x/.claude/doyle-commune.md' perri && echo yes || echo no)"
+check "commune_write not Write"   "no"  \
+  "$(sptc_is_commune_write Edit '/home/x/.claude/perri-commune.md' perri && echo yes || echo no)"
+check "commune_write empty id"    "no"  \
+  "$(sptc_is_commune_write Write '/home/x/.claude/perri-commune.md' '' && echo yes || echo no)"
+
 [ "$fail" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "FAILURES"; exit 1; }
