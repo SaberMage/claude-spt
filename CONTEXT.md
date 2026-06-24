@@ -58,6 +58,16 @@ profile. (Realized here by the `claude-spt-psyche` runner.)
 parent agent resume coherently after a context wipe (`/clear` / compact). A file-drop the
 daemon ingests, not an `api` verb.
 
+**checkpoint** — a live agent's *self-initiated* context reset: the agent flags a commune to
+request that its own working context be wiped and rebuilt from that latest commune, so it
+continues coherently without the operator manually running `/clear`. The agent-driven sibling
+of the operator's manual clear; only meaningful for a live agent (which has a Psyche + a
+commune to rebuild from). See [[commune]].
+
+**checkpoint trigger** — the marker a live agent embeds in a commune to request a
+[[checkpoint]] (the request signal; distinct from the wire payload that carries it to the
+delivery layer, which is an implementation concern).
+
 **psyche sandbox** — the constrained surface a Psyche's `claude` turns run under:
 Read/Edit/Write tools only, slash-commands disabled, permissions auto-approved, cheap
 pinned model. Deliberately narrower than the parent agent (which is unconstrained). Mirrors
