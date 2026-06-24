@@ -13,6 +13,12 @@
 #
 # Needs spt >= 0.15.0 (the verb) + a subnet to home the throwaway perch. Feature-detects and SKIPs
 # otherwise (never a hard fail on an older / subnet-less node). Idempotent. Run: exit 0 = pass.
+#
+# WATCH-ITEM (doyle, 2026-06-24): the POSITIVE assertion polls for the <pending-commune> across a
+# retry window that must straddle the daemon's ~5s ingest pulse — too NARROW a window can miss a
+# late-appearing pending slice on a loaded host (cf. the seedmap starvation flake). Widened to 8 polls
+# here for headroom; widen further (not lower) if it ever flakes on a contended box — never treat a
+# miss as a real contract failure.
 set -u
 ADAPTER=claude-spt
 ID="sptc-pdint-$$"
@@ -70,7 +76,7 @@ mkdir -p .claude
 printf '%s resume delta\n' "$MARK" > ".claude/$ID-commune.md"
 got=""
 i=0
-while [ "$i" -lt 5 ]; do
+while [ "$i" -lt 8 ]; do  # 8-poll window straddles the ~5s daemon ingest pulse (see WATCH-ITEM header)
   o=$(spt api --adapter "$ADAPTER" psyche-download "$ID" --session-id "$SID" 2>/dev/null)
   if printf '%s' "$o" | grep -q "$MARK"; then got="$o"; break; fi
   i=$((i + 1)); sleep 1
