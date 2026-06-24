@@ -23,7 +23,9 @@
 //! may have in the input box, then terminates the inject sequence:
 //!   1. ctrl+s              stash any existing draft
 //!   2. delay 50ms          let the stash settle
-//!   3. <envelope>          type the envelope (no trailing CR)
+//!   3. <envelope>          type the envelope (multi-line: a raw \n after the opening tag and before
+//!                          the closing </EVENT> — CC soft-newlines a bare \n, so it frames across
+//!                          lines without submitting; no trailing CR)
 //!   4. delay 50ms          let the text land in CC's input box before the submit key
 //!   5. {"key":"enter"}     submit the line
 //!   6. {"commit":true}     terminate the inject sequence
@@ -67,25 +69,67 @@ use std::io::{self, BufRead, Write};
 /// Inter-command pause spt-core honors between emitted keystroke/text commands (operator spec).
 const DELAY_MS: u64 = 50;
 
+/// Frame a (CR/LF-sanitized) EVENT envelope across MULTIPLE LINES for visual distinction in CC's
+/// input box: a raw `\n` after the opening `<EVENT …>` tag and a raw `\n` before the closing
+/// `</EVENT>`, so an inbound idle message renders as
+///
+/// ```text
+/// <EVENT type="msg" from="doyle">
+/// body
+/// </EVENT>
+/// ```
+///
+/// instead of one dense line. This is safe because spt-core writes `{"text"}` byte-verbatim
+/// INCLUDING `\n` (broker.rs:1016-1017, doyle 2026-06-20) and Claude Code SOFT-NEWLINES on a bare
+/// `\n` in the input box rather than submitting — empirically gated 2026-06-24 (a two-line `{text}`
+/// landed as ONE user turn with the `\n` preserved, no early submit). Cyan/SGR distinction is
+/// impossible (CC's input handling eats SGR bytes; user-turns are theme-fixed), so a multi-line
+/// plain-text frame is the only viable visual distinction.
+///
+/// `s` must already have its stray CR/LF neutralized (see `commands_for_event`) — the only newlines
+/// in the result are the two we deliberately insert at the structural seams. Degenerate inputs that
+/// don't match `<…>…</EVENT>` (e.g. an `<EVENT-PART …>` chunk, or a non-envelope payload) fall back
+/// to the single-line form unchanged — never panic, never corrupt. [impl->REQ-DIST-IDLE-MULTILINE]
+fn frame_envelope(s: &str) -> String {
+    // Opening tag ends at the first '>' (EVENT bodies HTML-escape '>' as &gt;, and attribute values
+    // carry no raw '>', so the first '>' is the opening tag's close).
+    let Some(gt) = s.find('>') else { return s.to_string() };
+    // Closing tag is the last literal "</EVENT>" ("</EVENT-PART>" does not contain it, so EVENT-PART
+    // chunks correctly fall through to the single-line form).
+    let Some(close) = s.rfind("</EVENT>") else { return s.to_string() };
+    // The body sits strictly between the opening '>' and the closing tag.
+    if close < gt + 1 {
+        return s.to_string();
+    }
+    let opening = &s[..=gt];
+    let body = &s[gt + 1..close];
+    let closing = &s[close..];
+    format!("{opening}\n{body}\n{closing}")
+}
+
 /// Build the keystroke-command sequence for one inbound EVENT envelope.
 ///
 /// `envelope` is the full `<EVENT…>…</EVENT>` string. The envelope is single-line by contract (it
 /// encodes newlines as the literal `<br>` token), but we defensively strip any raw CR/LF so a stray
 /// newline can never split or corrupt the injection. (Necessary because spt-core applies `{"text"}`
 /// verbatim — broker.rs:1066/:1016-1017, doyle 2026-06-20 — so any internal CR/LF would otherwise
-/// reach the PTY.) The submit is a DISCRETE `{"key":"enter"}` AFTER the text — a trailing `\r` byte in
-/// the text does NOT submit a Claude Code message (corrected 2026-06-23). The closing `{"commit"}`
+/// reach the PTY.) After sanitizing, `frame_envelope` re-inserts exactly two deliberate `\n`s at the
+/// opening-tag / body / closing-tag seams to render the message across multiple lines (CC soft-newlines
+/// a bare `\n`; empirically gated 2026-06-24). The submit is a DISCRETE `{"key":"enter"}` AFTER the
+/// text — a trailing `\r` byte in the text does NOT submit a Claude Code message (corrected
+/// 2026-06-23), and the deliberate `\n`s soft-newline rather than submit. The closing `{"commit"}`
 /// is the MANDATORY inject-sequence terminator (broker.rs:1075-1090; no-commit FAULTs at the 5s
-/// INJECT_COMMIT_DEADLINE). [impl->REQ-DIST-IDLE-TRANSLATE]
+/// INJECT_COMMIT_DEADLINE). [impl->REQ-DIST-IDLE-TRANSLATE] [impl->REQ-DIST-IDLE-MULTILINE]
 fn commands_for_event(envelope: &str) -> Vec<Value> {
     let sanitized: String = envelope
         .chars()
         .map(|c| if c == '\r' || c == '\n' { ' ' } else { c })
         .collect();
+    let framed = frame_envelope(&sanitized); // re-insert the two deliberate structural newlines
     vec![
         json!({ "key": "ctrl+s" }),      // 1. stash any existing draft
         json!({ "delay_ms": DELAY_MS }), // 2. let the stash settle
-        json!({ "text": sanitized }),    // 3. type the envelope — NO trailing CR (a \r byte does not submit CC)
+        json!({ "text": framed }),       // 3. type the multi-line envelope — only the framing \n's; NO trailing CR
         json!({ "delay_ms": DELAY_MS }), // 4. let the text land in CC's input box before the submit key
         json!({ "key": "enter" }),       // 5. submit — a real Enter keypress (CC needs the key event, not a \r byte)
         json!({ "commit": true }),       // 6. terminate the inject sequence (release the InjectFloor)
@@ -166,12 +210,54 @@ mod tests {
             vec![
                 "key:ctrl+s".to_string(),
                 "delay:50".to_string(),
-                "text:<EVENT type=\"msg\" from=\"doyle\">hi</EVENT>".to_string(),
+                // The envelope is framed across lines: \n after the opening tag, \n before </EVENT>.
+                "text:<EVENT type=\"msg\" from=\"doyle\">\nhi\n</EVENT>".to_string(),
                 "delay:50".to_string(),
                 "key:enter".to_string(),
                 "commit".to_string(),
             ]
         );
+    }
+
+    // [unit->REQ-DIST-IDLE-MULTILINE]
+    #[test]
+    fn envelope_is_framed_across_three_lines() {
+        // The deliberate visual-distinction frame: opening tag · \n · body · \n · closing tag.
+        // CC soft-newlines a bare \n (empirically gated 2026-06-24), so this renders as one user
+        // turn spanning three lines, not an early submit.
+        let cmds = commands_for_event("<EVENT type=\"msg\" from=\"doyle\">hello there</EVENT>");
+        let text = cmds[2].get("text").and_then(Value::as_str).unwrap();
+        assert_eq!(
+            text,
+            "<EVENT type=\"msg\" from=\"doyle\">\nhello there\n</EVENT>"
+        );
+        // Exactly two deliberate newlines (the structural seams) and zero CR.
+        assert_eq!(text.matches('\n').count(), 2, "exactly two framing newlines");
+        assert_eq!(text.matches('\r').count(), 0, "no CR");
+        // The three lines are: opening tag, body, closing tag.
+        let lines: Vec<&str> = text.split('\n').collect();
+        assert_eq!(lines[0], "<EVENT type=\"msg\" from=\"doyle\">");
+        assert_eq!(lines[1], "hello there");
+        assert_eq!(lines[2], "</EVENT>");
+    }
+
+    #[test]
+    fn frame_envelope_falls_back_on_non_envelope_payloads() {
+        // No opening '>' or no closing </EVENT>: leave the text single-line (never panic/corrupt).
+        assert_eq!(frame_envelope("plain payload, no tags"), "plain payload, no tags");
+        assert_eq!(frame_envelope("<EVENT no close"), "<EVENT no close");
+        // An EVENT-PART chunk has no literal "</EVENT>" (it ends "</EVENT-PART>"), so it falls back.
+        let part = "<EVENT-PART seq=\"1/2\" id=\"abcd1234\">chunk</EVENT-PART>";
+        assert_eq!(frame_envelope(part), part);
+        assert!(!frame_envelope(part).contains('\n'), "EVENT-PART stays single-line");
+    }
+
+    #[test]
+    fn frame_envelope_handles_attrless_and_empty_body() {
+        // Attribute-less opening tag still frames on the first '>'.
+        assert_eq!(frame_envelope("<EVENT>body</EVENT>"), "<EVENT>\nbody\n</EVENT>");
+        // Empty body yields an empty middle line — harmless.
+        assert_eq!(frame_envelope("<EVENT></EVENT>"), "<EVENT>\n\n</EVENT>");
     }
 
     #[test]
@@ -222,12 +308,23 @@ mod tests {
     #[test]
     fn raw_newlines_in_envelope_are_neutralized() {
         // A stray CR/LF must not split or corrupt the injection — only the discrete enter submits.
-        // Embedded newlines collapse to spaces; NO \r survives in the text (the submit is enter).
+        // A non-envelope payload collapses embedded newlines to spaces and stays single-line.
         let cmds = commands_for_event("a\nb\r\nc");
         let text = cmds[2].get("text").and_then(Value::as_str).unwrap();
         assert_eq!(text, "a b  c");
         assert_eq!(text.matches('\r').count(), 0, "no raw CR survives");
         assert_eq!(text.matches('\n').count(), 0, "no raw LF survives");
+    }
+
+    #[test]
+    fn stray_newlines_neutralized_then_only_framing_newlines_remain() {
+        // STRAY CR/LF inside a real envelope collapse to spaces FIRST; then framing re-inserts
+        // EXACTLY the two deliberate structural newlines. No stray newline can split the injection.
+        let cmds = commands_for_event("<EVENT type=\"msg\">a\nb\r\nc</EVENT>");
+        let text = cmds[2].get("text").and_then(Value::as_str).unwrap();
+        assert_eq!(text, "<EVENT type=\"msg\">\na b  c\n</EVENT>");
+        assert_eq!(text.matches('\r').count(), 0, "no raw CR survives");
+        assert_eq!(text.matches('\n').count(), 2, "only the two framing newlines survive");
     }
 
     #[test]

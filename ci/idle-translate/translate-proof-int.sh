@@ -59,5 +59,13 @@ case "$out" in
   *'\r"'*) echo "FAIL: text still carries a trailing \\r (should be a discrete enter):"; printf '%s\n' "$out"; rc=1 ;;
   *) echo "ok  text command carries no trailing \\r" ;;
 esac
+# The envelope is FRAMED across multiple lines for visual distinction: a raw \n after the opening
+# tag and before the closing </EVENT>. CC soft-newlines a bare \n (empirically gated 2026-06-24), so
+# this renders as one user turn spanning lines, not an early submit. The emitted {text} carries the
+# two deliberate framing newlines (JSON-escaped as \n in the command stream). [int->REQ-DIST-IDLE-MULTILINE]
+case "$out" in
+  *'>\n'*'\n</EVENT>'*) echo "ok  envelope framed across lines (\\n after opening tag and before </EVENT>)" ;;
+  *) echo "FAIL: text is not framed across lines (multi-line envelope missing):"; printf '%s\n' "$out"; rc=1 ;;
+esac
 
 [ "$rc" -eq 0 ] && { echo "TRANSLATE-PROOF-INT OK"; exit 0; } || { echo "TRANSLATE-PROOF-INT FAIL"; exit 1; }
