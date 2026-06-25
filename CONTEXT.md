@@ -7,9 +7,19 @@
 adapter in spt-core terms. Simultaneously spt-core's v1 acceptance proof (legacy
 parity), its first casual-end-user entrypoint (a CC plugin), and an invisible spt-core
 installer. Built by maintainer perri from the public spt-releases surface only.
+(Repo being renamed `spt-claude-code` → `claude-spt` per the naming-domain rule; see
+[[naming-domains]].)
 
 **claude-spt** — the adapter_name spt-claude-code registers under (rides every `api`
-invocation + the manifest). The CC adapter's identity inside spt-core.
+invocation + the manifest). The CC adapter's identity inside spt-core. The
+**spt-core-facing** token (repo + adapter + consolidated binary). See [[naming-domains]].
+
+**naming-domains** — the two-token naming rule (ADR-0005): **`claude-spt`** is the
+spt-core-facing identity (repo, adapter, binary — `spt adapter … claude-spt`), and
+**`spt`** is the Claude-Code-facing identity (plugin + skills, `/spt:*`, via the
+`sptc`→`spt` succession). One token can't cover both because the adapter cannot be named
+`spt` (spt-core's own identity) while the skill prefix wants `/spt:*`. The `cc` launcher
+shortcut (`cc-<id>`) is decoupled from both.
 
 **legacy spt / `claude_skill_owl`** — the sister project; today's shipped CC integration
 (owl.exe + `spt` plugin, v1.11.25). The parity *target* (user-facing features), not a
