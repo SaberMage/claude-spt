@@ -11,7 +11,7 @@ ROOT=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 PACKER="$ROOT/ci/publish/package-adapter.sh"
 WIN_TRIPLE=x86_64-pc-windows-msvc
 LINUX_TRIPLE=x86_64-unknown-linux-gnu
-BINS="claude-spt-digest claude-spt-psyche cc-spt-idle-translate"
+BINS="claude-spt cc-spt-idle-translate"  # consolidated claude-spt (digest/psyche/post-update) + the separate idle-translate (ADR-0006/U2)
 rc=0
 fail() { printf 'FAIL: %s\n' "$1"; rc=1; }
 
@@ -56,7 +56,7 @@ echo "$LIST" | grep -qx "manifest.toml" \
 echo "$LIST" | grep -q "^strings/" \
   && echo "ok   shared strings/ at root" \
   || fail "strings/ missing from archive root"
-# Each triple carries all three binaries, under its <triple>/ dir, mirroring the flat-root tree.
+# Each triple carries all the tool binaries, under its <triple>/ dir, mirroring the flat-root tree.
 for b in $BINS; do
   echo "$LIST" | grep -qx "$WIN_TRIPLE/$b.exe" \
     && echo "ok   $WIN_TRIPLE/$b.exe present" \

@@ -2,6 +2,9 @@
 # Integration proof: `spt adapter digest-proof` runs the claude-spt [digest] extractor and renders a
 # non-empty digest from a real CC-shaped sample (the M10 acceptance criterion carried
 # forward for spt-claude-code). [int->REQ-DIST-DIGEST-EXTRACTOR]
+# Also the consolidation int (ADR-0006/U2): --dir resolves the bare `claude-spt` binary and the
+# manifest extractor command `claude-spt digest …` runs its `digest` subcommand end-to-end through
+# real spt — proving the merged binary's digest seam still works. [int->REQ-DIST-BINARY-CONSOLIDATE]
 #
 # Uses the v0.13.2 `--dir`/`--manifest` override (F-011 closed, W5) to proof the DEV extractor
 # straight from its build dir against the bare-file manifest: --dir resolves the binary (before PATH)
@@ -19,7 +22,7 @@ set -u
 ROOT=$(CDPATH= cd "$(dirname "$0")/../.." && pwd)
 MANIFEST="$ROOT/adapter/claude-spt.toml"
 SAMPLE="$ROOT/ci/digest/sample.jsonl"
-RELDIR="$ROOT/tools/claude-spt-digest/target/release"
+RELDIR="$ROOT/tools/claude-spt/target/release"   # consolidated binary; the `digest` subcommand is the extractor (ADR-0006/U2)
 
 command -v spt >/dev/null 2>&1 || { echo "SKIP: no spt on PATH"; exit 0; }
 
@@ -29,7 +32,7 @@ if ! spt adapter digest-proof --help 2>&1 | grep -q -- '--dir'; then
   exit 0
 fi
 
-[ -x "$RELDIR/claude-spt-digest" ] || [ -x "$RELDIR/claude-spt-digest.exe" ] || { echo "SKIP: extractor not built (run sh ci/digest/build.sh)"; exit 0; }
+[ -x "$RELDIR/claude-spt" ] || [ -x "$RELDIR/claude-spt.exe" ] || { echo "SKIP: extractor not built (run sh ci/digest/build.sh)"; exit 0; }
 
 # Proof the dev extractor in-place: --dir resolves the binary (before PATH) like the daemon, --manifest
 # pins the bare-file gh_release manifest — no extracted install, no registry touch.

@@ -8,9 +8,9 @@
 #   ├── manifest.toml                 ← SHARED, at archive root (renamed from claude-spt.toml)
 #   ├── strings/                      ← SHARED, at archive root
 #   ├── x86_64-pc-windows-msvc/       ← this triple's binaries, mirroring the flat-root tree
-#   │   ├── claude-spt-digest.exe · claude-spt-psyche.exe · cc-spt-idle-translate.exe
+#   │   ├── claude-spt.exe · cc-spt-idle-translate.exe
 #   └── x86_64-unknown-linux-gnu/
-#       └── claude-spt-digest · claude-spt-psyche · cc-spt-idle-translate
+#       └── claude-spt · cc-spt-idle-translate
 #
 # spt-core CLASSIFIES on top-level entry names: a known target-triple dir ⇒ multi-platform; it places
 # the shared-root entries + FLATTENS this node's <triple>/* into the install dir (so a bare-name
@@ -40,12 +40,14 @@ APPLY=0
 # The recognized triples and where each platform's release binaries live. A native Windows build lands
 # in target/release; the Linux build is cross-compiled (cargo-zigbuild) into
 # target/x86_64-unknown-linux-gnu/release. Override SPTC_WIN_RELSUB / SPTC_LINUX_RELSUB for a
-# non-default layout. The three tool binaries each live in their own crate under tools/.
+# non-default layout. The two tool binaries each live in their own crate under tools/ (the former
+# claude-spt-digest + claude-spt-psyche crates are now the digest/psyche subcommands of claude-spt;
+# cc-spt-idle-translate stays separate until doyle ask #3 lets it fold in too — ADR-0006/U2).
 WIN_TRIPLE=x86_64-pc-windows-msvc
 LINUX_TRIPLE=x86_64-unknown-linux-gnu
 WIN_RELSUB="${SPTC_WIN_RELSUB:-release}"
 LINUX_RELSUB="${SPTC_LINUX_RELSUB:-$LINUX_TRIPLE/release}"
-BINS="claude-spt-digest claude-spt-psyche cc-spt-idle-translate"
+BINS="claude-spt cc-spt-idle-translate"
 
 # Validate the manifest first — refuse to ship an invalid adapter.
 echo "== validate manifest =="
@@ -73,7 +75,7 @@ for b in $BINS; do
   done
 done
 if [ "$missing" -ne 0 ]; then
-  echo "REFUSING to package: build BOTH platforms first — Windows: sh ci/{digest,psyche,idle-translate}/build.sh;" >&2
+  echo "REFUSING to package: build BOTH platforms first — Windows: sh ci/{digest,idle-translate}/build.sh;" >&2
   echo "Linux (cross): cargo-zigbuild --release --target $LINUX_TRIPLE for each tool crate (see docs/RELEASE-RUNBOOK.md)." >&2
   exit 1
 fi
@@ -115,8 +117,8 @@ echo "== validate archive =="
 listing=$(tar -tzf "$OUT")
 fatal=0
 echo "$listing" | grep -qx "manifest.toml" || { echo "FATAL: manifest.toml not at archive root" >&2; fatal=1; }
-echo "$listing" | grep -q "^$WIN_TRIPLE/claude-spt-psyche.exe$" || { echo "FATAL: missing $WIN_TRIPLE/ binaries" >&2; fatal=1; }
-echo "$listing" | grep -q "^$LINUX_TRIPLE/claude-spt-psyche$"   || { echo "FATAL: missing $LINUX_TRIPLE/ binaries" >&2; fatal=1; }
+echo "$listing" | grep -q "^$WIN_TRIPLE/claude-spt.exe$" || { echo "FATAL: missing $WIN_TRIPLE/ binaries" >&2; fatal=1; }
+echo "$listing" | grep -q "^$LINUX_TRIPLE/claude-spt$"   || { echo "FATAL: missing $LINUX_TRIPLE/ binaries" >&2; fatal=1; }
 # Guard the footgun: no UNRECOGNIZED top-level dir (would silently flatten as a shared-root entry).
 badtop=$(echo "$listing" | awk -F/ 'NF>1 {print $1}' | sort -u | grep -vE "^(strings|$WIN_TRIPLE|$LINUX_TRIPLE)$" || true)
 [ -n "$badtop" ] && { echo "FATAL: unrecognized top-level dir(s) [$badtop] — spt-core would mis-place them flat" >&2; fatal=1; }

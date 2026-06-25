@@ -200,13 +200,14 @@ signoff_dir = ".claude"
 # {session_name} (a [session.self] fill) and NOT {psyche_context} (the resume-preload seam, not first
 # spawn). `detach=true` + cwd={psyche_dir}: the Psyche is fire-and-forget detached (Stdio::null,
 # unsupervised), owns its `<parent>-psyche` perch, authors commune-drops only, exits at session end.
-# The runner (claude-spt-psyche, tools/) is a resident wrapper — `claude -p` is one-shot, so it seeds
+# The runner (`claude-spt psyche`, the psyche subcommand of the consolidated tools/claude-spt crate —
+# ADR-0006/U2) is a resident wrapper — `claude -p` is one-shot, so it seeds
 # the Psyche `claude` session once from {psyche_prompt} then drives one `claude --continue` turn per
 # daemon pulse (NOT a bare `claude -p`), the claude authoring commune drops. spt-core fills each {key}
 # as ONE argv element (tokenize-then-fill, v0.8.2+); the runner parses --prompt greedily as defense.
 # [impl->REQ-SKILL-LIVE]
 [session.psyche_init]
-command = "claude-spt-psyche --id {id} --session-id {session_id} --prompt {psyche_prompt}"
+command = "claude-spt psyche --id {id} --session-id {session_id} --prompt {psyche_prompt}"
 cwd = "{psyche_dir}"
 detach = true
 keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
@@ -295,8 +296,8 @@ idle = ["hook"]
 # spt-hosted complement to the [inject] hook channel above: [inject] handles BUSY/mid-turn delivery
 # (UPS additionalContext); this handles IDLE delivery into a session sitting at its input box.
 #
-# `path` = the binary's bare name (resolved from the adapter install dir like claude-spt-digest /
-# claude-spt-psyche; it packs into adapter.spt). The binary (tools/cc-spt-idle-translate, Rust) emits
+# `path` = the binary's bare name (resolved from the adapter install dir like the consolidated
+# claude-spt binary; it packs into adapter.spt). The binary (tools/cc-spt-idle-translate, Rust) emits
 # the operator-specified choreography per message — ctrl+s (stash draft) · 50ms · <envelope>\r
 # (submit line) · {"commit":true} (terminate sequence) — so an inbound message never clobbers a
 # half-typed draft (CC AUTO-RESTORES the stashed draft after submit, so no trailing restore keystroke).
@@ -327,10 +328,11 @@ path = "cc-spt-idle-translate"
 # So `source` names the per-project ROOT dir (`~` for home expansion — {home} is NOT a catalog key)
 # and the extractor receives `{session_id}` on the COMMAND and resolves `<slug>/<session_id>.jsonl`
 # within the root itself (the slug is the harness's own business). This matches the published example
-# shape and what `spt endpoint digest` fills at runtime. The extractor (tools/claude-spt-digest, a
-# Rust binary) ships in the spt-core-conducted layer; this is its declaration.
+# shape and what `spt endpoint digest` fills at runtime. The extractor (`claude-spt digest`, the
+# digest subcommand of the consolidated tools/claude-spt Rust crate — ADR-0006/U2) ships in the
+# spt-core-conducted layer; this is its declaration.
 [digest]
-extractor = "claude-spt-digest --session {session_id} --in {source}"
+extractor = "claude-spt digest --session {session_id} --in {source}"
 source = "~/.claude/projects"
 window_turns = 6
 arg_truncation = 240
@@ -362,7 +364,7 @@ sprint_collapse = true
 # NO `[profiles.ccs.digest]` leaf by design: ccs relocates Claude Code's transcript tree via the
 # CLAUDE_CONFIG_DIR env var (e.g. ~/.ccs/instances/<account>/.claude), whose value is set by ccs at
 # runtime per-account and is NOT expressible as a static catalog path. The "per-profile ~/.ccs log
-# dir" SCOPE requirement is therefore honored IN THE EXTRACTOR (claude-spt-digest prefers
+# dir" SCOPE requirement is therefore honored IN THE EXTRACTOR (`claude-spt digest` prefers
 # $CLAUDE_CONFIG_DIR/projects over the base ~/.claude/projects on its dir-locate branch — the
 # owl-validated owlery::claude_projects_root pattern), so the base [digest] config serves both base
 # and ccs sessions transparently. That env-aware resolver is REQ-CCS-PROFILES's impl evidence.

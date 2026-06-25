@@ -61,7 +61,7 @@ ANCHOR=$(ps -p $$ 2>/dev/null | awk 'NR==2{print $4}'); case "$ANCHOR" in ''|*[!
 
 # Can the psyche runner be resolved on THIS host? (PATH now, or manifest-dir on v0.8.0+ Feature B.)
 psyche_resolvable() {
-  command -v claude-spt-psyche >/dev/null 2>&1 && return 0
+  command -v claude-spt >/dev/null 2>&1 && return 0
   case "$ver" in 0.7.*) return 1 ;; *) return 0 ;; esac  # Feature B (manifest-dir resolution) lands in v0.8.0; >=0.8.0 resolvable
 }
 
@@ -75,7 +75,7 @@ cleanup() {
   # Kill the spawned Psyche subtree first (the runner + its headless claude), by marker pid then name.
   pp=$(grep -oE 'PSYCHE_SPAWNED:[^ ]+ pid=[0-9]+' "$LF" 2>/dev/null | grep -oE '[0-9]+' | tail -1)
   [ -n "$pp" ] && taskkill //PID "$pp" //T //F >/dev/null 2>&1
-  for p in $(tasklist 2>/dev/null | grep -i claude-spt-psyche | awk '{print $2}'); do taskkill //PID "$p" //T //F >/dev/null 2>&1; done
+  for p in $(tasklist 2>/dev/null | grep -i claude-spt | awk '{print $2}'); do taskkill //PID "$p" //T //F >/dev/null 2>&1; done
   [ -n "$CHILD" ] && kill "$CHILD" >/dev/null 2>&1
   spt endpoint shutdown "$ID" >/dev/null 2>&1 || true
   spt endpoint stop "$ID" >/dev/null 2>&1 || true
@@ -127,9 +127,12 @@ case "$ver" in
     # the RESIDENT runner process + the nested perch dir for THIS id. This is also the REQ-INSTALL-11
     # install-dir-resolution proof: the runner resolved by bare name FROM the adapter install dir.
     OWL="${SPT_HOME:-$HOME/AppData/Local/spt-core}/owlery/$ID/nested/$ID-psyche/info.json"
-    resident() { tasklist 2>/dev/null | grep -qi "claude-spt-psyche"; }
+    # The runner exe is now claude-spt.exe (running the `psyche` subcommand; ADR-0006/U2). In this
+    # disposable CI session the only claude-spt process is the psyche runner, so the image-name match
+    # is unambiguous (tasklist shows the image name, not the subcommand).
+    resident() { tasklist 2>/dev/null | grep -qi "claude-spt"; }
     j=0; while [ "$j" -lt 20 ]; do resident && [ -f "$OWL" ] && break; sleep 1; j=$((j+1)); done
-    procs=$(tasklist 2>/dev/null | grep -ci "claude-spt-psyche")
+    procs=$(tasklist 2>/dev/null | grep -ci "claude-spt")
     nested=no; [ -f "$OWL" ] && nested=yes
     if resident && [ -f "$OWL" ]; then
       ok "Psyche daemon-hosted: claude-spt-psyche runner RESIDENT for $ID-psyche (v0.8.1 livehost + greedy-prompt fix; REQ-INSTALL-11 install-dir resolution proven)"

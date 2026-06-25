@@ -1,4 +1,4 @@
-//! claude-spt-psyche — the `[session.psyche_init]` Psyche runner for the claude-spt LiveAgent.
+//! `claude-spt psyche` — the `[session.psyche_init]` Psyche runner (was the claude-spt-psyche crate).
 //!
 //! WHAT A PSYCHE IS (doyle 2026-06-15, traced spt-core): a LiveAgent's detached companion. The
 //! spt-core daemon's livehost hosts it — only when the resolved manifest declares
@@ -20,7 +20,7 @@
 //! that claude (driven by the prompt) — this runner stays pure orchestration glue.
 //!
 //! Invoked by the daemon (detached, cwd=`{psyche_dir}`, stdio null):
-//!   claude-spt-psyche --id <parent>-psyche --session-id <session_id> --prompt <psyche_prompt…>
+//!   claude-spt psyche --id <parent>-psyche --session-id <session_id> --prompt <psyche_prompt…>
 //! ({id} is the daemon-OVERRIDDEN `<parent>-psyche`, NOT the parent endpoint id — see spawn_psyche.)
 //! NOTE on `--prompt` parsing: spt-core **<0.8.2** substituted `{psyche_prompt}` into the command
 //! STRING then whitespace-split it, so the multi-word prompt reached us as many trailing argv tokens.
@@ -35,7 +35,6 @@
 //! command's own job (ready.md), so no separate establish step.
 //! [impl->REQ-SKILL-LIVE]
 
-#[cfg(not(test))]
 use std::process::{Command, ExitCode, Stdio};
 
 /// Parsed launch args. Only the three daemon-filled `psyche_init.keys` we template
@@ -149,12 +148,12 @@ fn is_actionable(pulse: &str) -> bool {
     !pulse.trim().is_empty()
 }
 
-#[cfg(not(test))]
-fn run() -> ExitCode {
-    let args = match Args::parse(std::env::args().skip(1)) {
+/// `claude-spt psyche` entry. Reads its own argv (binary name + `psyche` token already consumed).
+pub fn run() -> ExitCode {
+    let args = match Args::parse(std::env::args().skip(2)) {
         Ok(a) => a,
         Err(e) => {
-            eprintln!("claude-spt-psyche: {e}");
+            eprintln!("claude-spt psyche: {e}");
             return ExitCode::from(2);
         }
     };
@@ -186,14 +185,6 @@ fn run() -> ExitCode {
             .status();
     }
 }
-
-#[cfg(not(test))]
-fn main() -> ExitCode {
-    run()
-}
-
-#[cfg(test)]
-fn main() {}
 
 // [unit->REQ-SKILL-LIVE]
 #[cfg(test)]

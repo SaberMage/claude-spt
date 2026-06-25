@@ -1,4 +1,4 @@
-//! claude-spt-digest — the `[digest]` session-digest extractor for the claude-spt adapter.
+//! `claude-spt digest` — the `[digest]` session-digest extractor (was the claude-spt-digest crate).
 //!
 //! Maps Claude Code's native JSONL transcript -> the published digest-record contract: NDJSON, one
 //! `{"role","text"?,"tool"?,"ts"?}` object per stdout line. Emits RAW records — spt-core's digest
@@ -9,7 +9,7 @@
 //! `/clear`; this reads exactly ONE session's log (the watch-item doyle flagged 2026-06-15 —
 //! single-session slice is correct here, the spanning is ledger-side).
 //!
-//! Invoked by spt-core:  `claude-spt-digest --session <session_id> --in <source>`
+//! Invoked by spt-core:  `claude-spt digest --session <session_id> --in <source>`
 //!   `<source>` is CC's per-project ROOT (`~/.claude/projects`); the session file lives at
 //!   `<source>/<cwd-slug>/<session_id>.jsonl`. The cwd-slug subdir is a CC-internal encoding not
 //!   expressible as a flat template, so we LOCATE `<session_id>.jsonl` by search under `<source>`.
@@ -205,16 +205,18 @@ struct Args {
     source: Option<String>,
 }
 
-fn parse_args() -> Result<Args, String> {
+/// Parse `--session <id> --in <source>` from the subcommand's argv (main already skipped the binary
+/// name + the `digest` token). Order-independent single-value flags.
+fn parse_args<I: IntoIterator<Item = String>>(argv: I) -> Result<Args, String> {
     let mut session = None;
     let mut source = None;
-    let mut it = std::env::args().skip(1);
+    let mut it = argv.into_iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--session" => session = it.next(),
             "--in" => source = it.next(),
             "-h" | "--help" => {
-                println!("claude-spt-digest --session <id> --in <projects-root-or-logfile>");
+                println!("claude-spt digest --session <id> --in <projects-root-or-logfile>");
                 std::process::exit(0);
             }
             other => return Err(format!("unknown arg: {other}")),
@@ -248,8 +250,8 @@ fn ccs_projects_root_from(cfg: Option<&str>) -> Option<PathBuf> {
     }
 }
 
-fn run() -> Result<(), String> {
-    let args = parse_args()?;
+fn execute<I: IntoIterator<Item = String>>(argv: I) -> Result<(), String> {
+    let args = parse_args(argv)?;
     let source = args.source.ok_or("missing required --in")?;
     let src = expand_tilde(&source);
 
@@ -280,11 +282,12 @@ fn run() -> Result<(), String> {
     extract(BufReader::new(file), writer).map_err(|e| e.to_string())
 }
 
-fn main() -> ExitCode {
-    match run() {
+/// `claude-spt digest` entry. Reads its own argv (binary name + `digest` token already consumed).
+pub fn run() -> ExitCode {
+    match execute(std::env::args().skip(2)) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("claude-spt-digest: {e}");
+            eprintln!("claude-spt digest: {e}");
             ExitCode::from(2)
         }
     }
@@ -406,6 +409,19 @@ mod tests {
     fn ccs_root_ignores_empty() {
         // Empty env var must NOT shadow the --in fallback (owl: `!cfg.is_empty()` guard).
         assert_eq!(ccs_projects_root_from(Some("")), None);
+    }
+
+    #[test]
+    fn parse_args_reads_session_and_in_order_independent() {
+        // The subcommand parser sees argv AFTER `claude-spt digest` is stripped by main.
+        let a = parse_args(
+            ["--in", "/p/root", "--session", "sess-1"]
+                .iter()
+                .map(|s| s.to_string()),
+        )
+        .unwrap();
+        assert_eq!(a.session.as_deref(), Some("sess-1"));
+        assert_eq!(a.source.as_deref(), Some("/p/root"));
     }
 
     #[test]

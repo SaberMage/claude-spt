@@ -27,8 +27,9 @@ if [ "$n" -eq 1 ]; then echo "ok   single shortcut_basename assignment"; else ec
 # `ccs` profile) AND [session.resume] (`claude -r … --remote-control …`) — MUST carry
 # --dangerously-skip-permissions. The broker spawns CC into a PTY with no operator, so an interactive
 # permission prompt would deadlock the launch (docs/KNOWN-HAZARDS.md §2.2). Match the active
-# `command =` lines whose value is a bare claude/ccs CC spawn — NOT `claude-spt-psyche` (the runner,
-# whose own turns are asserted in tools/claude-spt-psyche unit tests).
+# `command =` lines whose value is a bare claude/ccs CC spawn — NOT `claude-spt psyche` (the runner;
+# `claude-spt` has `-`/no-space after `claude`, so the (claude|ccs)(space|") match correctly excludes
+# it — its turns are asserted in the tools/claude-spt crate's psyche unit tests).
 spawn=$(grep -E '^[[:space:]]*command[[:space:]]*=[[:space:]]*"(claude|ccs)([[:space:]]|")' "$MANIFEST")
 nspawn=$(printf '%s' "$spawn" | grep -c .)
 if [ "$nspawn" -eq 3 ]; then echo "ok   3 CC spawn commands ([session.self] base claude + ccs, [session.resume])"; else echo "FAIL expected 3 CC spawn commands, found $nspawn"; fail=1; fi

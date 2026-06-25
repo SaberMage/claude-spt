@@ -53,7 +53,7 @@ cleanup() {
   for id in $MADE; do spt endpoint purge "$id" --yes --force >/dev/null 2>&1 || true; done
   [ -n "$RUNPID" ] && taskkill //PID "$RUNPID" //T //F >/dev/null 2>&1
   if [ -n "${C3_ID:-}" ]; then
-    for p in $(wmic process where "name='claude-spt-psyche.exe' and commandline like '%$C3_ID%'" get processid 2>/dev/null | tr -dc '0-9 \n' | tr ' ' '\n' | grep -E '^[0-9]+$'); do
+    for p in $(wmic process where "name='claude-spt.exe' and commandline like '%$C3_ID%'" get processid 2>/dev/null | tr -dc '0-9 \n' | tr ' ' '\n' | grep -E '^[0-9]+$'); do
       taskkill //PID "$p" //T //F >/dev/null 2>&1
     done
     spt endpoint shutdown "$C3_ID" >/dev/null 2>&1 || true

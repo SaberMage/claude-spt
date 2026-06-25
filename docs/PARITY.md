@@ -35,7 +35,7 @@
 | `/clear-psyche` | DROP (= delete+recreate endpoint) | absent | ✅ confirmed absent |
 
 TRANSFORM bucket (already realised, not skills): capsule→spt-hosted+`cc` (`[session.self]` +
-`shortcut_basename="cc"`); echo-commune→`[digest]` extractor (`claude-spt-digest`); psyche-sync→
+`shortcut_basename="cc"`); echo-commune→`[digest]` extractor (`claude-spt digest`); psyche-sync→
 `/spt:setup`; doctor→setup-verify; working-perches→`api worker-start/stop` hooks. ✅
 
 ## Open divergences and dispositions
@@ -61,7 +61,7 @@ sister project **claude_skill_owl**:
 - **Log-dir seam → in the extractor, not a manifest leaf.** ccs relocates CC's whole state tree
   (incl. `projects/`) via the **`CLAUDE_CONFIG_DIR`** env var (`~/.ccs/instances/<account>/.claude`),
   a per-account runtime value with no static catalog path. SCOPE's "per-profile `~/.ccs` log dir"
-  is therefore honored **in `claude-spt-digest`** (dir-locate branch prefers `$CLAUDE_CONFIG_DIR/
+  is therefore honored **in `claude-spt digest`** (dir-locate branch prefers `$CLAUDE_CONFIG_DIR/
   projects` over the `--in` root) — the owl-validated `owlery::claude_projects_root` pattern. The
   base `[digest]` config thus serves base **and** ccs sessions transparently; no `[profiles.ccs.
   digest]` leaf. This env-aware resolver is REQ-CCS-PROFILES's `impl`/`unit` evidence (a `.toml`

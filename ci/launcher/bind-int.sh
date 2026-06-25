@@ -43,7 +43,7 @@ cleanup() {
   # 1. Kill the broker-spawned claude (the [session.self] target) by its run pid, subtree.
   [ -n "$RUNPID" ] && taskkill //PID "$RUNPID" //T //F >/dev/null 2>&1
   # 2. Kill the disposable Psyche ONLY (cmdline carries this run's unique id — never wall-a's).
-  for p in $(wmic process where "name='claude-spt-psyche.exe' and commandline like '%$ID%'" get processid 2>/dev/null | tr -dc '0-9 \n' | tr ' ' '\n' | grep -E '^[0-9]+$'); do
+  for p in $(wmic process where "name='claude-spt.exe' and commandline like '%$ID%'" get processid 2>/dev/null | tr -dc '0-9 \n' | tr ' ' '\n' | grep -E '^[0-9]+$'); do
     taskkill //PID "$p" //T //F >/dev/null 2>&1
   done
   # 3. Take the endpoint offline + erase its perch.

@@ -9,8 +9,9 @@ accepted (2026-06-18)
 ## Context
 
 A live session's *Psyche* (see `CONTEXT.md`) is a second `claude` process the spt-core daemon
-hosts alongside the parent agent. The daemon launches our `claude-spt-psyche` runner **detached,
-with `Stdio::null`**; the runner seeds one headless `claude` turn from the daemon-supplied prompt,
+hosts alongside the parent agent. The daemon launches our `claude-spt psyche` runner (the psyche
+subcommand of the consolidated `claude-spt` binary, ADR-0006/U2) **detached, with `Stdio::null`**;
+the runner seeds one headless `claude` turn from the daemon-supplied prompt,
 then drives one `claude --continue` turn per pulse. The Psyche's only job is to author a *commune*
 on each pulse.
 
@@ -34,7 +35,7 @@ Forces:
 ## Decision
 
 Every Psyche `claude` turn — the seed **and** each pulse — runs inside a fixed sandbox, mirroring
-legacy owl. `claude-spt-psyche` appends this flag set (`sandbox_flags()`) to both `seed_cmd` and
+legacy owl. `claude-spt psyche` appends this flag set (`sandbox_flags()`) to both `seed_cmd` and
 `pulse_cmd`:
 
 - `--tools Read,Edit,Write` — file IO only; **no** Bash, network, messaging, etc.

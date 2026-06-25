@@ -147,13 +147,14 @@ This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS
 - **Fat layout (REQ-DIST-ADAPTER-PEROS).** Recognized triples = **`x86_64-pc-windows-msvc`** (win
   `.exe`) + **`x86_64-unknown-linux-gnu`** (linux ELF) — the ONLY two spt-core classifies in a fat
   archive. On install it places the shared root + **flattens this node's `<triple>/*` into the install
-  dir**, so the bare-name command tokens (`claude-spt-digest`, …) still resolve at `<install_dir>/`
+  dir**, so the bare-name command tokens (`claude-spt`, `cc-spt-idle-translate`) still resolve at `<install_dir>/`
   (REQ-INSTALL-11). **Footgun:** an unrecognized top-level dir is silently treated as a shared-root
   entry and lands flat — the packer guards this (refuses any stray top-level dir); for a platform
   beyond the two triples, ship a *separate* single-triple asset via `--asset`, never a third dir here.
 - **Build both platforms first** (the packer needs both binary sets present):
-  - **Windows (native):** `sh ci/digest/build.sh && sh ci/psyche/build.sh && sh
-    ci/idle-translate/build.sh` → `tools/*/target/release/*.exe`.
+  - **Windows (native):** `sh ci/digest/build.sh && sh ci/idle-translate/build.sh` →
+    `tools/*/target/release/*.exe`. (`ci/digest/build.sh` builds the consolidated `claude-spt` crate
+    — digest/psyche/post-update; `ci/psyche/build.sh` is a shim that defers to it — ADR-0006/U2.)
   - **Linux cross-built FROM Windows (proven 2026-06-16):** bare `cargo build --target
     x86_64-unknown-linux-gnu` fails (`error: linker 'cc' not found` — the crate compiles, only the
     link needs a Linux linker), so use **`cargo-zigbuild`** (zig supplies the cross-linker):
@@ -164,8 +165,7 @@ This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS
     # traceable-reqs scan root and zig's bundled libc C-headers trip the scanner), put zig.exe on PATH:
     #   e.g. ~/.sptc-zig/zig-x86_64-windows-0.14.1/zig.exe  →  export PATH="$HOME/.sptc-zig/...:$PATH"
     rustup target add x86_64-unknown-linux-gnu
-    cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/claude-spt-digest/Cargo.toml
-    cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/claude-spt-psyche/Cargo.toml
+    cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/claude-spt/Cargo.toml
     cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/cc-spt-idle-translate/Cargo.toml
     ```
     → `tools/*/target/x86_64-unknown-linux-gnu/release/*` carrying real `ELF x86-64 GNU/Linux`
@@ -188,8 +188,8 @@ This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS
     + passes `--asset`; harmless, simplifying it to the bare default is a follow-on.)
 - **Binaries (install-dir resolution — REQ-INSTALL-11).** A `--release`/`--github` acquisition extracts
   the `.spt` archive's `manifest.toml` + `strings/` **+ both tool binaries** into the adapter install
-  dir (`…/adapters/_github/<safe>/`). The command templates use **bare names** (`claude-spt-digest`,
-  `claude-spt-psyche`), which spt-core resolves **from that install dir** (v0.8.0 Feature B /
+  dir (`…/adapters/_github/<safe>/`). The command templates use **bare names** (`claude-spt`,
+  `cc-spt-idle-translate`), which spt-core resolves **from that install dir** (v0.8.0 Feature B /
   REQ-INSTALL-11) — **no PATH placement needed** (dogfood-proven on v0.8.1 for both binaries; F-006
   RESOLVED, interim retired). The pack therefore MUST carry both binaries (the resolution source). Note:
   a plain local-dev `spt adapter add <manifest.toml>` copies manifest + strings only (no binaries in the

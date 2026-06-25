@@ -1,0 +1,29 @@
+# claude-spt — the consolidated tool binary for the claude-spt adapter (ADR-0006, U2).
+# Merges the former claude-spt-digest + claude-spt-psyche crates into ONE binary with subcommands
+# (`claude-spt digest` / `claude-spt psyche` / `claude-spt post-update`), so the fat adapter.spt
+# carries fewer artifacts per triple and the seams share one dep tree. Rust for the same reasons as
+# its predecessors: a compiled, dependency-light binary the spt-core daemon can spawn BARE on
+# Win+Linux with no interpreter-on-PATH or locale-encoding hazard (stdout is always UTF-8).
+#
+# Subcommand dispatch is hand-rolled (a bare argv[1] match), NOT clap: both predecessor crates were
+# deliberately dependency-light (psyche was std-only; digest carried serde_json alone), and a flat
+# three-way dispatch needs no arg-parsing framework. Each subcommand keeps its own hand-written flag
+# parser (verbatim from its origin crate). [impl->REQ-DIST-BINARY-CONSOLIDATE]
+#
+# Builds via ci/digest/build.sh + ci/psyche/build.sh (both now build THIS crate), gated in
+# ci/run-gates.sh; packed into adapter.spt by ci/publish/package-adapter.sh.
+[package]
+name = "claude-spt"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "claude-spt"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = "1"
+
+[profile.release]
+strip = true
