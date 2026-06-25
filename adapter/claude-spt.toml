@@ -87,10 +87,25 @@ shortcut_basename = "cc"
 # manifest, ADR-0024 W1) — so one asset name auto-resolves the host's binaries. This RETIRES the F-014
 # per-OS stopgap (the old `asset`-less default fetched a windows-only `adapter.spt` that broke on a
 # linux host); no `{os}/{arch}` placeholder is needed since the fat archive is host-agnostic.
+# `message` (U1, REQ-DIST-UPDATE-MESSAGE): markdown spt-core prints ONLY on a real version apply (no
+# `{key}` substitution — docs-confirmed). It bridges the one manual residual the gh_release avenue
+# can't automate — the `/reload-plugins` TUI action — and points at the more-powerful `spt` CLI
+# endpoint route alongside /sptc:live. (When doyle ask #2 lands, the post-update step can also trigger
+# this print on a plugin-only change; copy stays valid.)
 # [impl->REQ-DIST-ADAPTER-RELEASE]
 [update]
 avenue = "gh_release"
 repo = "SaberMage/spt-claude-code"
+message = """
+**claude-spt updated.** One step left — Claude Code can't reload a plugin from inside a running session:
+
+- Run **`/reload-plugins`** now (or restart Claude Code) so the refreshed skills/hooks take effect.
+
+Then you're current. Two ways to go live:
+
+- **`/sptc:live <id>`** — upgrade *this* session to a live agent.
+- **`spt endpoint run`** — the `spt` CLI route: spawn/attach endpoints, drive them over Remote Control, and bring up sessions headlessly. The more powerful lever once you're comfortable.
+"""
 
 # ── [hooks.<event>] ──────────────────────────────────────────────────────────────────────────
 # CC hook event → the opaque `api …` command it fires. These mirror the hand-written plugin
@@ -203,16 +218,22 @@ keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
 # This is what the `cc-<id>` shortcut (shortcut_basename="cc") bakes into a non-interactive launch.
 #
 # command is `claude` (+ `--dangerously-skip-permissions`): CC mints its OWN session id internally
-# (identity.session_id_source = post_spawn), so spt's {session_id} is not threaded on argv — only the
-# endpoint {id} matters, and CC has no native flag for it, so it rides the ENV instead (see
-# [env.SPT_ENDPOINT_ID] below; the published sanctioned pattern for a flagless harness). SessionStart
-# reads $SPT_ENDPOINT_ID and binds. `--dangerously-skip-permissions` is required for the spt-hosted
-# bringup: the broker spawns CC non-interactively into a PTY, so the permission-prompt gate would
-# deadlock the launch with no operator to approve it. spt tokenizes the command on whitespace
-# (tokenize-then-fill, v0.8.2+), so the flag is a clean second argv element.
+# (identity.session_id_source = post_spawn), so spt's {session_id} is not threaded on argv. The
+# endpoint {id} is threaded THREE ways now (U6, REQ-DIST-RC-STARTUP): it rides the ENV for the BIND
+# (CC has no id flag, so SessionStart reads $SPT_ENDPOINT_ID and binds — see [env.SPT_ENDPOINT_ID]
+# below, the sanctioned flagless-harness pattern), AND it sets the DISPLAY name (`-n {id}`, shown in
+# the prompt box / `/resume`) AND the REMOTE-CONTROL channel (`--remote-control {id}`) — so a FRESH
+# spt-hosted endpoint is `spt rc <id>`-attachable + idle/checkpoint-injectable identically to a
+# RESUMED one ([session.resume]). The env-bind and the -n/RC flags are non-conflicting: env names the
+# bind id at SessionStart, -n/RC name the display + control channel (distinct CC mechanisms).
+# `--dangerously-skip-permissions` is required for the spt-hosted bringup: the broker spawns CC
+# non-interactively into a PTY, so the permission-prompt gate would deadlock the launch with no
+# operator to approve it. spt tokenizes the command on whitespace then fills {id} as a clean argv
+# element each (tokenize-then-fill, v0.8.2+). STRETCH (doyle ask #4, operator-raised): -n/RC upgrade
+# to `{id}@{node}` (cross-node-distinguishable) once a `{node}` fill key lands; ships `{id}`-only now.
 # [impl->REQ-DIST-SHORTCUT-BASENAME]
 [session.self]
-command = "claude --dangerously-skip-permissions"
+command = "claude -n {id} --remote-control {id} --dangerously-skip-permissions"
 keys = ["id"]
 
 # ── [session.resume] — native-resume sibling of [session.self] (harness-contract v0.13.0+) ─────
@@ -223,18 +244,20 @@ keys = ["id"]
 # {session_id} + cwd.
 #
 # Command = Claude Code's NATIVE-RESUME verb: `claude -r {session_id}` (-r/--resume reloads the real
-# transcript by id). Unlike [session.self] — which threads the endpoint {id} via $SPT_ENDPOINT_ID
-# because bare `claude` has no id flag — resume threads {id} as the REMOTE-CONTROL name
-# (`--remote-control {id}`, a real CC flag): native-resume drives the resumed PTY over Remote Control,
-# the same channel a live `spt rc` controller / the [message-idle-translation-binary] use, so the
-# endpoint id IS the RC session name. `--dangerously-skip-permissions` for the same non-interactive
-# broker-PTY reason as [session.self] (REQ-HAZARD-PSYCHE-PERMS-DEADLOCK). keys = the two fills
-# spt-core substitutes: {session_id} (the resumed id) + {id} (the endpoint). spt tokenizes on
-# whitespace then fills (tokenize-then-fill, v0.8.2+), so each flag is a clean argv element.
-# Satisfies REQ-DIST-SESSION-RESUME (declaration-only seam; .toml is unscanned, so the formal
-# evidence is the unit assertion in tests/manifest-shortcut.sh — not a tag here).
+# transcript by id). The endpoint {id} is threaded TWO ways: as the DISPLAY name (`-n {id}`, U6 —
+# shown in the prompt box / `/resume`, matching [session.self] so a fresh and a resumed endpoint
+# present identically) AND as the REMOTE-CONTROL name (`--remote-control {id}`, a real CC flag):
+# native-resume drives the resumed PTY over Remote Control, the same channel a live `spt rc`
+# controller / the [message-idle-translation-binary] use, so the endpoint id IS the RC session name.
+# (A resumed session has no $SPT_ENDPOINT_ID env-bind path — -n/RC are how {id} attaches here.)
+# `--dangerously-skip-permissions` for the same non-interactive broker-PTY reason as [session.self]
+# (REQ-HAZARD-PSYCHE-PERMS-DEADLOCK). keys = the two fills spt-core substitutes: {session_id} (the
+# resumed id) + {id} (the endpoint). spt tokenizes on whitespace then fills (tokenize-then-fill,
+# v0.8.2+), so each flag is a clean argv element. Satisfies REQ-DIST-SESSION-RESUME (native-resume
+# seam) + REQ-DIST-RC-STARTUP (the {id} display+RC parity with [session.self]); declaration-only
+# (.toml is unscanned, so the formal evidence is the unit assertions in tests/manifest-shortcut.sh).
 [session.resume]
-command = "claude -r {session_id} --remote-control {id} --dangerously-skip-permissions"
+command = "claude -r {session_id} -n {id} --remote-control {id} --dangerously-skip-permissions"
 keys = ["session_id", "id"]
 
 # ── [env.<VAR>] ────────────────────────────────────────────────────────────────────────────

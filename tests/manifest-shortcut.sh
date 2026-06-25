@@ -51,6 +51,37 @@ if [ -z "$resume" ]; then echo 'FAIL no [session.resume] claude -r … command i
   esac
 fi
 
+# [unit->REQ-DIST-UPDATE-MESSAGE]
+# U1: [update] carries a `message` field (markdown spt-core prints on a real apply). It MUST mention
+# the unavoidable /reload-plugins manual residual — that is the field's whole reason to exist. Match
+# the active `message =` assignment and the reload-plugins notice anywhere in the manifest body.
+if grep -Eq '^[[:space:]]*message[[:space:]]*=' "$MANIFEST"; then echo "ok   [update].message present"; else echo "FAIL [update] has no message field"; fail=1; fi
+if grep -q 'reload-plugins' "$MANIFEST"; then echo "ok   [update].message points at /reload-plugins"; else echo "FAIL [update].message lacks the /reload-plugins notice"; fail=1; fi
+
+# [unit->REQ-DIST-RC-STARTUP]
+# U6: {id} threads the DISPLAY name (`-n {id}`) on BOTH bringup paths and the REMOTE-CONTROL channel
+# (`--remote-control {id}`) on BOTH, so a FRESH ([session.self]) and a RESUMED ([session.resume])
+# endpoint are identified + RC-controlled identically. self currently `claude -n {id} …`, resume
+# `claude -r {session_id} -n {id} …`. A drift that drops -n on either, or --remote-control on self,
+# silently breaks the {id} display/RC parity. ({id}-only now; -> {id}@{node} when a {node} key lands.)
+self_cmd=$(grep -E '^[[:space:]]*command[[:space:]]*=[[:space:]]*"claude -n ' "$MANIFEST")
+if [ -z "$self_cmd" ]; then echo 'FAIL no [session.self] "claude -n {id} …" command in manifest'; fail=1; else
+  case "$self_cmd" in
+    *'-n {id}'*) echo "ok   [session.self] sets {id} as the display name (-n)";;
+    *) echo "FAIL [session.self] missing -n {id}: $self_cmd"; fail=1;;
+  esac
+  case "$self_cmd" in
+    *'--remote-control {id}'*) echo "ok   [session.self] threads {id} as the remote-control name";;
+    *) echo "FAIL [session.self] missing --remote-control {id}: $self_cmd"; fail=1;;
+  esac
+fi
+# resume carries -n {id} too (the U6 addition — parity with self; --remote-control {id} already
+# asserted by the REQ-DIST-SESSION-RESUME block above, $resume reused).
+case "$resume" in
+  *'-n {id}'*) echo "ok   [session.resume] sets {id} as the display name (-n, U6 parity)";;
+  *) echo "FAIL [session.resume] missing -n {id} (U6 display-name parity): $resume"; fail=1;;
+esac
+
 # [unit->REQ-DIST-IDLE-TRANSLATE]
 # [message-idle-translation-binary] declares the idle-delivery filter by its bare binary name; the
 # value MUST match the packed binary (tools/cc-spt-idle-translate) so spt-core can resolve+spawn it.

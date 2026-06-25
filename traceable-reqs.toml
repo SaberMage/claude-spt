@@ -278,3 +278,38 @@ required_stages = []  # Reachability-parity item (F-021). ACTIVATE at the reacha
 id = "REQ-DIST-WORKER-PERCH-REACH"
 title = "Subagent worker perches are runtime-REACHABLE: a `spt send` to a nested worker perch (created by subagent-start.sh -> api worker-start; hostable_types includes Worker) actually delivers. Validates existing wiring; F-022."
 required_stages = []  # Reachability-parity validation (F-022). ACTIVATE at the reachability-parity milestone. int: bring up a CC session, spawn a subagent, confirm the worker perch appears in the roster + `spt send <worker-id>` delivers (worker-poll drains). Wiring is present (subagent-start.sh + hostable Worker); runtime reachability is the only open question.
+
+# ─────────────── UNIFY-CONSOLIDATE wave (planned 2026-06-24, UNIFY-CONSOLIDATE-PLAN.md) ───────────────
+# ADR-0005 (name unification) + ADR-0006 (one-command update + consolidated binary), doyle-independent
+# half (U1–U6). Target release: adapter v0.8.0. All MINTED inactive (required_stages = []) per the
+# activate-don't-pre-fail model; each U-task ACTIVATES its REQ (sets real stages) when its build starts.
+
+[[requirements]]
+id = "REQ-DIST-UPDATE-MESSAGE"
+title = "The adapter manifest [update] table carries a `message` markdown field, printed by spt-core ONLY on a real version apply: it tells the user to run /reload-plugins (the unavoidable TUI step) and points at the more-powerful `spt` CLI endpoint route (`spt endpoint run`) alongside /sptc:live. U1."
+required_stages = ["unit"]  # U1 (quick win, ship first) — ACTIVATED 2026-06-25. The deliverable is the manifest [update].message seam (adapter/claude-spt.toml), and the traceable-reqs scanner does NOT read .toml, so the in-repo scannable evidence is the unit assertion (same convention as REQ-DIST-SESSION-RESUME / REQ-DIST-RC-STARTUP). unit: tests/manifest-shortcut.sh (message present + carries the /reload-plugins notice) + tests/manifest-schema.sh (schema-validates). doc DEFERRED to the docs-site harness-contract/RELEASE-RUNBOOK slice (designed in docs/adr/0006 + UPDATE-NAMING-DOYLE-ASKS.md meanwhile). int DEFERRED: `spt adapter update` prints it on a real version apply (on-node dogfood at the v0.8.0 cut).
+
+[[requirements]]
+id = "REQ-DIST-BINARY-CONSOLIDATE"
+title = "claude-spt-digest + claude-spt-psyche merge into ONE `claude-spt` crate with clap subcommands (digest / psyche / post-update); post-update = the plugin-sync logic (detect claude|ccs CLI -> ensure cplugs marketplace -> claude plugin add|update -> print notice; does NOT run /reload-plugins). cc-spt-idle-translate stays separate (folds at D3). U2."
+required_stages = []  # U2 (the big refactor; preps post-update for D2). impl: tools/claude-spt crate (digest/psyche/post-update subcommands) + manifest [digest].extractor `claude-spt digest …` + [session.psyche_init].command `claude-spt psyche …` + ci/{digest,psyche}/build.sh -> one build + package-adapter.sh binary-set (claude-spt + cc-spt-idle-translate per triple). unit: the crate's cargo tests (subcommand dispatch + the ported digest/psyche tests + post-update detection/idempotency). int: digest-proof + translate-proof green on the consolidated binary; archive packs the 2 binaries per triple. ACTIVATE at U2 start.
+
+[[requirements]]
+id = "REQ-DIST-NAME-UNIFY"
+title = "GitHub repo renamed spt-claude-code -> claude-spt; [update].repo, README, CI, package scripts, every SaberMage/spt-claude-code reference + install-dir test assumptions (_github/SaberMage-claude-spt) updated. Adapter name claude-spt UNCHANGED; plugin sptc UNCHANGED this milestone (succession = D4, owl-gated). U3."
+required_stages = []  # U3 (after U2; both touch package-adapter.sh — batch into v0.8.0). doc: docs/adr/0005 + README/RELEASE-RUNBOOK. impl: repo-reference rename across CI/package scripts/manifest [update].repo + test install-dir assumptions. int: clean `spt adapter add --release SaberMage/claude-spt` re-acquires + runs on-node; --release + update both read claude-spt. ACTIVATE at U3 start.
+
+[[requirements]]
+id = "REQ-DIST-SKELETON-THIN"
+title = "commune/send/signoff skill bodies move OUT of the plugin SKILL.md (stubs: frontmatter + 'live agents only — /sptc:live first') and INTO adapter strings: a new perched SessionStart brief string (commune incl. --checkpoint, signoff) + the existing /sptc:live UPS body for the go-live moment, so reactive-skill prose rides `spt adapter update`. U4."
+required_stages = []  # U4 (parallel-able with U2/U3). doc: docs/adr/0005 reactive-skill thinning + DOCS-STRATEGY. impl: thinned plugin/sptc/skills/{commune,send,signoff}/SKILL.md stubs + new [strings.briefs] perched-SessionStart commune/checkpoint/signoff string + session-start.sh emit + /sptc:live UPS body. unit: tests/hooks-parse.sh (perched brief carries commune/checkpoint/signoff guidance). int: a perched session's SessionStart additionalContext carries the guidance (folds into the brief round-trip script). ACTIVATE at U4 start. NB: structural (SKILL.md change) -> likely a cplugs skeleton bump.
+
+[[requirements]]
+id = "REQ-DIST-INSTALL-UX"
+title = "README ships platform-specific install chains (cmd / PowerShell / bash) — check-for/install spt-core (call the spt-releases per-platform install script; claude-spt may be a user's first spt-core exposure) then `spt adapter add --release SaberMage/claude-spt` — plus a copy-paste agent prompt (the casual-user skin) running the chain in one sequenced Bash call, symmetric with the update lever. U5."
+required_stages = []  # U5 (parallel-able with U2/U3). doc: README install-UX section + the agent-prompt skin + docs-site/llms.txt sync. impl: the per-OS install chains + the one-shot agent prompt. unit: ci/docs drift gate keeps llms.txt in sync. ACTIVATE at U5 start.
+
+[[requirements]]
+id = "REQ-DIST-RC-STARTUP"
+title = "{id} threads into BOTH the session display name (-n {id}, --name) AND the RC channel (--remote-control {id}) on BOTH [session.self] (fresh bringup) and [session.resume], so a fresh and a resumed endpoint are identified + controlled identically. Two real CC flags (verified via claude --help). STRETCH (doyle ask #4, operator-raised): upgrade to {id}@{node} once a {node} fill key lands. U6."
+required_stages = ["unit"]  # U6 (with U1, isolated manifest change) — ACTIVATED 2026-06-25. Manifest seams: [session.self].command = `claude -n {id} --remote-control {id} --dangerously-skip-permissions` + [session.resume].command adds `-n {id}` (--remote-control {id} already present); {id} already in both keys -> no keys change for the {id}-only form. The scanner does NOT read .toml, so the in-repo evidence is the unit assertion (declaration-only seam, same convention as REQ-DIST-SESSION-RESUME). unit: tests/manifest-shortcut.sh ({id} display-name `-n {id}` on BOTH paths + `--remote-control {id}` on [session.self]). doc DEFERRED to the docs-site harness-contract RUN-group slice (designed in UNIFY-CONSOLIDATE-PLAN U6 meanwhile). int DEFERRED: a fresh `spt endpoint run` endpoint shows {id} as display name + is `spt rc <id>`-attachable; idle delivery + checkpoint still fire (on-node translate/checkpoint dogfood at the v0.8.0 cut, flags present). {node} fill-key ABSENT from the published catalog (operator-owned doyle ask #4); ships {id}-only now.
