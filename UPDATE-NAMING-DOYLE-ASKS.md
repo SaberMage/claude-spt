@@ -1,5 +1,10 @@
 # spt-core asks — one-command update, binary consolidation, name unification
 
+> **STATUS: RESOLVED (doyle, 2026-06-25, grill-with-docs w/ operator) — see the Resolution section
+> below.** Design locked in spt-core `docs/design/v0.8.0-update-arc-and-cli.md` + **ADR-0029** (8 REQs
+> seeded). The ask prose below is preserved as the record of what was asked; outcomes are tagged
+> `RESOLVED:` under each ask. doyle builds **spt-core v0.16.0** next; the adapter wiring follows on ship.
+
 > A grill prompt to take to doyle. Three capability asks + one heads-up, each framed as a
 > proposal with the contract shape we want and the open questions for doyle to rule on. Context:
 > ADR-0005 (name unification) and ADR-0006 (one-command update + consolidated binary) in this
@@ -21,7 +26,37 @@ stays, and closing the gap needs the asks below.
 
 ---
 
+## Resolution (2026-06-25 — ADR-0029, spt-core `docs/design/v0.8.0-update-arc-and-cli.md`)
+
+**Version model (correcting a project-wide conflation).** "v0.8.0" in this whole arc = the **claude-spt
+ADAPTER** version. spt-core is at v0.15.0 (counter 34); its next minor is **v0.16.0** (counter 35) — there
+is **no** upcoming "spt-core v0.8.0" (v0.8.x already happened, historically). Sequence: doyle ships
+**spt-core v0.16.0** → pings → we cut **claude-spt adapter v0.8.0** wiring the seams below + bump
+`min_spt_core_version` **0.15.0 → 0.16.0** (the honest floor for the new seams).
+
+| Ask | Outcome | What we get |
+|---|---|---|
+| **1 — generic hook dispatch** | **REJECTED → RESOLVE-NOT-EXECUTE** | spt-core stays a pure resolver (executes nothing new). Two primitives instead: (a) `{adapter_dir}` (= install `source_dir`) + `{adapter_name}` substitution keys; (b) **lazy substitution inside `[strings]` values at `get-string` read time**, adapter-static keys only. Pattern: the CC hook dispatcher `get-string`s `{adapter_dir}/claude-spt hook` ONCE per session into an env var, then runs it per-hook. Hook *logic* rides `spt adapter update` (it's in our binary); `hooks.json` + a thin static per-OS dispatch wrapper go **static-forever**. Session-scoped keys (`{session_id}`) are NOT available via `get-string` (deferred) — hooks still read those from CC stdin. |
+| **2 — composite `[update]`** | **GRANTED** | Avenue-agnostic **`[update.post] = {command, self_verifies}`**, runs AFTER `gh_release`, **unconditionally**. Published stdin JSON: `{adapter_applied, adapter_name, profile_name, version, previous_version, adapter_dir}`. Our **stdout arbitrates the notice**: custom text SUPERSEDES `[update].message`; a reserved sentinel fires the static message; empty = nothing. Exit code orthogonal. **Failure-isolated** (a committed pull never rolls back on a post-step fail). |
+| **3 — translate takes a command** | **GRANTED** | `[message-idle-translation-binary]` gains **`command`** (args + `{adapter_dir}` subst, install-dir resolved). `path` DEPRECATED (still parses, warns). Exactly one of `{path, command}`. Protocol unchanged. → fold `cc-spt-idle-translate` into `claude-spt translate`. |
+| **4 — `{node}` key** | (operator-owned; not in cluster A) | Tracked below; ships `{id}`-only until a `{node}` fill key lands. |
+
+**Our wiring at the adapter v0.8.0 cut (post spt-core v0.16.0 ship):**
+- **D2** ← `claude-spt post-update` (already built standalone, U2) → declare `[update.post]`, parse the
+  stdin JSON, arbitrate the notice via stdout, honor failure-isolation.
+- **D3** ← fold `cc-spt-idle-translate` → `claude-spt translate`; switch the seam from `path` to `command`.
+- **D1** ← `claude-spt hook <event>` subcommand + the `{adapter_dir}/claude-spt hook` get-string resolve
+  pattern; thin static per-OS dispatch wrapper; `hooks.json` static-forever.
+- Bump `min_spt_core_version` → **0.16.0**.
+
+---
+
 ## Ask 1 — generic hook dispatch: `spt api run-hook <adapter> <event>`
+
+**RESOLVED:** REJECTED as `run-hook` → **resolve-not-execute** (`{adapter_dir}`/`{adapter_name}` keys +
+lazy `[strings]` substitution at `get-string`; binary carries `claude-spt hook <event>`; `hooks.json`
++ thin per-OS dispatch static-forever). See the Resolution table above.
+
 
 **Problem.** Every hook the adapter adds (this cycle's `PostToolUse` checkpoint detector) forces a cplugs
 republish + `claude plugin update` + `/reload-plugins`, because the wrapper *logic* lives in the plugin.
@@ -54,6 +89,11 @@ consolidated binary (`claude-spt hook <event>`, see Ask 3 / ADR-0006), so hook *
 
 ## Ask 2 — composite `[update]`: `gh_release` pull **+** a delegated post-step
 
+**RESOLVED:** GRANTED as avenue-agnostic `[update.post] = {command, self_verifies}` — runs after
+`gh_release` unconditionally; stdin JSON published; our stdout arbitrates the notice; failure-isolated.
+(Answers 2a/2b: the post-step runs even on an adapter no-op, and its stdout — not just a "changed"
+flag — drives the message.) See the Resolution table above.
+
 **Problem.** `[update]` takes one `avenue` (`gh_release` XOR `delegated`). We need `gh_release` (to pull the
 `.spt` = manifest + binaries + strings) **and** a delegated step (to run our cross-platform plugin-sync:
 `claude plugin add|update <plugin>`) in the **same** `spt adapter update`. Today they're mutually exclusive.
@@ -82,6 +122,9 @@ subst) and *"install is the first update"* — so this same flow makes `spt adap
 
 ## Ask 3 — `[message-idle-translation-binary]` accepts a command/subcommand (not a bare `path`)
 
+**RESOLVED:** GRANTED — the seam gains `command` (args + `{adapter_dir}` subst); `path` deprecated
+(parses + warns); exactly one of `{path, command}`; protocol unchanged. → `claude-spt translate`.
+
 **Problem.** `[digest]`, `[session.*]`, and `[update]` take **command strings** (so they consolidate trivially
 into `claude-spt <subcommand>`). `[message-idle-translation-binary]` takes a bare **`path`** — `path =
 "claude-spt"` would spawn the binary with no args, so it can't tell it's in translate mode. This is the one
@@ -100,6 +143,10 @@ and consistent with the other seams.)
 ---
 
 ## Ask 4 — a `{node}` substitution key for `[session.<role>]` roles  *(operator raising directly)*
+
+**STATUS:** operator-owned, NOT in the cluster-A (ADR-0029) resolution. U6 shipped `{id}`-only
+(`-n {id}` + `--remote-control {id}` on both bringup paths); upgrades to `{id}@{node}` if/when a
+`{node}` fill key lands.
 
 **Problem.** We want the spawned CC session's display name and RC channel to be `{id}@{node}` (so a same-id
 endpoint on different machines is distinguishable) — `claude -n {id}@{node} --remote-control {id}@{node}`.
@@ -131,9 +178,11 @@ your side should expect the new repo slug. One end user today, so the re-add cos
 
 ## Dependency map (what unblocks what)
 
-- **Ask 1** → hook logic + new handlers ride `spt adapter update`; `hooks.json` goes static-forever.
-- **Ask 2** → the plugin update is automated; the only manual residual is `/reload-plugins`.
-- **Ask 3** → `translate` folds into the one `claude-spt` binary (1 artifact/triple).
-- **Ask 4** → display name + RC channel become `{id}@{node}` (cross-node distinguishable); else `{id}` only.
-- Ships **without** any ask: `gh_release` + `[update].message` (the message instructs the manual steps),
-  partial binary consolidation (digest/psyche/post-update), and the name unification.
+- **Ask 1** [RESOLVED→resolve-not-execute] → hook logic rides `spt adapter update` via `claude-spt hook`;
+  `hooks.json` + thin per-OS dispatch static-forever (no `run-hook`; `{adapter_dir}` + lazy `[strings]`).
+- **Ask 2** [GRANTED `[update.post]`] → the plugin update is automated; only manual residual is `/reload-plugins`.
+- **Ask 3** [GRANTED `command`] → `translate` folds into the one `claude-spt` binary (1 artifact/triple).
+- **Ask 4** [operator-owned] → display name + RC channel become `{id}@{node}` if a `{node}` key lands; else `{id}` only.
+- Shipped **without** any ask (DONE, on `main`): `gh_release` + `[update].message`, partial binary
+  consolidation (digest/psyche/post-update), and the name unification (repo renamed `SaberMage/claude-spt`).
+- **Trigger:** doyle ships **spt-core v0.16.0** → adapter **v0.8.0** cut wires Asks 1–3 + bumps `min_spt_core` → 0.16.0.
