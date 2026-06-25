@@ -192,4 +192,27 @@ check "Stop marks perch idle at turn-end (api state idle)" "yes" "$r"
 grep -q '^\[hooks\.PreToolUse\]' "$MAN" && r=yes || r=no
 check "manifest declares [hooks.PreToolUse]" "yes" "$r"
 
+# --- U4: reactive-skill thinning + live-ops brief --- [unit->REQ-DIST-SKELETON-THIN]
+# commune/send/signoff prose moved OUT of the plugin SKILL.md INTO adapter strings (the live-ops brief
+# + the go-live body), so it rides `spt adapter update`; the SKILL.md are now thin stubs.
+BR="$(dirname "$0")/../adapter/strings/briefs"
+SK="$(dirname "$0")/../plugin/sptc/skills"
+CM="$(dirname "$0")/../plugin/sptc/hooks/_common.sh"
+LV="$(dirname "$0")/../adapter/strings/skills/live.md"
+grep -q 'commune' "$BR/live-ops.md" && grep -q '!!checkpoint!!' "$BR/live-ops.md" && grep -q 'endpoint shutdown' "$BR/live-ops.md" && r=yes || r=no
+check "live-ops brief carries commune+checkpoint+signoff" "yes" "$r"
+grep -q 'live-ops' "$CM" && r=yes || r=no
+check "sptc_perch_brief composes live-ops" "yes" "$r"
+grep -q 'live-ops = { file' "$MAN" && r=yes || r=no
+check "manifest registers briefs.live-ops" "yes" "$r"
+grep -q 'commune.md' "$LV" && grep -q '!!checkpoint!!' "$LV" && r=yes || r=no
+check "go-live body inlines commune+checkpoint (no SessionStart re-fire in-session)" "yes" "$r"
+for s in commune signoff send; do
+  grep -q 'thin skeleton' "$SK/$s/SKILL.md" && r=yes || r=no
+  check "$s SKILL.md is a thin stub (prose rides adapter)" "yes" "$r"
+done
+# The pre-U4 full step-by-step bodies must be gone from the stubs (not just supplemented).
+grep -q 'Normal commune' "$SK/commune/SKILL.md" && r=present || r=absent
+check "commune SKILL.md full body removed" "absent" "$r"
+
 [ "$fail" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "FAILURES"; exit 1; }

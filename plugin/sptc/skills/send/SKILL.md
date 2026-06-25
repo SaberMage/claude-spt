@@ -7,16 +7,18 @@ argument-hint: "<target>"
 allowed-tools: [Bash]
 ---
 
+<!-- [doc->REQ-DIST-SKELETON-THIN] -->
+
 # /sptc:send
 
-Deliver a message to another agent. The **body is read from stdin**.
+Deliver a message to another agent (**body read from stdin**). The operative reach is delivered by the
+adapter, not baked here (thin skeleton — the prose rides `spt adapter update`): a perched session
+already carries send/reply in its **SessionStart brief** (the `messaging-perch` block). In short:
 
-- **Send:** `printf '%s' "<body>" | spt send <target>`. `SENT:<target>` = delivered live;
-  `QUEUED:<target>` = target offline, spooled for its next listen. **QUEUED is success — do not retry.**
-- **Reply** to a message you received: `printf '%s' "<body>" | spt send <sender>` — the sender id is
-  the `from` on the `<EVENT>` you received.
-- **Send and wait** for a reply: `printf '%s' "<body>" | spt ring <target> --timeout 60` (reply prints
-  to stdout; `TIMEOUT` is exit 0 — the message still landed). Only do this if you do NOT have your own
-  ready agent ID or live agent ID.
+- **Send:** `printf '%s' "<body>" | spt send <target>` — `SENT` = live, `QUEUED` = spooled (success, do
+  not retry).
+- **Reply:** `printf '%s' "<body>" | spt send <sender>` (sender = the `from` on the `<EVENT>` you got).
+- No perch yet? `/sptc:ready` (or `/sptc:live`) first, or send-and-wait without one via
+  `printf '%s' "<body>" | spt ring <target> --timeout 60`.
 
-Full guidance: `spt how-to send`
+Full guidance: `spt how-to send`.

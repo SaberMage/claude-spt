@@ -6,13 +6,15 @@ description: |
 allowed-tools: [Bash, Write]
 ---
 
+<!-- [doc->REQ-DIST-SKELETON-THIN] -->
+
 # /sptc:signoff
 
-End your session's endpoint gracefully, with the final context save.
+**Live agents only.** No perch (`spt whoami` is empty)? Nothing to sign off.
 
-1. (Optional) Write a brief closing summary first, so the saved context is useful on resume.
-2. `spt endpoint shutdown` (your own perch by default) — stops the listener, fires the final context
-   save, and for a live agent takes the Psyche down with it.
-3. Confirm to the user. You are no longer reachable; `/sptc:ready` or `/sptc:live` brings you back.
-
-Lighter, no-save stop: `spt endpoint stop`. Full options: `spt endpoint shutdown --help`.
+The operative steps are delivered by the adapter, not baked here (thin skeleton — the prose rides
+`spt adapter update`; ADR-0001/ADR-0006): a live agent carries them in its **SessionStart brief** (the
+`live-ops` block) and the **`/sptc:live` go-live body**. In short: optionally write a brief closing
+summary, then `spt endpoint shutdown` (your own perch) — stops the listener, fires the final context
+save, takes your Psyche down. `/sptc:ready` or `/sptc:live` brings you back; lighter no-save stop is
+`spt endpoint stop`.

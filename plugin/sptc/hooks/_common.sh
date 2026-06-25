@@ -190,9 +190,19 @@ sptc_assemble_noperch() {
   printf '<sptc-reach>\n%s\n\n%s\n</sptc-reach>' "$1" "$2"
 }
 
-# Impure: resolve + assemble the perched-session identity brief for id $1. [impl->REQ-DIST-SESSIONSTART-BRIEF]
+# Impure: resolve + assemble the perched-session identity brief for id $1. The live-ops block
+# (commune incl --checkpoint, signoff — REQ-DIST-SKELETON-THIN/U4) is appended to the messaging block
+# so a perched/live agent is briefed on upkeep proactively (the reactive /sptc:commune|signoff SKILL.md
+# are now thin stubs). Composed into messaging (not a new positional) so sptc_assemble_perch + its unit
+# test stay unchanged; skipped cleanly if the live-ops string is absent (older adapter).
+# [impl->REQ-DIST-SESSIONSTART-BRIEF] [impl->REQ-DIST-SKELETON-THIN]
 sptc_perch_brief() {
-  sptc_assemble_perch "$1" "$(sptc_brief identity)" "$(sptc_brief messaging-perch)" "$(sptc_brief endpoint-list)"
+  _msg="$(sptc_brief messaging-perch)"
+  _ops="$(sptc_brief live-ops)"
+  [ -n "$_ops" ] && _msg="$_msg
+
+$_ops"
+  sptc_assemble_perch "$1" "$(sptc_brief identity)" "$_msg" "$(sptc_brief endpoint-list)"
 }
 
 # Impure: resolve + assemble the no-perch ring brief. [impl->REQ-DIST-SESSIONSTART-BRIEF]

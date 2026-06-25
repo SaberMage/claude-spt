@@ -419,12 +419,15 @@ version = { file = "skills/version.md" }
 list-agents = { file = "skills/list-agents.md" } # -> spt endpoint list (the roster)
 force-stop = { file = "skills/force-stop.md" } # -> spt endpoint shutdown (graceful, tears down Psyche)
 subnet = { file = "skills/subnet.md" }         # -> spt subnet {status,create,show-code,join} (cross-machine); REQ-SKILL-SUBNET
-# `send` / `commune` / `signoff` are DELIBERATELY NOT injected here (2026-06-19). A live agent uses
-# them REACTIVELY — replying to a message, briefing its Psyche, signing off — WITHOUT the user typing
-# `/sptc:<skill>`, so UPS-injection (which fires only on that slash-command in the prompt) is the wrong
-# delivery. Their full operative bodies live in the plugin SKILL.md (full-fat, always model-loadable);
-# there is no `[strings.skills]` entry and no adapter aux body for them. (sptc_inject_skill no-ops
-# silently on the absent key — the full SKILL.md is the single source.)
+# `send` / `commune` / `signoff` are NOT injected here — but NOT because their prose lives in the
+# plugin SKILL.md (it no longer does; U4/REQ-DIST-SKELETON-THIN thinned those to stubs, 2026-06-25,
+# superseding the 2026-06-19 full-fat-SKILL.md decision). The reason they aren't UPS skills stands: a
+# live agent uses them REACTIVELY (replying, briefing its Psyche, signing off) WITHOUT typing
+# `/sptc:<skill>`, so UPS-injection is the wrong delivery. Instead the prose is delivered PROACTIVELY:
+# `send` rides the `messaging-perch` brief; `commune` (incl `--checkpoint`) + `signoff` ride the new
+# `live-ops` brief (below) — both composed into the perched SessionStart brief — and the go-live
+# moment carries them inline in `skills/live.md`. So the prose rides `spt adapter update`, the plugin
+# SKILL.md stays a true skeleton, and there is no `[strings.skills]` entry for these three.
 # `live` -> upgrade THIS session to a LiveAgent (Option A, 2026-06-17): base claude-spt is live-capable
 # ([session.psyche_init] in base), so going live is just the COMMAND — bare `spt api listen <id>` under
 # a Monitor relay. The live listen path stamps the perch state=live_agent → the daemon livehost hosts
@@ -448,6 +451,7 @@ live = { file = "skills/live.md" }             # -> bare `spt api listen <id>` +
 identity = { file = "briefs/identity.md" }                      # {id}-templated: who + perch-live + don't-re-arm
 messaging-perch = { file = "briefs/messaging-perch.md" }        # has-id reach: spt send + reply
 messaging-no-perch = { file = "briefs/messaging-no-perch.md" }  # no-id reach: spt ring
+live-ops = { file = "briefs/live-ops.md" }                      # commune (incl --checkpoint) + signoff (U4); composed into the perched brief
 endpoint-list = "Show the roster of spt endpoints reachable from this node: `spt endpoint list`."  # shared one-liner (inline)
 
 # ── [[hints]] ──────────────────────────────────────────────────────────────────────────────

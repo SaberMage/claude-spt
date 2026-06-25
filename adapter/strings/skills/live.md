@@ -25,8 +25,17 @@ via commune deltas). This makes the session you are in right now live.
    connectivity complications are encountered.
 4. **Reply.** Inbound messages arrive as `<EVENT type="msg" from="<sender>">body</EVENT>` (body
    HTML-escaped, newlines `<br>`). To reply, pipe the message body as stdin to `spt send <sender-id>`.
-5. **Across boundaries.** Use `/sptc:commune` to push a context delta after significant bodies of work.
-   To go offline gracefully, use `/sptc:signoff`.
+5. **Across boundaries — commune + signoff (you are live now, so these apply to you).** Going live in
+   this session does NOT re-fire your SessionStart brief, so here are the mechanics:
+   - **Commune** after a significant body of work, before a `/clear`/`/compact`: write
+     `.claude/<id>-commune.md` in ONE atomic write — a concise delta (task + status, decisions,
+     immediate next steps), NOT a transcript. The daemon ingests + deletes it; the file disappearing is
+     success. It is what rebuilds you after a reset.
+   - **Checkpoint** = a commune that ALSO wipes + rebuilds your context from it (agent-driven `/clear`):
+     embed `!!checkpoint!!` in the body — one marker ⇒ default wake; a PAIR ⇒ the text between them is
+     your custom wake directive. Author it inline this turn; the clear+wake fire automatically.
+   - **Sign off** when done: `spt endpoint shutdown` — stops the listener, saves final context, takes
+     your Psyche down. `/sptc:ready`/`/sptc:live` brings you back.
 
 ## Output — what the user sees
 
