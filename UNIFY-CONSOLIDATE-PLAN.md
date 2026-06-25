@@ -60,18 +60,24 @@ succession (D4) stays gated on **owl retirement**, not doyle — out of this mil
   call. Symmetric with the update lever (`spt adapter update claude-spt`).
 - Gate: docs build / llms.txt in sync; the chains are copy-paste-correct per OS.
 
-### U6 — `[session.self]` sets `--remote-control {id}` (RC-channel parity) · REQ-DIST-RC-STARTUP (mint)
-- Today only `[session.resume]` names the RC session via `--remote-control {id}`; `[session.self]`
-  (fresh spt-hosted bringup) is bare `claude --dangerously-skip-permissions` and threads `{id}` only via
-  `$SPT_ENDPOINT_ID`. Add `--remote-control {id}` to `[session.self].command` so BOTH bringup paths name
-  the RC channel `{id}` — `spt rc <id>` attach + RC-driven control behave identically for fresh and
-  resumed endpoints (not just resume).
-- Small, standalone manifest change (like U1) — doyle-independent.
-- Open: verify `claude --remote-control {id}` works on a FRESH launch (no `-r`); confirm it doesn't
-  collide with the `$SPT_ENDPOINT_ID` env path (both can coexist — env for SessionStart bind, RC for the
-  control channel). Add `{id}` to `[session.self].keys`.
-- Gate: a fresh `spt endpoint run` endpoint is `spt rc <id>`-attachable; idle delivery + checkpoint still
-  fire (re-run the on-node translate/checkpoint dogfood with the RC flag present).
+### U6 — `{id}`-name + RC channel on BOTH bringup paths · REQ-DIST-RC-STARTUP (mint)
+- Thread `{id}` into BOTH the session display name and the RC channel, on BOTH `[session.self]` (fresh
+  bringup) and `[session.resume]`, so a fresh and a resumed endpoint are identified + controlled
+  identically. Two real CC flags (verified via `claude --help`):
+  - **`-n {id}`** (`--name`, "set a display name for this session, shown in the prompt box / `/resume`")
+    — add to **both** `[session.self]` and `[session.resume]` (currently on neither).
+  - **`--remote-control {id}`** (RC channel name) — add to `[session.self]` (currently only on
+    `[session.resume]`).
+- Resulting commands:
+  - `[session.self].command = "claude -n {id} --remote-control {id} --dangerously-skip-permissions"`
+  - `[session.resume].command = "claude -r {session_id} -n {id} --remote-control {id} --dangerously-skip-permissions"`
+- `{id}` is already in `[session.self].keys = ["id"]` and `[session.resume].keys = ["session_id","id"]` —
+  no keys change. Small, standalone manifest edit (like U1), doyle-independent.
+- Open: confirm `-n {id}` + `--remote-control {id}` coexist cleanly with the `$SPT_ENDPOINT_ID` env path
+  on a fresh launch (env names the bind id at SessionStart; `-n`/RC name the display+control channel —
+  no conflict expected). spt tokenizes-then-fills, so each flag is a clean argv element.
+- Gate: a fresh `spt endpoint run` endpoint shows `{id}` as its display name and is `spt rc <id>`-attachable;
+  idle delivery + checkpoint still fire (re-run the on-node translate/checkpoint dogfood with the flags present).
 
 ## Deferred (doyle-gated — land when the asks ship; NOT this milestone)
 - **D1** generic `hooks.json` + `claude-spt hook <event>` subcommand ← ask #1 (`spt api run-hook`).
