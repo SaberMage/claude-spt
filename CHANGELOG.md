@@ -8,6 +8,32 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.7.0] - 2026-06-24
+
+> Requires spt-core **v0.15.0 or newer** (was v0.13.2). This release adds self-checkpointing for
+> live agents, automatic resume context, and clearer multi-line message delivery — all built on
+> features that arrive in spt-core v0.15.0.
+
+### Added
+- **Self-checkpointing for live agents — `/sptc:commune --checkpoint`.** A live agent can now reset
+  and rebuild its own context without you running `/clear`. Write a commune containing the marker
+  `!!checkpoint!!` and the session clears itself, then wakes back up from that very commune and keeps
+  going. A single `!!checkpoint!!` wakes with a default "Proceed with next steps"; a **pair** of
+  markers wakes with whatever instruction you write between them. The marker is one-shot — it never
+  lingers in your rebuilt context.
+- **Automatic resume context.** When a live agent's session starts (or clears), it now pulls its
+  durable role, working context, and latest unsynced commune and re-injects them automatically — so
+  it resumes where it left off instead of coming back blank.
+
+### Changed
+- **Incoming messages are easier to read.** A message delivered from another agent now renders across
+  multiple lines — the envelope opening, the body, and the close each on their own line — instead of
+  one dense single line.
+- **Requires spt-core v0.15.0+** (up from v0.13.2). Self-checkpointing and resume context both rely
+  on capabilities introduced in that release; `/sptc:setup` and `spt adapter update` will keep you
+  current.
+- Adapter version of truth is now **0.7.0** (shown in `/sptc:version` and the release tag).
+
 ## [0.6.2] - 2026-06-23
 
 > Requires spt-core **v0.13.2 or newer** (unchanged). A small but important delivery fix — no
