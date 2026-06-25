@@ -1,8 +1,10 @@
+<!-- [doc->REQ-DIST-NAME-UNIFY] -->
 # Name unification: `claude-spt` (spt-core side) + `spt` (Claude Code side)
 
 ## Status
 
-accepted (2026-06-24)
+accepted (2026-06-24); repo rename executed 2026-06-25 (U3 — `SaberMage/spt-claude-code` →
+`SaberMage/claude-spt` via `gh repo rename`; all owner-qualified refs flipped).
 
 ## Context
 

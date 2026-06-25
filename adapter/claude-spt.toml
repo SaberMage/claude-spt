@@ -95,7 +95,7 @@ shortcut_basename = "cc"
 # [impl->REQ-DIST-ADAPTER-RELEASE]
 [update]
 avenue = "gh_release"
-repo = "SaberMage/spt-claude-code"
+repo = "SaberMage/claude-spt"
 message = """
 **claude-spt updated.** One step left — Claude Code can't reload a plugin from inside a running session:
 

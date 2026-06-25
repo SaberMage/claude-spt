@@ -12,7 +12,7 @@
 #   SPTC_ACCEPTANCE=1 sh ci/publish/release-acquire-int.sh   (exit 0 = pass).
 # Override target with SPTC_RELEASE_REPO / SPTC_RELEASE_TAG.
 set -u
-REPO="${SPTC_RELEASE_REPO:-SaberMage/spt-claude-code}"
+REPO="${SPTC_RELEASE_REPO:-SaberMage/claude-spt}"
 TAG="${SPTC_RELEASE_TAG:-v0.1.0}"
 
 if [ "${SPTC_ACCEPTANCE:-0}" != "1" ]; then echo "SKIP: set SPTC_ACCEPTANCE=1 to run (mutates registry + downloads from GitHub)"; exit 0; fi

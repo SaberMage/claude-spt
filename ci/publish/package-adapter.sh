@@ -1,8 +1,9 @@
 #!/bin/sh
 # Pack the SINGLE MULTI-PLATFORM `adapter.spt` release asset — the end-user distribution acquired by
-# `spt adapter add --release SaberMage/spt-claude-code` and carried by the `[update] gh_release`
-# avenue. ONE fat archive covers every supported platform (ADR-0024 W1, spt-core >= 0.13.2):
-# [impl->REQ-DIST-ADAPTER-RELEASE] [impl->REQ-DIST-ADAPTER-PEROS]
+# `spt adapter add --release SaberMage/claude-spt` and carried by the `[update] gh_release`
+# avenue. ONE fat archive covers every supported platform (ADR-0024 W1, spt-core >= 0.13.2).
+# The release/install/update repo is `SaberMage/claude-spt` (renamed from spt-claude-code, U3/ADR-0005).
+# [impl->REQ-DIST-ADAPTER-RELEASE] [impl->REQ-DIST-ADAPTER-PEROS] [impl->REQ-DIST-NAME-UNIFY]
 #
 #   adapter.spt (tar.gz)
 #   ├── manifest.toml                 ← SHARED, at archive root (renamed from claude-spt.toml)
@@ -91,7 +92,7 @@ echo "asset    : $OUT  (the single fat adapter.spt — auto-resolves the host tr
 if [ "$APPLY" -ne 1 ]; then
   echo
   echo "DRY-RUN: nothing written. Re-run with --apply to write $OUT, then attach it as 'adapter.spt'"
-  echo "to a GitHub release on the monorepo. End users: 'spt adapter add --release SaberMage/spt-claude-code'"
+  echo "to a GitHub release on the monorepo. End users: 'spt adapter add --release SaberMage/claude-spt'"
   echo "(default asset adapter.spt). Needs spt v0.13.2+. See docs/RELEASE-RUNBOOK.md."
   exit 0
 fi
@@ -127,6 +128,6 @@ echo "ok   manifest.toml + strings/ at root; $WIN_TRIPLE/ + $LINUX_TRIPLE/ binar
 
 echo
 echo "WROTE $OUT (single fat adapter.spt). Next (operator): attach as 'adapter.spt' to a GitHub release"
-echo "on SaberMage/spt-claude-code; end users 'spt adapter add --release SaberMage/spt-claude-code' (spt"
+echo "on SaberMage/claude-spt; end users 'spt adapter add --release SaberMage/claude-spt' (spt"
 echo "v0.13.2+). The fat archive auto-resolves the host's binaries — no per-OS --asset needed."
 exit 0

@@ -1,6 +1,5 @@
 <!-- Install UX — every command real and copy-paste-correct per OS (DOCS-STRATEGY #1/#3).
-     The repo slug SaberMage/spt-claude-code is current until the claude-spt rename (U3); the rename
-     flips every reference here in one move. [doc->REQ-DIST-INSTALL-UX] -->
+     Repo slug SaberMage/claude-spt (renamed from spt-claude-code, U3). [doc->REQ-DIST-INSTALL-UX] -->
 # claude-spt
 
 The **Spacetime (`spt`) adapter for Claude Code** — agent-to-agent messaging, live agents, and an
@@ -36,21 +35,21 @@ your shell:
 
 ```bash
 command -v spt >/dev/null 2>&1 || curl -fsSL https://sabermage.github.io/spt-releases/install.sh | sh
-spt adapter add --release SaberMage/spt-claude-code
+spt adapter add --release SaberMage/claude-spt
 ```
 
 **PowerShell (Windows)**
 
 ```powershell
 if (-not (Get-Command spt -ErrorAction SilentlyContinue)) { irm https://sabermage.github.io/spt-releases/install.ps1 | iex }
-spt adapter add --release SaberMage/spt-claude-code
+spt adapter add --release SaberMage/claude-spt
 ```
 
 **cmd (Windows)**
 
 ```bat
 where spt >nul 2>nul || powershell -NoProfile -Command "irm https://sabermage.github.io/spt-releases/install.ps1 | iex"
-spt adapter add --release SaberMage/spt-claude-code
+spt adapter add --release SaberMage/claude-spt
 ```
 
 The `adapter add --release` pulls the single multi-platform `adapter.spt` (manifest + strings + the
@@ -67,7 +66,7 @@ Hand this to a coding agent (Claude Code, etc.) to install everything in one go:
 >
 > ```bash
 > command -v spt >/dev/null 2>&1 || curl -fsSL https://sabermage.github.io/spt-releases/install.sh | sh
-> spt adapter add --release SaberMage/spt-claude-code
+> spt adapter add --release SaberMage/claude-spt
 > spt adapter list | grep claude-spt
 > ```
 

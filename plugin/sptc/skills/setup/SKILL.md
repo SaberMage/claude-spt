@@ -34,7 +34,7 @@ present binary is not enough: an unregistered/`deregistered` adapter has no prof
    - Missing or `deregistered` → activate it:
      - **Local dev / dogfooding a repo checkout** (an `adapter/claude-spt.toml` is present near cwd):
        `spt adapter add ./adapter/claude-spt.toml` (the file-form accepts any path + filename).
-     - **End-user (plugin only):** `spt adapter add --release SaberMage/spt-claude-code` — fetches the
+     - **End-user (plugin only):** `spt adapter add --release SaberMage/claude-spt` — fetches the
        single multi-platform `adapter.spt` (one archive bundling every supported platform's binaries
        beside a shared manifest; install auto-resolves the host's), extracts to the durable home,
        registers. No `--asset` / os-detection needed — the fat archive is host-agnostic (ADR-0024 W1).

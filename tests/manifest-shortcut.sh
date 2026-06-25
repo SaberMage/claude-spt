@@ -52,6 +52,13 @@ if [ -z "$resume" ]; then echo 'FAIL no [session.resume] claude -r … command i
   esac
 fi
 
+# [unit->REQ-DIST-NAME-UNIFY]
+# U3: the repo was renamed spt-claude-code -> claude-spt. [update].repo MUST read the new slug (else
+# `spt adapter update` pulls from the redirected old slug), and NO owner-qualified old slug may linger
+# in the manifest (regression guard for the ref-flip).
+if grep -Eq '^[[:space:]]*repo[[:space:]]*=[[:space:]]*"SaberMage/claude-spt"' "$MANIFEST"; then echo 'ok   [update].repo = "SaberMage/claude-spt"'; else echo "FAIL [update].repo is not SaberMage/claude-spt"; fail=1; fi
+if grep -q 'SaberMage/spt-claude-code' "$MANIFEST"; then echo "FAIL stale SaberMage/spt-claude-code ref lingers in manifest"; fail=1; else echo "ok   no stale spt-claude-code repo ref in manifest"; fi
+
 # [unit->REQ-DIST-UPDATE-MESSAGE]
 # U1: [update] carries a `message` field (markdown spt-core prints on a real apply). It MUST mention
 # the unavoidable /reload-plugins manual residual — that is the field's whole reason to exist. Match

@@ -129,7 +129,7 @@ the seamless binary handoff (owl Phase 18.4/18.5) · `DEPLOY.ps1`'s build/handof
 
 <!-- [doc->REQ-DIST-ADAPTER-RELEASE] -->
 The CC adapter manifest (publish target #2) ships to end users as an **`adapter.spt`** GitHub
-**release asset** on this monorepo, acquired with **`spt adapter add --release SaberMage/spt-claude-code`**
+**release asset** on this monorepo, acquired with **`spt adapter add --release SaberMage/claude-spt`**
 (doyle's `--release` source; needs **spt v0.7.3+ / counter 15** — not in 0.7.2). No dedicated
 adapter repo: the asset is packed straight from `adapter/`.
 
@@ -171,8 +171,8 @@ This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS
     → `tools/*/target/x86_64-unknown-linux-gnu/release/*` carrying real `ELF x86-64 GNU/Linux`
     binaries (verified). Then `sh ci/publish/package-adapter.sh --apply` packs BOTH into one
     `dist/adapter.spt`.
-- **Publish:** attach the single `dist/adapter.spt` to the GitHub release on `SaberMage/spt-claude-code`.
-  End users `spt adapter add --release SaberMage/spt-claude-code` (default asset `adapter.spt`, or
+- **Publish:** attach the single `dist/adapter.spt` to the GitHub release on `SaberMage/claude-spt`.
+  End users `spt adapter add --release SaberMage/claude-spt` (default asset `adapter.spt`, or
   `--tag <ver>` to pin) — the fat archive auto-resolves the host's binaries, no `--asset` needed. The
   `[update] avenue = "gh_release"` self-update fetches the same default `adapter.spt`, host-agnostic.
   - **F-015 note (Windows):** a binary-changing update still can't overwrite a binary a running live

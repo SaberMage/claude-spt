@@ -12,7 +12,7 @@ language = "en"
 default-theme = "ayu"
 preferred-dark-theme = "ayu"
 additional-css = ["theme/theme.css"]
-git-repository-url = "https://github.com/SaberMage/spt-claude-code"
+git-repository-url = "https://github.com/SaberMage/claude-spt"
 # Stable, never-renamed anchors (DOCS-STRATEGY #9): agents cache links.
 [output.html.fold]
 enable = false
