@@ -6,6 +6,9 @@
     "UserPromptSubmit": [
       { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/user-prompt-submit.sh\"", "shell": "bash" } ] }
     ],
+    "PreToolUse": [
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-use.sh\"", "shell": "bash" } ] }
+    ],
     "Stop": [
       { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/stop.sh\"", "shell": "bash" } ] }
     ],

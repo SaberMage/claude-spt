@@ -166,4 +166,24 @@ check "append resume empty -> brief verbatim" "<brief/>" "$(sptc_append_resume '
 # Both empty -> empty.
 check "append resume both empty" "" "$(sptc_append_resume '' '')"
 
+# --- PreToolUse mid-turn reachability wiring (F-021) --- [unit->REQ-DIST-PRETOOL-POLL]
+# The busy/idle turn-state lifecycle + the PreToolUse deferred-drain. Structural (the hook files +
+# manifest declaration are the artifacts; the api commands run against a live perch at the int tier).
+HK="$(dirname "$0")/../plugin/sptc/hooks"
+MAN="$(dirname "$0")/../adapter/claude-spt.toml"
+grep -q '"PreToolUse"' "$HK/hooks.json" && r=yes || r=no
+check "hooks.json declares PreToolUse" "yes" "$r"
+grep -q 'pre-tool-use.sh' "$HK/hooks.json" && r=yes || r=no
+check "PreToolUse routes to pre-tool-use.sh" "yes" "$r"
+grep -q 'poll .*--include-deferred' "$HK/pre-tool-use.sh" && r=yes || r=no
+check "pre-tool-use drains deferred (api poll --include-deferred)" "yes" "$r"
+grep -q 'state busy' "$HK/user-prompt-submit.sh" && r=yes || r=no
+check "UPS marks perch busy at turn-start (api state busy)" "yes" "$r"
+grep -q 'poll .*--include-deferred' "$HK/user-prompt-submit.sh" && r=yes || r=no
+check "UPS drain includes deferred" "yes" "$r"
+grep -q 'state idle' "$HK/stop.sh" && r=yes || r=no
+check "Stop marks perch idle at turn-end (api state idle)" "yes" "$r"
+grep -q '^\[hooks\.PreToolUse\]' "$MAN" && r=yes || r=no
+check "manifest declares [hooks.PreToolUse]" "yes" "$r"
+
 [ "$fail" -eq 0 ] && { echo "ALL PASS"; exit 0; } || { echo "FAILURES"; exit 1; }

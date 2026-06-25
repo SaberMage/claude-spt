@@ -23,7 +23,13 @@ out="$(sptc_inject_skill "$(sptc_skill_key "$prompt")")"
 id=$(sptc_self_id "$sid")
 if [ -n "$id" ]; then
   SPT=$(spt_bin)
-  frames=$("$SPT" api --adapter "$ADAPTER" poll "$id" --session-id "$sid" 2>/dev/null)
+  # TURN-START state: mark the perch BUSY so inbound during this turn DEFERS (queues) instead of
+  # idle-PTY-injecting — the precondition for mid-turn PreToolUse delivery (F-021). spt-core never
+  # infers activity from terminal quiescence (integration-checklist: honest busy/idle). Stop marks
+  # idle again at turn-end. Set busy BEFORE the drain so a message arriving mid-drain also defers.
+  "$SPT" api --adapter "$ADAPTER" state busy "$id" --session-id "$sid" >/dev/null 2>&1 || true
+  # --include-deferred: also pull anything deferred during the previous busy turn not yet drained.
+  frames=$("$SPT" api --adapter "$ADAPTER" poll "$id" --session-id "$sid" --include-deferred 2>/dev/null)
   if [ -n "$frames" ]; then
     # Format for CC, preserving the sender (reply-correlation). render_frames parses
     # the self-delimiting <EVENT> envelope — multi-message drains split on </EVENT>.

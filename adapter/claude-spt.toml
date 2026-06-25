@@ -124,13 +124,28 @@ reads = ["session_id", "parent_pid"]
 can_inject = true
 
 [hooks.UserPromptSubmit]
-# Drain the inbox (api poll → additionalContext) and run keyword hints (api hint over the prompt).
-fires = "api poll {session_id}"
+# TURN-START. Three jobs (plugin user-prompt-submit.sh): (1) mark the perch BUSY (`api state busy`)
+# so inbound DEFERS for mid-turn PreToolUse delivery instead of idle-PTY-inject — honest activity,
+# spt-core never infers it (integration-checklist); (2) DRAIN the inbox (`api poll … --include-deferred`
+# → additionalContext, the representative `fires` below — also pulls anything deferred from the prior
+# busy turn); (3) keyword hints + /sptc:X skill-injection. [impl->REQ-DIST-PRETOOL-POLL]
+fires = "api poll {session_id} --include-deferred"
 reads = ["session_id", "prompt"]
 can_inject = true
 
+# PreToolUse — MID-TURN delivery (F-021). Fires before each tool call; drains messages DEFERRED while
+# the perch is busy (`api poll … --include-deferred` → additionalContext) so a live agent receives a
+# message WHILE working. The mid-turn complement of the UserPromptSubmit between-turns drain — together
+# they are the legacy spt poll+inject-on-PreToolUse reachability. No state change (the turn stays busy
+# until Stop). [impl->REQ-DIST-PRETOOL-POLL]
+[hooks.PreToolUse]
+fires = "api poll {session_id} --include-deferred"
+reads = ["session_id", "tool_name"]
+can_inject = true
+
 [hooks.Stop]
-# Idle marker on turn-end. Stop cannot inject → relay/sentinel fallback (echo-gate, F-001 §Gap3).
+# TURN-END. Idle marker (`api state busy`'s counterpart) — also arms the echo-gate sentinel since Stop
+# cannot inject (F-001 §Gap3). Pairs with the UserPromptSubmit busy mark for honest turn-state.
 fires = "api state idle"
 reads = ["session_id"]
 can_inject = false
