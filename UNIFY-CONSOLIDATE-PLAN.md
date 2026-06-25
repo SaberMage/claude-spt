@@ -14,9 +14,20 @@
 - **U2 DONE** (commit 2cadada) — consolidated `tools/claude-spt` crate (digest/psyche/post-update
   subcommands, hand-rolled dispatch not clap); REQ-DIST-BINARY-CONSOLIDATE +impl+unit+int
   (digest-proof + translate-proof GREEN on-node). Old crates deleted; all refs updated.
-- **REMAINING:** U4 (thin reactive skills), U5 (README install UX) — both doyle-independent,
-  parallel-able. U3 (repo rename) + the v0.8.0 cut = the final coordinated step (rename is an
-  out-of-repo GitHub op that breaks the one existing install → operator-confirmed at the cut).
+- **U5 DONE** (commit bd7c96c) — README per-OS install chains + agent-prompt skin;
+  REQ-DIST-INSTALL-UX +doc. README.md added to scan roots.
+- **U4 DONE** (commit 215320e) — thinned commune/send/signoff SKILL.md → stubs; commune(+checkpoint)
+  +signoff prose → briefs/live-ops.md (composed into perched brief) + inlined into the go-live body;
+  REQ-DIST-SKELETON-THIN +doc+impl+unit. Design Q resolved (no SessionStart re-fire on in-session live).
+- **BONUS (not UNIFY): F-021 reachability** (commits d3d82c0, 493eb97) — PreToolUse mid-turn poll +
+  honest busy/idle turn-state (busy@UPS + busy@PreToolUse fallback + idle@Stop, `--include-deferred`);
+  REQ-DIST-PRETOOL-POLL +impl+unit. Verified vs the published integration-checklist.
+- **REMAINING: U3 (repo rename) + the v0.8.0 cut** = the final coordinated step. The rename
+  `spt-claude-code`→`claude-spt` is an out-of-repo GitHub op that breaks the one existing install →
+  operator-confirmed. In-repo ref-flip (every `SaberMage/spt-claude-code` → `…/claude-spt` across
+  README, manifest [update].repo, CI/package scripts, test install-dir assumptions) batches WITH the
+  rename. Also at the cut: ONE cplugs skeleton bump (U4 SKILL.md + PreToolUse hooks.json are structural)
+  + adapter version bump + CHANGELOG. rename-then-cut.
 
 ## Scope
 
