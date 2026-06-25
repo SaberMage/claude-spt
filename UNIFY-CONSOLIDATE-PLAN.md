@@ -6,6 +6,18 @@
 > Companions: `docs/adr/0005-name-unification.md`, `docs/adr/0006-one-command-update-and-consolidated-binary.md`,
 > `UPDATE-NAMING-DOYLE-ASKS.md`. Target release: **adapter v0.8.0**.
 
+## Progress (2026-06-25, perri)
+
+- **U1 DONE** (commit cfe27fd) — `[update].message` shipped; REQ-DIST-UPDATE-MESSAGE +unit.
+- **U6 DONE** (commit cfe27fd) — `-n {id}` on both bringup paths + `--remote-control {id}` on
+  `[session.self]`; REQ-DIST-RC-STARTUP +unit. Ships `{id}`-only (`{node}` key still absent).
+- **U2 DONE** (commit 2cadada) — consolidated `tools/claude-spt` crate (digest/psyche/post-update
+  subcommands, hand-rolled dispatch not clap); REQ-DIST-BINARY-CONSOLIDATE +impl+unit+int
+  (digest-proof + translate-proof GREEN on-node). Old crates deleted; all refs updated.
+- **REMAINING:** U4 (thin reactive skills), U5 (README install UX) — both doyle-independent,
+  parallel-able. U3 (repo rename) + the v0.8.0 cut = the final coordinated step (rename is an
+  out-of-repo GitHub op that breaks the one existing install → operator-confirmed at the cut).
+
 ## Scope
 
 Five doyle-independent tasks (U1–U5). They make the adapter one-lever-*shaped* and consolidate its
