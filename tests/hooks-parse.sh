@@ -177,6 +177,12 @@ grep -q 'pre-tool-use.sh' "$HK/hooks.json" && r=yes || r=no
 check "PreToolUse routes to pre-tool-use.sh" "yes" "$r"
 grep -q 'poll .*--include-deferred' "$HK/pre-tool-use.sh" && r=yes || r=no
 check "pre-tool-use drains deferred (api poll --include-deferred)" "yes" "$r"
+# PreToolUse also marks busy (covers Monitor-triggered turns with no UserPromptSubmit).
+grep -q 'state busy' "$HK/pre-tool-use.sh" && r=yes || r=no
+check "pre-tool-use marks busy (non-user turn-start fallback)" "yes" "$r"
+# And it sets busy BEFORE draining (so a message landing mid-drain also defers).
+awk '/state busy/{b=NR} /poll .*--include-deferred/{p=NR} END{exit !(b && p && b<p)}' "$HK/pre-tool-use.sh" && r=yes || r=no
+check "pre-tool-use sets busy before the drain" "yes" "$r"
 grep -q 'state busy' "$HK/user-prompt-submit.sh" && r=yes || r=no
 check "UPS marks perch busy at turn-start (api state busy)" "yes" "$r"
 grep -q 'poll .*--include-deferred' "$HK/user-prompt-submit.sh" && r=yes || r=no

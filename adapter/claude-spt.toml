@@ -133,11 +133,13 @@ fires = "api poll {session_id} --include-deferred"
 reads = ["session_id", "prompt"]
 can_inject = true
 
-# PreToolUse — MID-TURN delivery (F-021). Fires before each tool call; drains messages DEFERRED while
-# the perch is busy (`api poll … --include-deferred` → additionalContext) so a live agent receives a
-# message WHILE working. The mid-turn complement of the UserPromptSubmit between-turns drain — together
-# they are the legacy spt poll+inject-on-PreToolUse reachability. No state change (the turn stays busy
-# until Stop). [impl->REQ-DIST-PRETOOL-POLL]
+# PreToolUse — MID-TURN delivery + turn-start busy fallback (F-021). Fires before each tool call: (1)
+# marks the perch BUSY (`api state busy`) — idempotent, and the ONLY busy mark for a turn that started
+# WITHOUT a UserPromptSubmit (a Monitor-delivered message triggers a new turn with no user prompt; the
+# first tool call is then the earliest turn-active signal); (2) drains messages DEFERRED while busy
+# (`api poll … --include-deferred` → additionalContext, the representative `fires` below) so a live
+# agent receives a message WHILE working. The mid-turn complement of the UserPromptSubmit between-turns
+# drain — together the legacy spt poll+inject-on-PreToolUse reachability. [impl->REQ-DIST-PRETOOL-POLL]
 [hooks.PreToolUse]
 fires = "api poll {session_id} --include-deferred"
 reads = ["session_id", "tool_name"]

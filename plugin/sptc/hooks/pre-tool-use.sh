@@ -17,6 +17,15 @@ id=$(sptc_self_id "$sid")
 [ -z "$id" ] && exit 0
 
 SPT=$(spt_bin)
+# Mark BUSY here too (idempotent). UserPromptSubmit covers USER turns, but a turn can also start with
+# NO user prompt — a Monitor-delivered message (the live-agent relay pipe) triggers a new turn without
+# firing UserPromptSubmit, so the perch would still read idle from the prior Stop and a mid-turn
+# inbound would idle-PTY-inject (clobber) instead of deferring. PreToolUse fires before every tool
+# call, so the FIRST tool call of ANY turn (user, Monitor-triggered, auto-continue) marks busy — the
+# earliest reliable turn-active signal when UPS didn't fire. Set BEFORE the drain so inbound landing
+# mid-drain also defers. (Residual: a non-user text-only turn marks neither — low risk, no tool/PTY
+# interleave; Stop re-idles after.) [impl->REQ-DIST-PRETOOL-POLL]
+"$SPT" api --adapter "$ADAPTER" state busy "$id" --session-id "$sid" >/dev/null 2>&1 || true
 # --include-deferred: pull messages queued while the perch was busy (the whole point — between-turns
 # the UPS drain catches delivered msgs; mid-turn the busy turn defers them, so we must include them).
 frames=$("$SPT" api --adapter "$ADAPTER" poll "$id" --session-id "$sid" --include-deferred 2>/dev/null)
