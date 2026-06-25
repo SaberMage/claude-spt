@@ -17,11 +17,13 @@
 #     claude-spt reach the Psyche layer?). [session.self] IS authored below (the endpoint-run/bind
 #     bringup that hosts a fresh CC session — the M12 `cc` launcher target).
 #   * [history]                     — transcript-access seam. Lands with [digest]'s sibling fetcher.
-#   * [update]                      — NOW DECLARED below via the `gh_release` avenue (spt v0.8.0):
-#     spt-core's `--release` machinery auto-updates the adapter from THIS repo's GitHub releases on
-#     `spt adapter update`, with NO Ed25519 signing infra (closes the F-005 parked `file_pull`/
-#     `delegated` legs). Per-OS interaction flagged to doyle (gh_release `asset` is a single name; how
-#     does auto-update pick the host's `adapter-<os>-<arch>.spt`?).
+#   * [update]                      — DECLARED below via the `gh_release` avenue (the published
+#     `--release` machinery, operative on the current min_spt_core floor): spt-core auto-updates the
+#     adapter from THIS repo's GitHub releases on `spt adapter update`, with NO Ed25519 signing infra
+#     (closes the F-005 parked `file_pull`/`delegated` legs). The COMPOSITE `[update.post]` step (the
+#     delegated plugin-reconcile) lands in spt-core v0.16.0 (ADR-0029) — wired at the adapter v0.8.0
+#     cut. (NB: "v0.8.0" everywhere in THIS arc = the claude-spt ADAPTER version, NOT an spt-core
+#     version — spt-core's next is v0.16.0; doyle 2026-06-25.)
 #
 # [impl->REQ-DIST-MANIFEST-SCHEMA]
 
@@ -80,7 +82,7 @@ host_binaries = ["claude"]
 shortcut_basename = "cc"
 
 # ── [update] ───────────────────────────────────────────────────────────────────────────────────
-# Adapter self-update via OUR GitHub releases (gh_release avenue, spt v0.8.0). `spt adapter update`
+# Adapter self-update via OUR GitHub releases (gh_release avenue). `spt adapter update`
 # pulls the adapter `.spt` asset from this repo's releases through the same `--release` machinery —
 # no signing infra (closes the F-005 file_pull/delegated blockers). `asset` omitted ⇒ spt's default
 # (adapter.spt), which is now the SINGLE MULTI-PLATFORM fat archive (both x86_64 triples + shared
