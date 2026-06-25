@@ -60,6 +60,19 @@ succession (D4) stays gated on **owl retirement**, not doyle — out of this mil
   call. Symmetric with the update lever (`spt adapter update claude-spt`).
 - Gate: docs build / llms.txt in sync; the chains are copy-paste-correct per OS.
 
+### U6 — `[session.self]` sets `--remote-control {id}` (RC-channel parity) · REQ-DIST-RC-STARTUP (mint)
+- Today only `[session.resume]` names the RC session via `--remote-control {id}`; `[session.self]`
+  (fresh spt-hosted bringup) is bare `claude --dangerously-skip-permissions` and threads `{id}` only via
+  `$SPT_ENDPOINT_ID`. Add `--remote-control {id}` to `[session.self].command` so BOTH bringup paths name
+  the RC channel `{id}` — `spt rc <id>` attach + RC-driven control behave identically for fresh and
+  resumed endpoints (not just resume).
+- Small, standalone manifest change (like U1) — doyle-independent.
+- Open: verify `claude --remote-control {id}` works on a FRESH launch (no `-r`); confirm it doesn't
+  collide with the `$SPT_ENDPOINT_ID` env path (both can coexist — env for SessionStart bind, RC for the
+  control channel). Add `{id}` to `[session.self].keys`.
+- Gate: a fresh `spt endpoint run` endpoint is `spt rc <id>`-attachable; idle delivery + checkpoint still
+  fire (re-run the on-node translate/checkpoint dogfood with the RC flag present).
+
 ## Deferred (doyle-gated — land when the asks ship; NOT this milestone)
 - **D1** generic `hooks.json` + `claude-spt hook <event>` subcommand ← ask #1 (`spt api run-hook`).
 - **D2** wire `[update]` composite to invoke `claude-spt post-update` (the subcommand U2 prepped) ← ask #2.
@@ -67,7 +80,8 @@ succession (D4) stays gated on **owl retirement**, not doyle — out of this mil
 - **D4** plugin `sptc`→`spt` succession (`/spt:*`) ← owl retirement gate (separate from doyle).
 
 ## Sequencing
-- U1 first (isolated, quick). Then U2 (the big refactor; preps the post-update subcommand for D2).
+- U1 + U6 first (isolated one-line manifest changes, quick wins). Then U2 (the big refactor; preps the
+  post-update subcommand for D2).
 - U3 after U2 (both touch `package-adapter.sh`); batch them into the v0.8.0 cut. Rename the repo as part
   of cutting v0.8.0 so the new release lands on `claude-spt` (v0.7.0 stays on the redirected old slug).
 - U4 / U5 parallel-able with U2/U3.
