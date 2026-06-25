@@ -22,12 +22,15 @@
 - **BONUS (not UNIFY): F-021 reachability** (commits d3d82c0, 493eb97) — PreToolUse mid-turn poll +
   honest busy/idle turn-state (busy@UPS + busy@PreToolUse fallback + idle@Stop, `--include-deferred`);
   REQ-DIST-PRETOOL-POLL +impl+unit. Verified vs the published integration-checklist.
-- **REMAINING: U3 (repo rename) + the v0.8.0 cut** = the final coordinated step. The rename
-  `spt-claude-code`→`claude-spt` is an out-of-repo GitHub op that breaks the one existing install →
-  operator-confirmed. In-repo ref-flip (every `SaberMage/spt-claude-code` → `…/claude-spt` across
-  README, manifest [update].repo, CI/package scripts, test install-dir assumptions) batches WITH the
-  rename. Also at the cut: ONE cplugs skeleton bump (U4 SKILL.md + PreToolUse hooks.json are structural)
-  + adapter version bump + CHANGELOG. rename-then-cut.
+- **U3 DONE** (commit ff6dbc3) — GitHub repo RENAMED to `SaberMage/claude-spt` (`gh repo rename`);
+  operative owner-qualified refs flipped (manifest [update].repo, README, CI/package scripts, setup
+  strings, RELEASE-RUNBOOK, book.toml); historical records left on the old slug; REQ-DIST-NAME-UNIFY
+  +doc+impl+unit. int (clean --release re-acquire from new slug) deferred to the cut.
+- **REMAINING: the v0.8.0 cut only (HELD — operator-gated, part 3).** All in-repo U-work (U1–U6) is
+  done + on `main` (local, unpushed). The cut = adapter version bump (0.7.0→0.8.0) + CHANGELOG entry +
+  ONE cplugs skeleton bump (plugin.json + U4 SKILL.md + PreToolUse hooks.json are structural) + gates
+  + on-node dogfood, then operator publishes (tag + `adapter.spt` upload + cplugs push). NB session
+  commits are LOCAL-only — push to the renamed remote is a separate step.
 
 ## Scope
 
