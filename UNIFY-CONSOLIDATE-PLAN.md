@@ -72,7 +72,12 @@ succession (D4) stays gated on **owl retirement**, not doyle — out of this mil
   - `[session.self].command = "claude -n {id} --remote-control {id} --dangerously-skip-permissions"`
   - `[session.resume].command = "claude -r {session_id} -n {id} --remote-control {id} --dangerously-skip-permissions"`
 - `{id}` is already in `[session.self].keys = ["id"]` and `[session.resume].keys = ["session_id","id"]` —
-  no keys change. Small, standalone manifest edit (like U1), doyle-independent.
+  no keys change for the `{id}`-only form. Small, standalone manifest edit (like U1), doyle-independent.
+- **STRETCH (doyle ask #4, operator-raised): `{id}@{node}`.** Ideal display/RC name is `{id}@{node}` so a
+  same-id endpoint on different machines is distinguishable. The substitution-key catalog is now PUBLISHED
+  (harness-contract/manifest.html#substitution-keys) and `{node}` is confirmed ABSENT; `{session_name}`
+  exists but is the *supplied* name (circular). Operator is raising a `{node}` fill key with doyle directly.
+  Ship the `{id}`-only form now; upgrade to `{id}@{node}` (add `node` to both `keys`) once doyle adds it.
 - Open: confirm `-n {id}` + `--remote-control {id}` coexist cleanly with the `$SPT_ENDPOINT_ID` env path
   on a fresh launch (env names the bind id at SessionStart; `-n`/RC name the display+control channel —
   no conflict expected). spt tokenizes-then-fills, so each flag is a clean argv element.

@@ -99,6 +99,25 @@ and consistent with the other seams.)
 
 ---
 
+## Ask 4 — a `{node}` substitution key for `[session.<role>]` roles  *(operator raising directly)*
+
+**Problem.** We want the spawned CC session's display name and RC channel to be `{id}@{node}` (so a same-id
+endpoint on different machines is distinguishable) — `claude -n {id}@{node} --remote-control {id}@{node}`.
+The substitution-key catalog is now **published**
+([harness-contract/manifest.html#substitution-keys](https://sabermage.github.io/spt-releases/harness-contract/manifest.html#substitution-keys)),
+and **`{node}` is confirmed absent.** Closest existing keys: `{id}`, `{session_id}`, `{session_name}`
+(the *supplied* display name — circular for our use), `{adapter_name}`, `{agent_type}`, `{agents_json}`.
+
+**Proposal.** Expose the current node name as a `{node}` (or `{node_name}` / `{host}`) fill key for the
+`[session.<role>]` templates, declarable in `keys`. *(The operator is raising this in their ongoing
+spt-core conversation with doyle — tracked here for completeness, not a separate filing.)*
+
+**Open questions for doyle:**
+- Key name — `{node}`, `{node_name}`, or `{host}`? Match the internal model's term.
+- Available to `[session.<role>]` (where we need it), and optionally the SessionStart hooks / `[session.notif]`?
+
+---
+
 ## Heads-up (not an ask) — name unification
 
 We're collapsing three names to two (ADR-0005): **`claude-spt`** = the spt-core-facing identity (we're
@@ -115,5 +134,6 @@ your side should expect the new repo slug. One end user today, so the re-add cos
 - **Ask 1** → hook logic + new handlers ride `spt adapter update`; `hooks.json` goes static-forever.
 - **Ask 2** → the plugin update is automated; the only manual residual is `/reload-plugins`.
 - **Ask 3** → `translate` folds into the one `claude-spt` binary (1 artifact/triple).
+- **Ask 4** → display name + RC channel become `{id}@{node}` (cross-node distinguishable); else `{id}` only.
 - Ships **without** any ask: `gh_release` + `[update].message` (the message instructs the manual steps),
   partial binary consolidation (digest/psyche/post-update), and the name unification.

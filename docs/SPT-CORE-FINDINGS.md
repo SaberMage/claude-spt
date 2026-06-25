@@ -110,7 +110,12 @@ from the **shipped mock-adapter source** (which IS public surface) + live `adapt
 
 1. **Substitution-key catalog.** `{parent_pid}` and `{adapter_name}` are spt-filled SessionStart
    keys (mock `api seed --pid {parent_pid} … --adapter {adapter_name}`); the docs-site lists only a
-   partial set. The full catalog is still code-only.
+   partial set. The full catalog is still code-only. **RESOLVED 2026-06-25** — the catalog is now
+   published at `harness-contract/manifest.html#substitution-keys` (`{id}`, `{adapter_name}`,
+   `{session_id}`, `{session_name}`, `{parent_pid}`, `{agent_type}`, `{agents_json}`, `{psyche_dir}`,
+   `{psyche_prompt}`, `{psyche_context}`, `{link_token}`, `{source}`, `{notif_*}`). Note: **no `{node}`**
+   fill key — operator is raising one with doyle (would let `[session.*]` name an endpoint `{id}@{node}`;
+   see `UPDATE-NAMING-DOYLE-ASKS.md` ask 4 + `UNIFY-CONSOLIDATE-PLAN.md` U6).
 2. **`[digest]` cross-field rule.** The JSON schema accepts `[digest]` with just `extractor`, but
    `spt adapter add` **rejects** it: `[digest] needs source (own-source) or a [history]
    locate_template`. Not documented prose-side; surfaced only at registration. (Worked around with
