@@ -29,7 +29,7 @@
 # audit this whenever a new evidence dir appears. ADD `plugin`, `skills`, `hooks`, `tests`
 # the moment those dirs are created (skeleton milestone, body #2) — until they exist a
 # nonexistent root is a hard manifest_error, so only list what is on disk now.
-roots = ["plugin", "ci", "ci/acceptance", "ci/publish", "ci/docs", "ci/manifest", "ci/digest", "ci/idle-translate", "adapter", "tools", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md"]
+roots = ["plugin", "ci", "ci/acceptance", "ci/publish", "ci/docs", "ci/manifest", "ci/digest", "ci/idle-translate", "adapter", "tools", "tests", "docs", "docs-site", "CONTEXT.md", "SCOPE.md", "AGENTS.md", "HANDOFF.md", "README.md"]
 
 [policy]
 # Default policy applied at activation: doc + impl + unit. Networking/lifecycle/cross-node
@@ -307,7 +307,7 @@ required_stages = []  # U4 (parallel-able with U2/U3). doc: docs/adr/0005 reacti
 [[requirements]]
 id = "REQ-DIST-INSTALL-UX"
 title = "README ships platform-specific install chains (cmd / PowerShell / bash) — check-for/install spt-core (call the spt-releases per-platform install script; claude-spt may be a user's first spt-core exposure) then `spt adapter add --release SaberMage/claude-spt` — plus a copy-paste agent prompt (the casual-user skin) running the chain in one sequenced Bash call, symmetric with the update lever. U5."
-required_stages = []  # U5 (parallel-able with U2/U3). doc: README install-UX section + the agent-prompt skin + docs-site/llms.txt sync. impl: the per-OS install chains + the one-shot agent prompt. unit: ci/docs drift gate keeps llms.txt in sync. ACTIVATE at U5 start.
+required_stages = ["doc"]  # U5 — ACTIVATED 2026-06-25. doc-class (install instructions, like the REQ-SETUP-* skills — no adapter-side code of its own): README.md (added to [scan] roots) carries the per-OS install chains (bash / PowerShell / cmd: install spt-core via the published spt-releases script, then `spt adapter add --release SaberMage/spt-claude-code`) + the copy-paste agent-prompt skin + the symmetric `spt adapter update claude-spt` lever. doc tag rides README.md. llms.txt sync is unaffected (it derives only from docs-site/SUMMARY pages; gen-llms.sh) — the docs-drift gate stays green. Repo slug stays SaberMage/spt-claude-code until the U3 rename flips every reference at the v0.8.0 cut.
 
 [[requirements]]
 id = "REQ-DIST-RC-STARTUP"
