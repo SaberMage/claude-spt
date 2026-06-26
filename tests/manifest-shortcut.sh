@@ -65,6 +65,9 @@ if grep -q 'SaberMage/spt-claude-code' "$MANIFEST"; then echo "FAIL stale SaberM
 # the active `message =` assignment and the reload-plugins notice anywhere in the manifest body.
 if grep -Eq '^[[:space:]]*message[[:space:]]*=' "$MANIFEST"; then echo "ok   [update].message present"; else echo "FAIL [update] has no message field"; fail=1; fi
 if grep -q 'reload-plugins' "$MANIFEST"; then echo "ok   [update].message points at /reload-plugins"; else echo "FAIL [update].message lacks the /reload-plugins notice"; fail=1; fi
+# D2: [update.post] declares the delegated plugin-reconcile = {adapter_dir}/claude-spt post-update.
+if grep -Eq '^[[:space:]]*command[[:space:]]*=[[:space:]]*"\{adapter_dir\}/claude-spt post-update"' "$MANIFEST"; then echo "ok   [update.post].command = \"{adapter_dir}/claude-spt post-update\""; else echo "FAIL [update.post].command missing/wrong"; fail=1; fi
+if grep -Eq '^\[update\.post\]' "$MANIFEST"; then echo "ok   [update.post] table present"; else echo "FAIL no [update.post] table"; fail=1; fi
 
 # [unit->REQ-DIST-RC-STARTUP]
 # U6: {id} threads the DISPLAY name (`-n {id}`) on BOTH bringup paths and the REMOTE-CONTROL channel

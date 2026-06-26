@@ -7,14 +7,31 @@
 //! registered, then install/update the plugin. It then PRINTS a notice — it CANNOT run
 //! `/reload-plugins` (a TUI-only action), so the manual residual is the user's `/reload-plugins`.
 //!
-//! WIRING STATUS: standalone-runnable + unit-tested NOW, but `[update]` cannot invoke it until doyle
-//! ask #2 (composite `[update]` with a delegated post-step) lands — see ADR-0006 + UPDATE-NAMING-
-//! DOYLE-ASKS.md ask 2 (D2). Until then it is run by hand / by /sptc:setup. `--dry-run` prints the
-//! intended actions without spawning the CLI (the deterministic surface a future int asserts on).
-//! [impl->REQ-DIST-BINARY-CONSOLIDATE]
+//! WIRED (spt-core v0.16.0, D2): the manifest `[update.post] = {command = "{adapter_dir}/claude-spt
+//! post-update", self_verifies = false}` runs this AFTER the `gh_release` pull, UNCONDITIONALLY.
+//! spt-core pipes ONE JSON line on stdin — `{adapter_applied, adapter_name, profile_name, version,
+//! previous_version, adapter_dir}` (additive; we ignore unknown keys) — and reads our STDOUT to
+//! arbitrate the update notice: custom text SUPERSEDES `[update].message`; the reserved sentinel
+//! `!!update-message!!` (alone) FIRES the static `[update].message`; empty = nothing. Exit code is
+//! orthogonal (the pull is never rolled back on our failure — fail-isolated). `self_verifies` is
+//! attestation-only (gates nothing yet).
+//!
+//! We use the SENTINEL strategy: on a successful real reconcile we print `!!update-message!!` so the
+//! single user-facing copy lives once in `[update].message` (the /reload-plugins + go-live notice,
+//! REQ-DIST-UPDATE-MESSAGE). Diagnostics go to STDERR (never stdout — stdout is the arbiter channel).
+//!
+//! THREE invocation modes:
+//!   * `[update.post]` (stdin is a piped JSON line) — reconcile, then stdout = sentinel on success / empty.
+//!   * standalone by hand / `/sptc:setup` (stdin is a TTY) — reconcile, then print the human notice to stdout.
+//!   * `--dry-run` / `-n` — print the intended actions (no spawn); the deterministic surface the int asserts.
+//! [impl->REQ-DIST-BINARY-CONSOLIDATE] [impl->REQ-DIST-UPDATE-MESSAGE]
 
+use std::io::{IsTerminal, Read};
 use std::path::PathBuf;
 use std::process::{Command, ExitCode, Stdio};
+
+/// Reserved stdout sentinel: printing it (alone) tells spt-core to fire the static `[update].message`.
+const UPDATE_MESSAGE_SENTINEL: &str = "!!update-message!!";
 
 const MARKETPLACE: &str = "cplugs";
 const MARKETPLACE_REPO: &str = "SaberMage/cplugs";
@@ -132,15 +149,49 @@ fn which(name: &str) -> bool {
     std::env::split_paths(&path).any(|dir| cands.iter().any(|c| dir.join(c).is_file()))
 }
 
+/// Parse the [update.post] stdin JSON line (ADDITIVE — ignore unknown keys, per doyle). Returns the
+/// `adapter_applied` flag (whether the adapter version was applied this run); false on absent/bad
+/// JSON. Pure so the stdin read stays at the edge. [impl->REQ-DIST-UPDATE-MESSAGE]
+fn update_applied_in(json: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(json)
+        .ok()
+        .and_then(|v| v.get("adapter_applied").and_then(|b| b.as_bool()))
+        .unwrap_or(false)
+}
+
+/// The stdout ARBITER line for the [update.post] channel: the reserved sentinel (→ spt-core fires the
+/// static `[update].message`) when the reconcile ran OR the adapter was applied, else empty (nothing).
+/// We fire on any successful real reconcile so the one-lever `spt adapter update` always surfaces the
+/// /reload-plugins reminder (the user-facing copy lives once in `[update].message`). Pure.
+/// [impl->REQ-DIST-UPDATE-MESSAGE]
+fn arbiter_line(reconciled: bool, adapter_applied: bool) -> &'static str {
+    if reconciled || adapter_applied {
+        UPDATE_MESSAGE_SENTINEL
+    } else {
+        ""
+    }
+}
+
 /// `claude-spt post-update` entry. Reads its own argv (binary name + `post-update` token consumed).
 pub fn run() -> ExitCode {
     let dry_run = std::env::args()
         .skip(2)
         .any(|a| a == "--dry-run" || a == "-n");
 
+    // [update.post] mode iff stdin is a piped JSON line (spt-core pipes one line then closes); a TTY
+    // stdin = standalone-by-hand. --dry-run forces the standalone-diagnostic path regardless.
+    let post_mode = !dry_run && !std::io::stdin().is_terminal();
+    let mut adapter_applied = false;
+    if post_mode {
+        let mut buf = String::new();
+        let _ = std::io::stdin().read_to_string(&mut buf);
+        adapter_applied = update_applied_in(buf.trim());
+    }
+
     let cli = match choose_cli(which("claude"), which("ccs")) {
         Some(c) => c,
         None => {
+            // fail-isolated: spt-core never rolls back the pull on our exit code. stderr, not stdout.
             eprintln!("claude-spt post-update: no `claude` or `ccs` CLI on PATH — cannot reconcile the plugin");
             return ExitCode::from(3);
         }
@@ -165,16 +216,16 @@ pub fn run() -> ExitCode {
     for argv in &steps {
         let shown = format!("{cli} {}", argv.join(" "));
         if dry_run {
-            println!("would run: {shown}");
+            println!("would run: {shown}"); // diagnostic preview to stdout (no spt-core arbiter present)
             continue;
         }
+        // Diagnostics → STDERR: stdout is the [update.post] arbiter channel (sentinel/custom/empty).
         eprintln!("claude-spt post-update: {shown}");
-        let status = Command::new(cli).args(argv).stdin(Stdio::null()).status();
-        match status {
+        match Command::new(cli).args(argv).stdin(Stdio::null()).status() {
             Ok(s) if s.success() => {}
             Ok(s) => {
                 eprintln!("claude-spt post-update: `{shown}` exited {s}");
-                return ExitCode::from(1);
+                return ExitCode::from(1); // fail-isolated; stdout stays empty so no notice fires
             }
             Err(e) => {
                 eprintln!("claude-spt post-update: failed to spawn `{shown}`: {e}");
@@ -183,7 +234,16 @@ pub fn run() -> ExitCode {
         }
     }
 
-    println!("{}", notice());
+    if dry_run {
+        return ExitCode::SUCCESS; // diagnostics already printed; no arbiter output
+    }
+    if post_mode {
+        // spt-core reads stdout to arbitrate: the sentinel fires the static [update].message.
+        print!("{}", arbiter_line(true, adapter_applied));
+    } else {
+        // standalone-by-hand: no spt-core arbiter, so show the human notice directly.
+        println!("{}", notice());
+    }
     ExitCode::SUCCESS
 }
 
@@ -270,5 +330,26 @@ mod tests {
         assert!(n.contains("/reload-plugins"), "notice must point at the manual residual");
         // The notice tells the user to run it — the subcommand never runs the TUI action itself.
         assert!(n.contains("Run /reload-plugins"));
+    }
+
+    // [unit->REQ-DIST-UPDATE-MESSAGE] the [update.post] stdin/stdout contract (D2).
+    #[test]
+    fn update_context_reads_adapter_applied_additively() {
+        // Additive: unknown future keys ignored; only adapter_applied read.
+        assert!(update_applied_in(
+            r#"{"adapter_applied":true,"adapter_name":"claude-spt","version":"0.8.0","unknown_future_key":42}"#
+        ));
+        assert!(!update_applied_in(r#"{"adapter_applied":false,"adapter_dir":"/x"}"#));
+        assert!(!update_applied_in(r#"{"adapter_name":"claude-spt"}"#)); // key absent -> false
+        assert!(!update_applied_in("not json"));
+        assert!(!update_applied_in(""));
+    }
+
+    #[test]
+    fn arbiter_fires_sentinel_on_reconcile_or_applied_else_empty() {
+        assert_eq!(arbiter_line(true, false), "!!update-message!!"); // reconcile ran
+        assert_eq!(arbiter_line(false, true), "!!update-message!!"); // adapter applied
+        assert_eq!(arbiter_line(true, true), "!!update-message!!");
+        assert_eq!(arbiter_line(false, false), ""); // true no-op -> nothing
     }
 }

@@ -109,6 +109,23 @@ Then you're current. Two ways to go live:
 - **`spt endpoint run`** — the `spt` CLI route: spawn/attach endpoints, drive them over Remote Control, and bring up sessions headlessly. The more powerful lever once you're comfortable.
 """
 
+# ── [update.post] — the delegated plugin-reconcile step (D2, spt-core v0.16.0) ──────────────────
+# spt-core runs this AFTER the gh_release pull+re-register, UNCONDITIONALLY (even on an adapter no-op),
+# completing the one lever `spt adapter update claude-spt` = pull the adapter .spt + reconcile the
+# cplugs plugin. `command` resolves the consolidated binary from the install dir via {adapter_dir}
+# (survives updates). spt-core pipes a one-line JSON context on the command's stdin
+# ({adapter_applied, adapter_name, profile_name, version, previous_version, adapter_dir}; additive —
+# the subcommand ignores unknown keys) and reads its STDOUT to arbitrate the notice: the reserved
+# sentinel `!!update-message!!` (which post-update emits on a successful reconcile) FIRES the
+# [update].message above; custom text would supersede it; empty prints nothing. Exit code is
+# orthogonal and the step is FAIL-ISOLATED (a committed pull is never rolled back on our failure).
+# `self_verifies = false`: attestation-only, gates nothing yet (no signing infra). The reconcile logic
+# rides `spt adapter update` (it lives in the binary), so it stays current without a separate step.
+# [impl->REQ-DIST-UPDATE-MESSAGE]
+[update.post]
+command = "{adapter_dir}/claude-spt post-update"
+self_verifies = false
+
 # ── [hooks.<event>] ──────────────────────────────────────────────────────────────────────────
 # CC hook event → the opaque `api …` command it fires. These mirror the hand-written plugin
 # hooks.json (plugin/sptc/hooks/hooks.json) one-for-one; the plugin shells `spt api`, this table
