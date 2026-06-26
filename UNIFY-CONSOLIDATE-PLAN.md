@@ -26,11 +26,21 @@
   operative owner-qualified refs flipped (manifest [update].repo, README, CI/package scripts, setup
   strings, RELEASE-RUNBOOK, book.toml); historical records left on the old slug; REQ-DIST-NAME-UNIFY
   +doc+impl+unit. int (clean --release re-acquire from new slug) deferred to the cut.
-- **REMAINING: the v0.8.0 cut only (HELD — operator-gated, part 3).** All in-repo U-work (U1–U6) is
-  done + on `main` (local, unpushed). The cut = adapter version bump (0.7.0→0.8.0) + CHANGELOG entry +
-  ONE cplugs skeleton bump (plugin.json + U4 SKILL.md + PreToolUse hooks.json are structural) + gates
-  + on-node dogfood, then operator publishes (tag + `adapter.spt` upload + cplugs push). NB session
-  commits are LOCAL-only — push to the renamed remote is a separate step.
+- **v0.8.0 SHIPPED** (2026-06-26) — consuming spt-core **v0.16.0**. The D-arc landed on doyle's GO:
+  **D3** fold `translate` → one consolidated `claude-spt` binary ([message-idle-translation-binary].command);
+  **D2** `[update.post]` composite update (post-update stdin JSON + `!!update-message!!` sentinel) = the
+  one lever `spt adapter update claude-spt`; min_spt_core→0.16.0; version→0.8.0; CHANGELOG; cplugs
+  skeleton **0.1.7**. Re-vendored manifest.schema.json (v0.16.0). Dogfooded on-node (0.16.0): digest-proof
+  5/0 + translate-proof commit:yes against the consolidated binary AND the packed+flattened adapter.spt.
+  **PUBLISHED both targets:** GitHub release `v0.8.0` (`adapter.spt`, win+linux fat) on SaberMage/claude-spt
+  + cplugs `sptc 0.1.7` (bb1bbed). All gates green; 61 crate tests; traceable green.
+- **DEFERRED — D1** (hook logic → `claude-spt hook <event>` binary + static-forever hooks.json via the
+  resolve-not-execute `{adapter_dir}` pattern). A large Rust port of all 8 shell hooks + _common.sh;
+  an OPTIMIZATION (kills future cplugs republishes), NOT part of the one-lever value v0.8.0 delivers.
+  Its own milestone (→ v0.9.0). The v0.8.0 hook changes (PreToolUse) shipped via the 0.1.7 skeleton bump.
+- **DEFERRED int (post-publish):** live `[update.post]` firing on a real `spt adapter update claude-spt`
+  (the on-node update + the double-update nuance — old v0.7.0 manifest has no post-step, so the post-step
+  fires from the next update once v0.8.0's manifest is installed). Run on the operator's node when ready.
 
 ## Scope
 
