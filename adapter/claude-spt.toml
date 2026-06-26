@@ -52,7 +52,17 @@ kind = "harness"
 # `spt api psyche-download <id>` and injects the durable role/live/project + pending commune/signoff as
 # additionalContext (closes F-020). These REQUIRE spt-core v0.15.0 (the `--json-payload` send axis + the
 # `psyche-download` verb), so the floor BUMPS to 0.15.0 below.
-version = "0.7.0"
+# 0.8.0 (2026-06-26): the UNIFY-CONSOLIDATE cut — name unification + one-command update + binary
+# consolidation (ADR-0005/0006), consuming spt-core v0.16.0 (counter 35). U1 [update].message + U6
+# {id} display/RC parity on both bringup paths + U2 the consolidated claude-spt binary
+# (digest/psyche/post-update). D2: [update.post]={command,self_verifies} composite update — one lever
+# `spt adapter update claude-spt` pulls the .spt AND reconciles the cplugs plugin (post-update emits
+# the `!!update-message!!` sentinel → [update].message). D3: the idle filter folded into
+# `claude-spt translate` ([message-idle-translation-binary].command, path deprecated) → ONE tool binary
+# per triple. Also F-021 reachability (PreToolUse mid-turn poll + honest busy/idle turn-state) + U4
+# reactive-skill thinning (commune/signoff prose → the live-ops brief). REQUIRES spt-core v0.16.0 (the
+# update.post + idle command + {adapter_dir} seams), so the floor BUMPS to 0.16.0 below.
+version = "0.8.0"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
@@ -65,7 +75,11 @@ version = "0.7.0"
 # `spt api psyche-download <id>` verb — BOTH land in spt-core v0.15.0 (counter 34, Latest). The
 # multi-line frame (T1) works on any node, but the wave ships as one unit, so the honest floor is the
 # verb floor. An older node can't fire checkpoint or pull resume context, so declaring 0.15.0 is honest.
-min_spt_core_version = "0.15.0"
+# Floor BUMPED to 0.16.0 (2026-06-26, the UNIFY-CONSOLIDATE cut / v0.8.0): D2's [update.post] composite,
+# D3's [message-idle-translation-binary].command, and the {adapter_dir}/{adapter_name} substitution +
+# lazy [strings] subst ALL land in spt-core v0.16.0 (counter 35, Latest; ADR-0029). An older node can't
+# read update.post or the command seam, so declaring 0.16.0 is the honest floor.
+min_spt_core_version = "0.16.0"
 hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # host_binaries — STAGED ahead of spt-core v0.9.0 (doyle 2026-06-16). The pid→binary match-key for
 # adapter-agnostic resolution: `spt api listen <id>` resolves the owning adapter/profile by walking

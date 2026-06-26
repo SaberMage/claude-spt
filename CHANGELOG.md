@@ -8,6 +8,36 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.8.0] - 2026-06-26
+
+> Requires spt-core **v0.16.0 or newer** (was v0.15.0). This release unifies the project naming,
+> turns updating into a single command, and consolidates the adapter to one tool binary — built on
+> the update-arc + CLI features that arrive in spt-core v0.16.0.
+
+### Added
+- **One-command update — `spt adapter update claude-spt`.** A single command now keeps *everything*
+  current: it pulls the new adapter (manifest + binary + strings) **and** reconciles the Claude Code
+  plugin in the same step. The only manual residual is `/reload-plugins` (an unavoidable Claude Code
+  TUI action), which the update prints a reminder to run.
+- **Mid-turn reachability for live agents.** A live agent can now receive a message *while it is
+  working* (not only between turns) — incoming messages surface mid-turn, with the endpoint honestly
+  marked busy during a turn and idle when it finishes.
+
+### Changed
+- **Name unification.** The project/repo and adapter are now **`claude-spt`** everywhere spt-core
+  sees them (the repo was renamed `spt-claude-code` → `claude-spt`; install and update both read
+  `claude-spt`). The Claude Code plugin stays `sptc` / `/sptc:*` this release.
+- **One tool binary.** The separate digest, psyche, and idle-translation binaries are consolidated
+  into a single `claude-spt` binary (subcommands) — one artifact per platform in the release.
+- **Session display name + remote control.** A spawned/resumed endpoint now shows its `{id}` as the
+  session display name and is remote-control-attachable under that id, on both bringup paths.
+- **Leaner skills.** `commune` / `send` / `signoff` guidance is now delivered by the adapter (so it
+  updates with `spt adapter update`) rather than baked into the plugin.
+
+### Requires
+- spt-core **v0.16.0+** (the composite `[update.post]`, the idle-translation `command` seam, and the
+  `{adapter_dir}` substitution all land in v0.16.0).
+
 ## [0.7.0] - 2026-06-24
 
 > Requires spt-core **v0.15.0 or newer** (was v0.13.2). This release adds self-checkpointing for

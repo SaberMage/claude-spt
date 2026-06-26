@@ -1,6 +1,6 @@
 {
   "name": "sptc",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Spacetime (spt) adapter for Claude Code — agent messaging, live agents, and spt-core bootstrap. Thin skeleton; logic rides the spt binary + adapter manifest (spt-core-conducted).",
   "author": {
     "name": "perri"
