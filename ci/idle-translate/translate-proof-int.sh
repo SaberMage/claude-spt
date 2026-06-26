@@ -1,6 +1,6 @@
 #!/bin/sh
 # Integration proof: `spt adapter translate-proof` spawns + feeds the claude-spt
-# [message-idle-translation-binary] (cc-spt-idle-translate) EXACTLY as the daemon does at idle
+# [message-idle-translation-binary] (`claude-spt translate` subcommand) EXACTLY as the daemon does at idle
 # delivery (init line then the --event envelope), reads back the emitted keystroke-command stream,
 # and gates it. This is the EMIT half of REQ-DIST-IDLE-TRANSLATE — the cross-process author-time proof
 # (ADR-0022, the EMIT-half mirror of digest-proof). It does NOT exercise the daemon's atomic PTY APPLY
@@ -21,7 +21,7 @@
 set -u
 ROOT=$(CDPATH= cd "$(dirname "$0")/../.." && pwd)
 MANIFEST="$ROOT/adapter/claude-spt.toml"
-RELDIR="$ROOT/tools/cc-spt-idle-translate/target/release"
+RELDIR="$ROOT/tools/claude-spt/target/release"   # consolidated binary; manifest command = {adapter_dir}/claude-spt translate (D3)
 EVENT='<EVENT type="msg" from="ci">translate-proof int probe</EVENT>'
 
 command -v spt >/dev/null 2>&1 || { echo "SKIP: no spt on PATH"; exit 0; }
@@ -32,9 +32,9 @@ if ! spt adapter translate-proof --help 2>&1 | grep -q -- '--dir'; then
   exit 0
 fi
 
-BIN="$RELDIR/cc-spt-idle-translate"
-[ -x "$BIN" ] || BIN="$RELDIR/cc-spt-idle-translate.exe"
-[ -x "$BIN" ] || { echo "SKIP: binary not built (run sh ci/idle-translate/build.sh)"; exit 0; }
+BIN="$RELDIR/claude-spt"
+[ -x "$BIN" ] || BIN="$RELDIR/claude-spt.exe"
+[ -x "$BIN" ] || { echo "SKIP: binary not built (run sh ci/digest/build.sh)"; exit 0; }
 
 # Proof the dev binary in-place: --dir resolves the binary (before PATH) like the daemon, --manifest
 # pins the bare-file gh_release manifest — no extracted install, no registry touch.

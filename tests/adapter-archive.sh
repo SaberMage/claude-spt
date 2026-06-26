@@ -11,7 +11,7 @@ ROOT=$(CDPATH= cd "$(dirname "$0")/.." && pwd)
 PACKER="$ROOT/ci/publish/package-adapter.sh"
 WIN_TRIPLE=x86_64-pc-windows-msvc
 LINUX_TRIPLE=x86_64-unknown-linux-gnu
-BINS="claude-spt cc-spt-idle-translate"  # consolidated claude-spt (digest/psyche/post-update) + the separate idle-translate (ADR-0006/U2)
+BINS="claude-spt"  # the ONE consolidated tool binary: digest/psyche/post-update/translate subcommands (ADR-0006; translate folded D3)
 rc=0
 fail() { printf 'FAIL: %s\n' "$1"; rc=1; }
 

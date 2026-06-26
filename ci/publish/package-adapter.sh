@@ -8,10 +8,10 @@
 #   adapter.spt (tar.gz)
 #   ├── manifest.toml                 ← SHARED, at archive root (renamed from claude-spt.toml)
 #   ├── strings/                      ← SHARED, at archive root
-#   ├── x86_64-pc-windows-msvc/       ← this triple's binaries, mirroring the flat-root tree
-#   │   ├── claude-spt.exe · cc-spt-idle-translate.exe
+#   ├── x86_64-pc-windows-msvc/       ← this triple's binary, mirroring the flat-root tree
+#   │   ├── claude-spt.exe
 #   └── x86_64-unknown-linux-gnu/
-#       └── claude-spt · cc-spt-idle-translate
+#       └── claude-spt
 #
 # spt-core CLASSIFIES on top-level entry names: a known target-triple dir ⇒ multi-platform; it places
 # the shared-root entries + FLATTENS this node's <triple>/* into the install dir (so a bare-name
@@ -41,14 +41,14 @@ APPLY=0
 # The recognized triples and where each platform's release binaries live. A native Windows build lands
 # in target/release; the Linux build is cross-compiled (cargo-zigbuild) into
 # target/x86_64-unknown-linux-gnu/release. Override SPTC_WIN_RELSUB / SPTC_LINUX_RELSUB for a
-# non-default layout. The two tool binaries each live in their own crate under tools/ (the former
-# claude-spt-digest + claude-spt-psyche crates are now the digest/psyche subcommands of claude-spt;
-# cc-spt-idle-translate stays separate until doyle ask #3 lets it fold in too — ADR-0006/U2).
+# non-default layout. There is now ONE tool binary: the consolidated claude-spt crate carries all four
+# subcommands — digest / psyche / post-update / translate (the last folded in at the v0.8.0 cut once
+# spt-core v0.16.0 gave [message-idle-translation-binary] a `command` field — ADR-0006/D3).
 WIN_TRIPLE=x86_64-pc-windows-msvc
 LINUX_TRIPLE=x86_64-unknown-linux-gnu
 WIN_RELSUB="${SPTC_WIN_RELSUB:-release}"
 LINUX_RELSUB="${SPTC_LINUX_RELSUB:-$LINUX_TRIPLE/release}"
-BINS="claude-spt cc-spt-idle-translate"
+BINS="claude-spt"
 
 # Validate the manifest first — refuse to ship an invalid adapter.
 echo "== validate manifest =="
@@ -76,7 +76,7 @@ for b in $BINS; do
   done
 done
 if [ "$missing" -ne 0 ]; then
-  echo "REFUSING to package: build BOTH platforms first — Windows: sh ci/{digest,idle-translate}/build.sh;" >&2
+  echo "REFUSING to package: build BOTH platforms first — Windows: sh ci/digest/build.sh;" >&2
   echo "Linux (cross): cargo-zigbuild --release --target $LINUX_TRIPLE for each tool crate (see docs/RELEASE-RUNBOOK.md)." >&2
   exit 1
 fi

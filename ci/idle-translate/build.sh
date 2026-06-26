@@ -1,19 +1,11 @@
 #!/bin/sh
-# Build + unit-test the cc-spt-idle-translate crate (Rust) — the [message-idle-translation-binary]
-# for the claude-spt adapter. The crate's cargo tests ARE the binary's unit coverage (the 5-step
-# keystroke choreography, the trailing-\r submit, CR/LF neutralization, init/input/unknown-type
-# no-output, forward-compat unknown fields, single-field command shape). SKIP if cargo is absent so a
-# host without the Rust toolchain announces it rather than silently passing (no silent caps).
+# The idle-translation filter is now the `translate` subcommand of the CONSOLIDATED claude-spt crate
+# (D3 fold, ADR-0006 — spt-core v0.16.0 gave [message-idle-translation-binary] a `command` field, so
+# the standalone cc-spt-idle-translate crate is retired). It is built + unit-tested by ci/digest/build.sh
+# (the canonical build of the one binary; its cargo run covers the translate choreography/checkpoint
+# tests too). This gate is a thin shim so the run-gates "idle-translate" slot stays announced WITHOUT a
+# redundant second cargo build/test of the same crate. The daemon spawn-on-up/reap-on-down lifecycle +
+# atomic PTY apply stay covered by ci/idle-translate/translate-proof-int.sh (the int).
 # [impl->REQ-DIST-IDLE-TRANSLATE]
 set -u
-ROOT=$(CDPATH= cd "$(dirname "$0")/../.." && pwd)
-CRATE="$ROOT/tools/cc-spt-idle-translate/Cargo.toml"
-
-if ! command -v cargo >/dev/null 2>&1; then
-  echo "SKIP: cargo not on PATH (Rust toolchain needed to build/test cc-spt-idle-translate)"
-  exit 0
-fi
-
-cargo test  --quiet --manifest-path "$CRATE" || { echo "FAIL: cargo test"; exit 1; }
-cargo build --release --quiet --manifest-path "$CRATE" || { echo "FAIL: cargo build --release"; exit 1; }
-echo "ok  cc-spt-idle-translate: cargo test + release build"
+echo "ok  cc-spt-idle-translate: folded into the consolidated claude-spt crate as the translate subcommand (built/tested by ci/digest/build.sh)"

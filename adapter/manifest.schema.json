@@ -36,7 +36,7 @@
       ]
     },
     "digest": {
-      "description": "`[digest]` — the adapter-declared session-digest extractor seam.",
+      "description": "`[digest]` — the adapter-declared session-digest extractor seam (ADR-0019).",
       "anyOf": [
         {
           "$ref": "#/$defs/Digest"
@@ -50,6 +50,17 @@
       "anyOf": [
         {
           "$ref": "#/$defs/Inject"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "message-idle-translation-binary": {
+      "description": "`[message-idle-translation-binary]` — opt-in adapter idle-delivery\ntranslation binary (ADR-0022 / REQ-MSG-IDLE-TRANSLATION-BINARY). A TABLE\ncarrying a `path` scalar (modeled as a table, not a bare top-level scalar, so\nan author who writes it after another section cannot have it silently\nabsorbed — and so it stays N+1 extensible). The binary is a pure\nstdin→stdout JSON-lines filter: spt-core feeds it `init`/`event`/`input`\nlines and reads back `{key}`/`{delay_ms}`/`{text}` keystroke-commands, which\nspt-core applies to the broker-held PTY atomically (spt-core owns every PTY\nwrite). spt-core LIFECYCLE-manages it (spawn when the spt-hosted endpoint\ncomes up, terminate when it goes down). A NEW manifest primitive — NOT\ncollapsed into `[inject]`/`notif_command` — though it shares the poll-feed\nsubstrate. Absent ⇒ no translation binary (idle inbound SPOOLS, poll-fed;\nthe v0.11.0 raw-inject was removed as a delivery path, ADR-0022 amendment).",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IdleTranslationBinary"
         },
         {
           "type": "null"
@@ -140,6 +151,13 @@
             "string",
             "null"
           ]
+        },
+        "host_binaries": {
+          "description": "The harness executable basenames this `kind=\"harness\"` adapter hosts\nagents inside (e.g. `host_binaries = [\"claude\"]`). The bind-time\nadapter-resolution match-key (REQ-MANIFEST-8 / ADR-0021): a harness\nsession's parent pid → its exe basename selects the candidate adapters\nwhose `host_binaries` contains it (case-insensitive, `.exe`-stripped), so\n`listen`/`poll` resolve the owning adapter at bind with no mandatory\n`--adapter`. Additive + N-1-safe (omitted from serialization when empty,\nlike `shortcut_basename`); an empty list is harmless (the adapter is never\na bind-time candidate, only reachable via the explicit `--adapter`).",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
@@ -206,6 +224,17 @@
             }
           ]
         },
+        "resume": {
+          "description": "`[session.resume]` — the agent's OWN-session NATIVE resume (the `self_`\nsibling, mirroring `psyche_init`→`psyche_resume`). Selected over `self_`\nonly when a bringup carries `--resume <session>` AND this role is declared;\nabsent ⇒ fall back to `[session.self]` (full back-compat). Keys spt-core\nfills are the SAME catalog as `self`: `{id}`, `{session_id}` (the resumed\nid), `{session_name}`, `{adapter_name}` (REQ-SESSION-RESUME-TEMPLATE).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionRole"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "psyche_init": {
           "anyOf": [
             {
@@ -247,7 +276,7 @@
           ]
         },
         "notif": {
-          "description": "`[session.notif]` — the endpoint-native notification render\n(the `notif_command` seam, REQ-NOTIF-2): an OS toast, a\nGameRobot `alert-symbol`, anything the adapter can run. Spawned\ndetached when a notif surfaces at this endpoint, combinable with the\nagent-surface delivery. Keys spt-core fills: `{notif_id}`,\n`{notif_from}`, `{notif_subnet}`, `{notif_body}`.",
+          "description": "`[session.notif]` — the endpoint-native notification render\n(ADR-0007's `notif_command` seam, REQ-NOTIF-2): an OS toast, a\nGameRobot `alert-symbol`, anything the adapter can run. Spawned\ndetached when a notif surfaces at this endpoint, combinable with the\nagent-surface delivery. Keys spt-core fills: `{notif_id}`,\n`{notif_from}`, `{notif_subnet}`, `{notif_body}`.",
           "anyOf": [
             {
               "$ref": "#/$defs/SessionRole"
@@ -389,7 +418,7 @@
       ]
     },
     "Digest": {
-      "description": "`[digest]` — the session-digest extractor seam. Reverses M9's\n\"no manifest seam\" stance: the digest gets its **own** adapter-declared\nextractor, distinct from `[history]` (which stays opaque + single-session and\nfeeds the echo-commune verbatim). The extractor maps the harness's **native**\nlog → the published `{role, text, tool, ts}` digest-record contract\n([`spt_term::DigestRecord`]).\n\n**Imperative, not a DSL** (by design): real harness logs are nested\n(one line → many entries, mixed block lists, types to filter) — a flat\ndeclarative map cannot express them, and a map powerful enough is a reinvented\nlanguage. So the extractor is an opaque command spt-core never parses, exactly\nlike every other manifest template.\n\n**Source.** By default the extractor reads the **same files as `[history]`**\n(the `locate_template`; DRY). An adapter may override with `source` (the\nown-source escape hatch). `api digest-entry` push remains the always-available\nfallback for a log-less adapter (which declares no `[digest]` at all).\n\n**Presentation.** `window_turns`, `arg_truncation`, and `sprint_collapse` are\nadapter-declared **defaults** any consumer may override at pull/subscribe;\nspt-core ships fallback defaults ([`spt_term::DigestConfig`]) when absent. The\nfixed \"~3 turns\" is no longer an spt-core requirement.",
+      "description": "`[digest]` — the session-digest extractor seam (ADR-0019). Reverses M9's\n\"no manifest seam\" stance: the digest gets its **own** adapter-declared\nextractor, distinct from `[history]` (which stays opaque + single-session and\nfeeds the echo-commune verbatim). The extractor maps the harness's **native**\nlog → the published `{role, text, tool, ts}` digest-record contract\n([`spt_term::DigestRecord`]).\n\n**Imperative, not a DSL** (ADR-0019 §Decision): real harness logs are nested\n(one line → many entries, mixed block lists, types to filter) — a flat\ndeclarative map cannot express them, and a map powerful enough is a reinvented\nlanguage. So the extractor is an opaque command spt-core never parses, exactly\nlike every other manifest template.\n\n**Source.** By default the extractor reads the **same files as `[history]`**\n(the `locate_template`; DRY). An adapter may override with `source` (the\nown-source escape hatch). `api digest-entry` push remains the always-available\nfallback for a log-less adapter (which declares no `[digest]` at all).\n\n**Presentation.** `window_turns`, `arg_truncation`, and `sprint_collapse` are\nadapter-declared **defaults** any consumer may override at pull/subscribe;\nspt-core ships fallback defaults ([`spt_term::DigestConfig`]) when absent. The\nfixed \"~3 turns\" is no longer an spt-core requirement (ADR-0019).",
       "type": "object",
       "properties": {
         "extractor": {
@@ -460,6 +489,26 @@
         "http"
       ]
     },
+    "IdleTranslationBinary": {
+      "description": "`[message-idle-translation-binary]` — the opt-in idle-delivery translation\nbinary (ADR-0022). A table so the contract degrades gracefully: spt-core does\nNOT `deny_unknown_fields`, so a newer adapter declaring a future key (e.g. a\nspawn timeout) against an older spt-core parses fine — the unknown key is\nignored, never a hard manifest failure (a lifecycle-binary contract perri\nbuilds blind from docs must be forward-compatible). Known keys: `command`\n(preferred) and the deprecated `path`.",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The opaque command spt-core spawns and lifecycle-manages (ADR-0029):\nprogram + args, with `{adapter_dir}`/`{adapter_name}` substitution; the\nprogram token resolves against `install_dir` like `[digest].extractor` /\n`[session.psyche_init]`. The spawn + stdin/stdout JSON-lines protocol is\nunchanged — `command` only alters how the executable+args are located.\nFolds `claude-spt translate` into the one consolidated adapter binary.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "description": "**Deprecated** (ADR-0029): the bare binary PATH spt-core spawns. Keeps\nparsing (manifest forward/back-compat) but warns at registration steering\nto `command`. Resolved against `install_dir`; a single program token (no\nsubstitution, never re-tokenized). Exactly one of `{command, path}` —\nboth-set is refused at validation; neither = no translation binary.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
     "Identity": {
       "description": "`[identity]` — how the harness's session id is obtained.",
       "type": "object",
@@ -529,7 +578,7 @@
           ]
         },
         "signing_key": {
-          "description": "The adapter's Ed25519 **content-signing public key** (64 hex chars / 32\nbytes). spt-core verifies a pulled payload against this per-adapter key\nbefore applying it (REQ-UPD-5 adapter content signing) — the\nadapter author signs their own releases; spt-core's release key stays\nscoped to spt-core. **Required for `file_pull`** (there are bytes to\nverify); **optional for `gh_release`** (absent ⇒ HTTPS+GitHub\nfirst-acquisition trust, the same trust `spt adapter add --release` and\nthe installer first-fetch place; present ⇒ the fetched `.spt` is verified\nfail-closed against this key, REQ-UPD-9); not applicable to `delegated`\n(opaque updater).",
+          "description": "The adapter's Ed25519 **content-signing public key** (64 hex chars / 32\nbytes). spt-core verifies a pulled payload against this per-adapter key\nbefore applying it (REQ-UPD-5 adapter content signing, ADR-0004 §D) — the\nadapter author signs their own releases; spt-core's release key stays\nscoped to spt-core. **Required for `file_pull`** (there are bytes to\nverify); **optional for `gh_release`** (absent ⇒ HTTPS+GitHub\nfirst-acquisition trust, the same trust `spt adapter add --release` and\nthe installer first-fetch place; present ⇒ the fetched `.spt` is verified\nfail-closed against this key, REQ-UPD-9); not applicable to `delegated`\n(opaque updater).",
           "type": [
             "string",
             "null"
@@ -551,6 +600,28 @@
             "string",
             "null"
           ]
+        },
+        "message": {
+          "description": "Optional plain (multi-line) human notice surfaced to stdout —\nmarkdown-rendered (the helpfmt prose path) — **only when `spt adapter\nupdate` actually APPLIES an update** (version changed), never on a\nno-op. Read from the newly-installed manifest; avenue-agnostic\n(`gh_release` / `delegated` / `file_pull`). No `{key}` substitution.\nUse: an adapter telling the operator a post-update action (e.g. \"run\n`/reload-plugins` in any ongoing sessions\").",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "post": {
+          "description": "`[update.post]` — an **avenue-agnostic** delegated post-step (ADR-0029) run\nAFTER the primary avenue resolves, in the same `spt adapter update`.\nAbsent ⇒ today's behavior exactly (an applied update fires `message`).",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UpdatePost"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transport": {
+          "description": "`gh_release` avenue: the fetch **transport** — `https` (direct reqwest,\npublic), `gh` (shell the pre-authorized `gh` CLI, the private-repo path),\nor `auto` (default: prefer `gh` when installed+authed, else HTTPS). `gh`\nhonors OAuth + `GH_TOKEN`, so spt-core custodies no token. Additive over\nthe existing fetch path; not applicable to `delegated` / `file_pull`.\nAbsent ⇒ `auto` (N-1-safe).",
+          "$ref": "#/$defs/Transport"
         }
       },
       "required": [
@@ -573,6 +644,44 @@
           "description": "spt-core ships updates from the adapter's own **GitHub releases**\n(REQ-UPD-9): compare the repo's latest release version against the\ninstalled adapter version and, when newer, fetch the release `.spt`\narchive (the REQ-INSTALL-9 `--release` primitive), verify it against an\noptional `signing_key` (else HTTPS+GitHub trust), and re-register. No\nsigning tooling or plugin coupling required of the adapter author.",
           "type": "string",
           "const": "gh_release"
+        }
+      ]
+    },
+    "UpdatePost": {
+      "description": "`[update.post]` — an avenue-agnostic delegated post-step (ADR-0029) run after\nthe primary `[update]` avenue (gh_release / file_pull / delegated) resolves,\nin the same `spt adapter update`. Runs **unconditionally** — even when the\nadapter pull was a version no-op — because the post-step does its own\nidempotent check (e.g. `claude plugin update`). spt-core feeds it the update\noutcome as one stdin JSON line (`adapter_applied`, `adapter_name`,\n`profile_name`, `version`, `previous_version`, `adapter_dir`; additive keys)\nand reads its stdout to arbitrate the post-update notice (custom text\nsupersedes `[update].message`; the reserved sentinel fires the static\n`[update].message`; empty = no notice). exit code is orthogonal (0 ok /\nnonzero failed). Failure-isolated: a committed `gh_release` pull is never\nrolled back if the post-step fails. (A table so unknown future keys degrade\ngracefully — no `deny_unknown_fields`.)",
+      "type": "object",
+      "properties": {
+        "command": {
+          "description": "The command spt-core runs after pull+re-register. Opaque; `{adapter_dir}`/\n`{adapter_name}` substitution; the program token resolves against the\ninstall dir (REQ-INSTALL-11). Validated non-empty.",
+          "type": "string"
+        },
+        "self_verifies": {
+          "description": "The post-step attests it verifies the content it installs (mirrors\n`[update].self_verifies` for the delegated avenue — e.g. `claude plugin\nupdate` checks its own signatures). Attestation metadata; the post-step\nruns unconditionally regardless (the trust model around delegated content\nthe post-step installs, not an execution gate).",
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "required": [
+        "command"
+      ]
+    },
+    "Transport": {
+      "description": "Fetch transport for the `gh_release` avenue (and `spt adapter add --release`):\nhow spt-core retrieves the release asset bytes + the latest-release version.\n(REQ-ADAPTER-GH-TRANSPORT)",
+      "oneOf": [
+        {
+          "description": "Direct HTTPS via reqwest — the public-repo path (the original behavior).",
+          "type": "string",
+          "const": "https"
+        },
+        {
+          "description": "Shell the pre-authorized `gh` CLI (`gh release download` for the asset,\n`gh api` for the version) — the private-repo path. `gh` honors OAuth +\n`GH_TOKEN`, so spt-core never custodies a token.",
+          "type": "string",
+          "const": "gh"
+        },
+        {
+          "description": "Prefer `gh` when it is installed and authenticated, else fall back to\nHTTPS. The default.",
+          "type": "string",
+          "const": "auto"
         }
       ]
     },

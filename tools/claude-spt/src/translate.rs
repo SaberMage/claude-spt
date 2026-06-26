@@ -1,5 +1,6 @@
-//! cc-spt-idle-translate — the `[message-idle-translation-binary]` for the claude-spt adapter
-//! (spt-core harness-contract v0.13.0+).
+//! `claude-spt translate` — the `[message-idle-translation-binary]` for the claude-spt adapter
+//! (spt-core harness-contract v0.13.0+; folded from the standalone cc-spt-idle-translate crate into
+//! this subcommand via the v0.16.0 `[message-idle-translation-binary].command` seam — ADR-0006/D3).
 //!
 //! A lifecycle-managed `stdin -> stdout` JSON-lines filter. spt-core spawns it when the spt-hosted
 //! endpoint comes online and reaps it on shutdown; it turns each inbound `<EVENT>` envelope into a
@@ -72,6 +73,7 @@
 
 use serde_json::{json, Value};
 use std::io::{self, BufRead, Write};
+use std::process::ExitCode;
 
 /// Inter-command pause spt-core honors between emitted keystroke/text commands (operator spec).
 const DELAY_MS: u64 = 50;
@@ -239,7 +241,10 @@ fn commands_for_line(v: &Value) -> Vec<Value> {
     }
 }
 
-fn main() {
+/// `claude-spt translate` entry — the [message-idle-translation-binary] stdin->stdout JSON-lines
+/// filter (was the cc-spt-idle-translate crate; folded in via the v0.16.0 `command` seam, ADR-0006/D3).
+/// Reads no argv: the protocol is entirely stdin/stdout, unchanged from the standalone binary.
+pub fn run() -> ExitCode {
     let stdin = io::stdin();
     let stdout = io::stdout();
     let mut out = stdout.lock();
@@ -257,17 +262,18 @@ fn main() {
             Ok(v) => v,
             Err(e) => {
                 // Skip malformed lines — never fatal. stderr lands in spt-core's log, not the PTY.
-                eprintln!("cc-spt-idle-translate: skipping unparseable line: {e}");
+                eprintln!("claude-spt translate: skipping unparseable line: {e}");
                 continue;
             }
         };
         for cmd in commands_for_line(&v) {
             // One compact JSON object per line; flush per command so spt-core applies promptly.
             if writeln!(out, "{cmd}").is_err() || out.flush().is_err() {
-                return; // stdout closed: endpoint gone.
+                return ExitCode::SUCCESS; // stdout closed: endpoint gone.
             }
         }
     }
+    ExitCode::SUCCESS
 }
 
 #[cfg(test)]

@@ -147,7 +147,7 @@ This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS
 - **Fat layout (REQ-DIST-ADAPTER-PEROS).** Recognized triples = **`x86_64-pc-windows-msvc`** (win
   `.exe`) + **`x86_64-unknown-linux-gnu`** (linux ELF) — the ONLY two spt-core classifies in a fat
   archive. On install it places the shared root + **flattens this node's `<triple>/*` into the install
-  dir**, so the bare-name command tokens (`claude-spt`, `cc-spt-idle-translate`) still resolve at `<install_dir>/`
+  dir**, so the bare-name command token (`claude-spt` — its digest/psyche/post-update/translate subcommands) still resolves at `<install_dir>/`
   (REQ-INSTALL-11). **Footgun:** an unrecognized top-level dir is silently treated as a shared-root
   entry and lands flat — the packer guards this (refuses any stray top-level dir); for a platform
   beyond the two triples, ship a *separate* single-triple asset via `--asset`, never a third dir here.
@@ -166,11 +166,10 @@ This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS
     #   e.g. ~/.sptc-zig/zig-x86_64-windows-0.14.1/zig.exe  →  export PATH="$HOME/.sptc-zig/...:$PATH"
     rustup target add x86_64-unknown-linux-gnu
     cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/claude-spt/Cargo.toml
-    cargo zigbuild --release --target x86_64-unknown-linux-gnu --manifest-path tools/cc-spt-idle-translate/Cargo.toml
     ```
-    → `tools/*/target/x86_64-unknown-linux-gnu/release/*` carrying real `ELF x86-64 GNU/Linux`
-    binaries (verified). Then `sh ci/publish/package-adapter.sh --apply` packs BOTH into one
-    `dist/adapter.spt`.
+    → `tools/claude-spt/target/x86_64-unknown-linux-gnu/release/claude-spt` carrying a real
+    `ELF x86-64 GNU/Linux` binary (verified). Then `sh ci/publish/package-adapter.sh --apply` packs the
+    win + linux binaries into one `dist/adapter.spt` (ONE tool binary per triple since the D3 fold).
 - **Publish:** attach the single `dist/adapter.spt` to the GitHub release on `SaberMage/claude-spt`.
   End users `spt adapter add --release SaberMage/claude-spt` (default asset `adapter.spt`, or
   `--tag <ver>` to pin) — the fat archive auto-resolves the host's binaries, no `--asset` needed. The
@@ -186,12 +185,13 @@ This RETIRED the F-014 per-OS stopgap — there is no longer a default-vs-per-OS
   - **`/sptc:setup` coupling.** The fat default is host-agnostic, so setup needs no os-detection /
     `--asset` — a bare `adapter add --release` suffices. (The current setup body still detects os/arch
     + passes `--asset`; harmless, simplifying it to the bare default is a follow-on.)
-- **Binaries (install-dir resolution — REQ-INSTALL-11).** A `--release`/`--github` acquisition extracts
-  the `.spt` archive's `manifest.toml` + `strings/` **+ both tool binaries** into the adapter install
-  dir (`…/adapters/_github/<safe>/`). The command templates use **bare names** (`claude-spt`,
-  `cc-spt-idle-translate`), which spt-core resolves **from that install dir** (v0.8.0 Feature B /
-  REQ-INSTALL-11) — **no PATH placement needed** (dogfood-proven on v0.8.1 for both binaries; F-006
-  RESOLVED, interim retired). The pack therefore MUST carry both binaries (the resolution source). Note:
+- **Binary (install-dir resolution — REQ-INSTALL-11).** A `--release`/`--github` acquisition extracts
+  the `.spt` archive's `manifest.toml` + `strings/` **+ the tool binary** into the adapter install dir
+  (`…/adapters/_github/<safe>/`). The command templates reference `claude-spt` (digest/psyche/post-update
+  via the command strings; translate via `{adapter_dir}/claude-spt translate`), which spt-core resolves
+  **from that install dir** (v0.8.0 Feature B / REQ-INSTALL-11) — **no PATH placement needed**
+  (dogfood-proven on v0.8.1; F-006 RESOLVED, interim retired). The pack MUST carry the binary (the
+  resolution source). Note:
   a plain local-dev `spt adapter add <manifest.toml>` copies manifest + strings only (no binaries in the
   install dir), so local-dev runtime still relies on the built binary being on PATH (e.g. the CI ints
   prepend `target/release`); the install-dir path is the end-user `--release` story.

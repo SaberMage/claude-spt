@@ -315,23 +315,21 @@ idle = ["hook"]
 # spt-hosted complement to the [inject] hook channel above: [inject] handles BUSY/mid-turn delivery
 # (UPS additionalContext); this handles IDLE delivery into a session sitting at its input box.
 #
-# `path` = the binary's bare name (resolved from the adapter install dir like the consolidated
-# claude-spt binary; it packs into adapter.spt). The binary (tools/cc-spt-idle-translate, Rust) emits
-# the operator-specified choreography per message — ctrl+s (stash draft) · 50ms · <envelope>\r
-# (submit line) · {"commit":true} (terminate sequence) — so an inbound message never clobbers a
-# half-typed draft (CC AUTO-RESTORES the stashed draft after submit, so no trailing restore keystroke).
-# TWO distinct signals (doyle-confirmed from broker.rs): (1) the trailing \r submits the PTY line —
-# spt-core applies a {"text"} command VERBATIM (no control-char strip; broker.rs:1066/:1016-1017),
-# equivalent to {"key":"enter"}; that verbatim-apply is also why the binary neutralizes the envelope's
-# internal CR/LF. (2) {"commit":true} is the MANDATORY inject-sequence terminator: run_inject_worker
-# (broker.rs:1075-1090) ends a sequence ONLY on {commit}; without it the broker FAULTs at the 5s
-# INJECT_COMMIT_DEADLINE on every delivery. \r submits the line; {commit} releases the InjectFloor.
-# RUNTIME dogfood (the spawn-on-up/reap-on-down lifecycle + atomic PTY apply) needs the v0.13.0
-# daemon; the binary + manifest declaration are buildable against the published contract now (docs
-# lead the binary — still v0.12.x on spt-releases). Satisfies REQ-DIST-IDLE-TRANSLATE (the scanned
-# impl evidence is the binary tools/cc-spt-idle-translate/src/main.rs; .toml is unscanned).
+# `command` = the program+args spt-core spawns (spt-core v0.16.0 seam; `path` deprecated, exactly one
+# of {path,command}). `{adapter_dir}` substitutes the install dir (survives updates), so the filter is
+# now the `translate` subcommand of the ONE consolidated claude-spt binary — D3 fold, ADR-0006 (was
+# the standalone cc-spt-idle-translate; protocol unchanged). The subcommand emits the operator-specified
+# choreography per message — ctrl+s (stash draft) · 50ms · <envelope> · 50ms · {"key":"enter"} (submit)
+# · {"commit":true} (terminate sequence) — so an inbound message never clobbers a half-typed draft (CC
+# AUTO-RESTORES the stashed draft after submit, so no trailing restore keystroke). TWO distinct signals
+# (doyle-confirmed from broker.rs): (1) the discrete {"key":"enter"} submits the PTY line (a verbatim \r
+# byte does NOT submit a CC message — corrected 2026-06-23); the binary still neutralizes the envelope's
+# internal CR/LF since spt-core applies {"text"} VERBATIM (broker.rs:1016-1017). (2) {"commit":true} is
+# the MANDATORY inject-sequence terminator: run_inject_worker (broker.rs:1075-1090) ends a sequence ONLY
+# on {commit}; without it the broker FAULTs at the 5s INJECT_COMMIT_DEADLINE. Satisfies
+# REQ-DIST-IDLE-TRANSLATE (scanned impl evidence = tools/claude-spt/src/translate.rs; .toml is unscanned).
 [message-idle-translation-binary]
-path = "cc-spt-idle-translate"
+command = "{adapter_dir}/claude-spt translate"
 
 # ── [digest] ───────────────────────────────────────────────────────────────────────────────
 # Session-digest extractor seam. CC's transcript is JSONL (one event per line); the

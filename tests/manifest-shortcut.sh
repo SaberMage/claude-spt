@@ -91,9 +91,13 @@ case "$resume" in
 esac
 
 # [unit->REQ-DIST-IDLE-TRANSLATE]
-# [message-idle-translation-binary] declares the idle-delivery filter by its bare binary name; the
-# value MUST match the packed binary (tools/cc-spt-idle-translate) so spt-core can resolve+spawn it.
-idle=$(grep -E '^[[:space:]]*path[[:space:]]*=[[:space:]]*"cc-spt-idle-translate"' "$MANIFEST")
-if [ -n "$idle" ]; then echo "ok   [message-idle-translation-binary] path = \"cc-spt-idle-translate\""; else echo "FAIL [message-idle-translation-binary] path != \"cc-spt-idle-translate\""; fail=1; fi
+# [message-idle-translation-binary] declares the idle-delivery filter via `command` (spt-core v0.16.0
+# seam; `path` deprecated) = the `translate` subcommand of the consolidated binary, resolved from the
+# install dir via {adapter_dir} (D3 fold). MUST be `command` (not the deprecated `path`) and name the
+# claude-spt translate subcommand.
+idle=$(grep -E '^[[:space:]]*command[[:space:]]*=[[:space:]]*"\{adapter_dir\}/claude-spt translate"' "$MANIFEST")
+if [ -n "$idle" ]; then echo "ok   [message-idle-translation-binary] command = \"{adapter_dir}/claude-spt translate\""; else echo "FAIL [message-idle-translation-binary] command != \"{adapter_dir}/claude-spt translate\""; fail=1; fi
+# Regression guard: the deprecated bare `path = "cc-spt-idle-translate"` must be GONE (exactly one of path/command).
+if grep -Eq '^[[:space:]]*path[[:space:]]*=[[:space:]]*"cc-spt-idle-translate"' "$MANIFEST"; then echo "FAIL deprecated [message-idle-translation-binary].path still present (both-set is refused)"; fail=1; else echo "ok   no deprecated idle-translate path (command-only)"; fi
 
 [ "$fail" -eq 0 ] && { echo "MANIFEST-SHORTCUT OK"; exit 0; } || { echo "MANIFEST-SHORTCUT FAIL"; exit 1; }

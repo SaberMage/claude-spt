@@ -3,19 +3,22 @@
 //! ONE binary, three subcommands (was three crates → fewer artifacts per triple in adapter.spt):
 //!   claude-spt digest      — the [digest] extractor (was claude-spt-digest)
 //!   claude-spt psyche      — the [session.psyche_init] Psyche runner (was claude-spt-psyche)
-//!   claude-spt post-update — reconcile the cplugs plugin after `spt adapter update` (NEW, ADR-0006)
+//!   claude-spt post-update — reconcile the cplugs plugin after `spt adapter update` (ADR-0006)
+//!   claude-spt translate   — the [message-idle-translation-binary] idle filter (was cc-spt-idle-translate)
 //!
-//! Dispatch is a bare `argv[1]` match (no clap — keep the dependency-light ethos both predecessor
+//! Dispatch is a bare `argv[1]` match (no clap — keep the dependency-light ethos the predecessor
 //! crates were built on). Each subcommand owns its remaining argv via `std::env::args().skip(2)`
-//! (skip the binary name + the subcommand token) and its own hand-written flag parser.
+//! (skip the binary name + the subcommand token) and its own hand-written flag parser. `translate`
+//! reads no argv (pure stdin/stdout protocol).
 //!
-//! `cc-spt-idle-translate` stays a SEPARATE binary this milestone — it folds into a `claude-spt
-//! translate` subcommand only once doyle ask #3 lets `[message-idle-translation-binary]` take a
-//! command/subcommand rather than a bare `path` (D3). [impl->REQ-DIST-BINARY-CONSOLIDATE]
+//! `translate` folded in at the v0.8.0 cut once spt-core v0.16.0 gave `[message-idle-translation-
+//! binary]` a `command` field (D3) — so claude-spt is now the SINGLE tool binary (one artifact per
+//! triple in adapter.spt). [impl->REQ-DIST-BINARY-CONSOLIDATE] [impl->REQ-DIST-IDLE-TRANSLATE]
 
 mod digest;
 mod post_update;
 mod psyche;
+mod translate;
 
 use std::process::ExitCode;
 
@@ -26,6 +29,7 @@ enum Sub {
     Digest,
     Psyche,
     PostUpdate,
+    Translate,
     Help,
     Unknown(String),
 }
@@ -35,6 +39,7 @@ fn classify(sub: Option<&str>) -> Sub {
         Some("digest") => Sub::Digest,
         Some("psyche") => Sub::Psyche,
         Some("post-update") => Sub::PostUpdate,
+        Some("translate") => Sub::Translate,
         None | Some("-h") | Some("--help") => Sub::Help,
         Some(other) => Sub::Unknown(other.to_string()),
     }
@@ -47,7 +52,8 @@ fn usage() {
          subcommands:\n\
          \x20 digest       map a Claude Code JSONL transcript to digest NDJSON ([digest] extractor)\n\
          \x20 psyche       run the LiveAgent Psyche companion ([session.psyche_init] runner)\n\
-         \x20 post-update  reconcile the cplugs plugin after `spt adapter update`"
+         \x20 post-update  reconcile the cplugs plugin after `spt adapter update`\n\
+         \x20 translate    idle-message translation filter (stdin->stdout JSON lines)"
     );
 }
 
@@ -57,6 +63,7 @@ fn main() -> ExitCode {
         Sub::Digest => digest::run(),
         Sub::Psyche => psyche::run(),
         Sub::PostUpdate => post_update::run(),
+        Sub::Translate => translate::run(),
         Sub::Help => {
             usage();
             ExitCode::SUCCESS
@@ -79,6 +86,7 @@ mod tests {
         assert_eq!(classify(Some("digest")), Sub::Digest);
         assert_eq!(classify(Some("psyche")), Sub::Psyche);
         assert_eq!(classify(Some("post-update")), Sub::PostUpdate);
+        assert_eq!(classify(Some("translate")), Sub::Translate);
     }
 
     #[test]

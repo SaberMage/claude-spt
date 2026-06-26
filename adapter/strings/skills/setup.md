@@ -32,10 +32,10 @@ profiles/strings/hints/`[digest]`, so the `/sptc:*` surface is inert until activ
 3. **Verify + set active.** Re-run `spt adapter list` — `claude-spt` must read **active** (no
    `deregistered`). Then `spt adapter use claude-spt` so bare resolution lands here for the `claude`
    host (the legacy-parity bare flow — `/sptc:live`/`/sptc:ready` need no `--adapter`). The
-   `claude-spt` tool (its `digest` / `psyche` / `post-update` subcommands) and `cc-spt-idle-translate`
-   are invoked by bare name and resolve **from the adapter install dir** (the `from …` path in
-   `spt adapter list`), where activation extracted them — no PATH copy needed. If either fails to
-   start, confirm both are present in that dir (a packaging defect, not a PATH problem).
+   ONE `claude-spt` tool binary (its `digest` / `psyche` / `post-update` / `translate` subcommands) is
+   resolved **from the adapter install dir** (the `from …` path in `spt adapter list`), where
+   activation extracted it — no PATH copy needed. If it fails to start, confirm it is present in that
+   dir (a packaging defect, not a PATH problem).
 
 4. **ccs wiring (optional).** Detect `~/.ccs`:
    - Present → the shipped `claude-spt:ccs` profile leaf-replaces the session command with `ccs` (a
