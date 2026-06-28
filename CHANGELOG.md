@@ -8,6 +8,25 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.9.0] - 2026-06-28
+
+> Requires spt-core **v0.16.0 or newer** (unchanged from 0.8.0). This release is an internal
+> re-plumbing of how Claude Code hooks run — there is **no change to what you do or see**. After
+> updating, run `/reload-plugins` (or restart Claude Code) once, as the update reminds you.
+
+### Changed
+- **Hook behaviour now updates with `spt adapter update` — no plugin reinstall needed.** Previously,
+  any change to how a hook works (message delivery, the live-agent checkpoint, the session briefing)
+  required a separate Claude Code plugin update. Now that logic lives in the `claude-spt` program that
+  `spt adapter update` already refreshes, so a single update keeps hooks current. The plugin's hook
+  wiring is now fixed and rarely needs a marketplace bump again.
+
+### Fixed
+- Nothing user-visible. This is a behaviour-preserving refactor: messaging, the `/sptc:*` skills, the
+  live-agent checkpoint (`/sptc:commune --checkpoint`), and the session briefing all work exactly as
+  before — they are just driven by the consolidated `claude-spt` program instead of separate hook
+  scripts shipped in the plugin.
+
 ## [0.8.0] - 2026-06-26
 
 > Requires spt-core **v0.16.0 or newer** (was v0.15.0). This release unifies the project naming,

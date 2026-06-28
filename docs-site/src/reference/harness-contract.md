@@ -1,5 +1,5 @@
 <!-- Reference: the adapter's hook -> `spt api` mapping. Generated-from-truth target later; for now
-     hand-authored against plugin/sptc/hooks/. Keep in lockstep with hooks.json. [doc->REQ-DOCS-SITE] -->
+     hand-authored against tools/claude-spt/src/hook.rs. Keep in lockstep with hooks.json + hook.rs. [doc->REQ-DOCS-SITE] -->
 # Harness contract
 
 `claude-spt` is glue: it maps Claude Code **hook events** to the `spt` binary's harness-contract
@@ -12,20 +12,29 @@ the **adapter's** wiring: which Claude Code hook drives which `spt api` verb.
 
 ## Hook → `spt api` mapping
 
-| Claude Code hook   | sptc wrapper                | `spt api` verb           | Purpose                                              |
-| ------------------ | --------------------------- | ------------------------ | --------------------------------------------------- |
-| `SessionStart`     | `hooks/session-start.sh`    | `seed` / `bind` / `boundary` | Bootstrap spt-core, register the perch (`bind` spt-hosted · `seed` harness-hosted · `boundary` on clear/compact), then relay an agent-facing brief (see below); non-blocking — never `listen`. |
-| `UserPromptSubmit` | `hooks/user-prompt-submit.sh` | `poll`                 | Drain delivered messages and surface them to the prompt as `additionalContext`. |
-| `Stop`             | `hooks/stop.sh`             | `state` (idle)           | Mark the agent idle when a turn ends.               |
-| `SessionEnd`       | `hooks/session-end.sh`      | `session-end`            | Tear down session state cleanly.                    |
-| `SubagentStart`    | `hooks/subagent-start.sh`   | `worker-*`               | Track a spawned subagent.                           |
-| `SubagentStop`     | `hooks/subagent-stop.sh`    | `worker-*`               | Track subagent completion.                          |
+The plugin ships a **static** `hooks.json` that routes every Claude Code hook event through one thin
+wrapper, `hooks/dispatch.sh <EventName>`, which resolves the `claude-spt` program (from the adapter's
+`[strings].hook_cmd = "{adapter_dir}/claude-spt hook"`, looked up once per session) and runs
+`claude-spt hook <EventName>` with the Claude Code hook payload on stdin. The hook **logic lives in
+the program** — so it updates with `spt adapter update`, and the plugin's hook wiring stays fixed.
 
-## Two invariants the wrappers hold
+| Claude Code hook   | handler                       | `spt api` verb (representative) | Purpose                                              |
+| ------------------ | ----------------------------- | ------------------------------- | --------------------------------------------------- |
+| `SessionStart`     | `claude-spt hook SessionStart`   | `seed` / `bind` / `boundary` | Bootstrap spt-core (via dispatch), register the perch (`bind` spt-hosted · `seed` harness-hosted · `boundary` on clear/compact), then relay an agent-facing brief (see below); non-blocking — never `listen`. |
+| `UserPromptSubmit` | `claude-spt hook UserPromptSubmit` | `state busy` + `poll`      | Mark the turn busy, drain delivered messages (incl. deferred) to the prompt as `additionalContext`, and inject a `/sptc:…` skill body when present. |
+| `PreToolUse`       | `claude-spt hook PreToolUse`     | `state busy` + `poll`        | Mid-turn delivery: drain messages deferred while busy so a live agent receives them *while working*. |
+| `Stop`             | `claude-spt hook Stop`           | `state` (idle)               | Mark the agent idle when a turn ends.               |
+| `SessionEnd`       | `claude-spt hook SessionEnd`     | `session-end`                | Tear down session state cleanly.                    |
+| `SubagentStart`    | `claude-spt hook SubagentStart`  | `worker-*`                   | Track a spawned subagent.                           |
+| `SubagentStop`     | `claude-spt hook SubagentStop`   | `worker-*`                   | Track subagent completion.                          |
+| `PostToolUse` (Write) | `claude-spt hook PostToolUse` | `state idle` + self-send     | Detect a `!!checkpoint!!` commune Write and self-send the agent-driven checkpoint signal (spt-hosted live agents). |
+
+## Two invariants the handler holds
 
 - **Payload comes from stdin, never from a `/`-leading argument.** On Windows under Git Bash /
-  MSYS, any argument beginning with `/` is silently rewritten to a Windows path. The wrappers read
-  the Claude Code hook payload as JSON from **stdin**, so a `/sptc:…` token is never corrupted.
+  MSYS, any argument beginning with `/` is silently rewritten to a Windows path. The dispatch wrapper
+  passes the payload straight through on **stdin** (its only argument is the event name) and the
+  program reads the Claude Code hook payload as JSON from stdin, so a `/sptc:…` token is never corrupted.
 - **Messages are self-delimiting `<EVENT>` envelopes.** `poll` output is rendered by splitting on
   the canonical `<EVENT type="msg" from="…">body</EVENT>` envelope, so a multi-message drain parses
   cleanly and each message keeps its sender for reply-correlation.

@@ -62,7 +62,15 @@ kind = "harness"
 # per triple. Also F-021 reachability (PreToolUse mid-turn poll + honest busy/idle turn-state) + U4
 # reactive-skill thinning (commune/signoff prose → the live-ops brief). REQUIRES spt-core v0.16.0 (the
 # update.post + idle command + {adapter_dir} seams), so the floor BUMPS to 0.16.0 below.
-version = "0.8.0"
+# 0.9.0 (2026-06-28): D1 — HOOK LOGIC FOLDED INTO THE BINARY. All eight CC hook wrappers + their shared
+# _common.sh moved out of the cplugs plugin shell into `claude-spt hook <event>` (the binary's new
+# subcommand), so hook behaviour now rides `spt adapter update` instead of forcing a cplugs republish.
+# The plugin ships only a STATIC-FOREVER hooks.json + a thin dispatch.sh that resolves the binary via
+# the lazily-substituted [strings].hook_cmd = "{adapter_dir}/claude-spt hook" (ADR-0006 ask #1 →
+# resolve-not-execute; both the {adapter_dir} subst + lazy [strings] read-time subst are spt-core
+# v0.16.0 primitives, already on the current floor). Behaviour-preserving refactor — same `api …`
+# command lines, same per-event additionalContext contract. min_spt_core stays 0.16.0 (no new seam).
+version = "0.9.0"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
@@ -141,10 +149,13 @@ command = "{adapter_dir}/claude-spt post-update"
 self_verifies = false
 
 # ── [hooks.<event>] ──────────────────────────────────────────────────────────────────────────
-# CC hook event → the opaque `api …` command it fires. These mirror the hand-written plugin
-# hooks.json (plugin/sptc/hooks/hooks.json) one-for-one; the plugin shells `spt api`, this table
-# is the registry-side declaration (ADR-0002, F-001 resolution). `reads` = the CC hook-stdin
+# CC hook event → the opaque `api …` command it fires (the representative action; some events do
+# more — e.g. UserPromptSubmit also marks busy + injects skills, PostToolUse self-sends a checkpoint).
+# This table is the registry-side declaration (ADR-0002, F-001 resolution). `reads` = the CC hook-stdin
 # fields we map; `can_inject` = whether the event can surface additionalContext back to the agent.
+# D1 (v0.9.0): the actual handler is now `claude-spt hook <event>` (the binary), not a per-event plugin
+# .sh — the plugin's static-forever hooks.json routes every event through dispatch.sh → the binary
+# (resolved via [strings].hook_cmd above). These declarations stay one-for-one with that wiring.
 
 [hooks.SessionStart]
 # Seed the endpoint — ADAPTER-AGNOSTIC since spt-core v0.9.0 (PREP-4): NO --adapter. The owning
@@ -431,6 +442,15 @@ adapter_label = "Claude Code (spt, ccs)"
 # the M12 file-backed-strings parity slice. A profile may leaf-replace any key here.
 [strings]
 adapter_label = "Claude Code (spt)"
+# hook_cmd (D1, REQ-DIST-HOOK-BINARY): the resolve-not-execute primitive that lets the plugin's
+# hooks.json + dispatch.sh go static-forever. `{adapter_dir}` is lazily substituted at
+# `spt adapter get-string` read time (spt-core v0.16.0) to the absolute install dir, so the value
+# resolves to `<install_dir>/claude-spt hook` — the consolidated binary's hook subcommand, which
+# survives adapter updates. dispatch.sh get-strings this ONCE per session (caches it in
+# $SPTC_HOOK_BIN), then runs `<resolved> <CCEventName> --host-pid <pid>` per hook, piping the CC hook
+# payload on stdin. Session-scoped keys are NOT available here (get-string is adapter-static) — the
+# binary reads session_id/prompt/tool_input from stdin. [impl->REQ-DIST-HOOK-BINARY]
+hook_cmd = "{adapter_dir}/claude-spt hook"
 
 [strings.notice]
 not_installed = "spt-core not found on PATH — run /sptc:setup to install it."

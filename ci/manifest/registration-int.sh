@@ -65,14 +65,22 @@ case "$lbody" in "# /sptc:live"*) ok "file-backed string resolves: skills.live -
 sbody=$(spt adapter get-string claude-spt skills.subnet 2>&1)
 case "$sbody" in "# /sptc:subnet"*) ok "file-backed string resolves: skills.subnet -> body" ;; *) bad "skills.subnet not resolved to file body: '$(printf %.40s "$sbody")'" ;; esac
 
-# 4c. UPS skill-injection end-to-end: the hook helper resolves a /sptc:<skill> prompt to the wrapped
-#     operative body via get-string (REQ-UPS-INJECTION impl, on the registered adapter).
-( . "$ROOT/plugin/sptc/hooks/_common.sh"
-  inj=$(sptc_inject_skill "$(sptc_skill_key '/sptc:ready listen up')")
+# 4c. UPS skill-injection end-to-end via the BINARY (D1): `claude-spt hook UserPromptSubmit` resolves a
+#     /sptc:<skill> prompt to the wrapped operative body via get-string on the registered adapter. No
+#     perch (whoami empty) → only skill-injection emits, no drain. (REQ-UPS-INJECTION impl now in the
+#     binary.) Prefer the release build; the dev `adapter add` above registered the manifest, so
+#     get-string resolves the file-backed skill body. [int->REQ-DIST-HOOK-BINARY]
+HOOKBIN="$ROOT/tools/claude-spt/target/release/claude-spt.exe"
+[ -x "$HOOKBIN" ] || HOOKBIN="$ROOT/tools/claude-spt/target/release/claude-spt"
+if [ -x "$HOOKBIN" ]; then
+  inj=$(printf '%s' '{"session_id":"reg-int-nosession","prompt":"/sptc:ready listen up"}' | "$HOOKBIN" hook UserPromptSubmit --host-pid $$ 2>/dev/null)
   case "$inj" in
-    '<sptc_skill name="ready">'*'# /sptc:ready'*'</sptc_skill>'*) exit 0 ;;
-    *) printf 'inject got: %.60s\n' "$inj"; exit 1 ;;
-  esac ) && ok "UPS skill-injection: /sptc:ready -> wrapped body" || bad "skill-injection did not emit wrapped body"
+    '<sptc_skill name="ready">'*'# /sptc:ready'*'</sptc_skill>'*) ok "UPS skill-injection (binary): /sptc:ready -> wrapped body" ;;
+    *) bad "skill-injection did not emit wrapped body: $(printf %.60s "$inj")" ;;
+  esac
+else
+  echo "SKIP: claude-spt binary not built (cargo build --release) — skill-injection int needs it"
+fi
 
 # 4d. The spt-hosted bringup blocks ([session.self] + [env.SPT_ENDPOINT_ID]) cross-field-validate:
 #     `adapter add` (step 1) is manifest-first ("an invalid manifest registers nothing"), so the

@@ -1,28 +1,28 @@
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/session-start.sh\"", "shell": "bash" } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/dispatch.sh\" SessionStart", "shell": "bash" } ] }
     ],
     "UserPromptSubmit": [
-      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/user-prompt-submit.sh\"", "shell": "bash" } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/dispatch.sh\" UserPromptSubmit", "shell": "bash" } ] }
     ],
     "PreToolUse": [
-      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/pre-tool-use.sh\"", "shell": "bash" } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/dispatch.sh\" PreToolUse", "shell": "bash" } ] }
     ],
     "Stop": [
-      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/stop.sh\"", "shell": "bash" } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/dispatch.sh\" Stop", "shell": "bash" } ] }
     ],
     "SessionEnd": [
-      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/session-end.sh\"", "shell": "bash" } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/dispatch.sh\" SessionEnd", "shell": "bash" } ] }
     ],
     "SubagentStart": [
-      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/subagent-start.sh\"", "shell": "bash" } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/dispatch.sh\" SubagentStart", "shell": "bash" } ] }
     ],
     "SubagentStop": [
-      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/subagent-stop.sh\"", "shell": "bash" } ] }
+      { "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/dispatch.sh\" SubagentStop", "shell": "bash" } ] }
     ],
     "PostToolUse": [
-      { "matcher": "Write", "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/post-tool-use.sh\"", "shell": "bash" } ] }
+      { "matcher": "Write", "hooks": [ { "type": "command", "command": "sh \"$CLAUDE_PLUGIN_ROOT/hooks/dispatch.sh\" PostToolUse", "shell": "bash" } ] }
     ]
   }
 }

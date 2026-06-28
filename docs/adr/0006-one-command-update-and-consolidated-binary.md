@@ -4,6 +4,18 @@
 
 accepted (2026-06-24) — extends ADR-0001 (distribution splits by volatility). Some pieces depend on spt-core capabilities not yet shipped (the "doyle asks" below); those parts are decided in shape but gated on delivery.
 
+**D1 realized (v0.9.0, 2026-06-28).** Ask #1 ("fold in `claude-spt hook <event>` if generic hook
+dispatch lands") shipped — but NOT as the proposed `spt api run-hook`. doyle RESOLVED it as
+**resolve-not-execute** (spt-core stays a pure resolver): two v0.16.0 primitives — `{adapter_dir}` /
+`{adapter_name}` substitution keys + **lazy `[strings]` substitution at `get-string` read time** —
+let the plugin resolve the binary itself. The hook LOGIC (all eight wrappers + `_common.sh`) now lives
+in `claude-spt hook <event>` and rides `spt adapter update`; the plugin ships only a STATIC-FOREVER
+`hooks.json` + a thin `dispatch.sh` that `get-string`s `[strings].hook_cmd = "{adapter_dir}/claude-spt
+hook"` once per session and execs the binary. This is the realized form of the "Later: `claude-spt
+hook <event>` if generic hook dispatch (ask #1) lands" line in Binary consolidation below.
+<!-- [doc->REQ-DIST-HOOK-BINARY] -->
+See `UPDATE-NAMING-DOYLE-ASKS.md` Ask 1 (the full resolve-not-execute resolution) and `V09-PLAN.md`.
+
 ## Context
 
 ADR-0001 split distribution into a low-churn **cplugs skeleton** (hooks, skill skeletons, `plugin.json`, bootstrap — updated by `claude plugin update`) and an spt-conducted **adapter** (manifest + binaries + strings — updated by `spt adapter update`). The operator wants the whole thing kept current with effectively **one lever**, and wants install and update to feel **harmonious** (no hunting for the update command after install) and to work from the **CLI** (not only inside an endpoint session).

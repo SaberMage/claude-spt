@@ -1,10 +1,12 @@
 //! claude-spt — consolidated tool binary for the claude-spt adapter (ADR-0006, U2).
 //!
-//! ONE binary, three subcommands (was three crates → fewer artifacts per triple in adapter.spt):
+//! ONE binary, one set of subcommands (was three crates → fewer artifacts per triple in adapter.spt):
 //!   claude-spt digest      — the [digest] extractor (was claude-spt-digest)
 //!   claude-spt psyche      — the [session.psyche_init] Psyche runner (was claude-spt-psyche)
 //!   claude-spt post-update — reconcile the cplugs plugin after `spt adapter update` (ADR-0006)
 //!   claude-spt translate   — the [message-idle-translation-binary] idle filter (was cc-spt-idle-translate)
+//!   claude-spt hook <ev>   — the CC hook handler (D1: hook logic moved off the plugin shell so it
+//!                            rides `spt adapter update`; was the eight plugin hook .sh wrappers)
 //!
 //! Dispatch is a bare `argv[1]` match (no clap — keep the dependency-light ethos the predecessor
 //! crates were built on). Each subcommand owns its remaining argv via `std::env::args().skip(2)`
@@ -16,6 +18,7 @@
 //! triple in adapter.spt). [impl->REQ-DIST-BINARY-CONSOLIDATE] [impl->REQ-DIST-IDLE-TRANSLATE]
 
 mod digest;
+mod hook;
 mod post_update;
 mod psyche;
 mod translate;
@@ -30,6 +33,7 @@ enum Sub {
     Psyche,
     PostUpdate,
     Translate,
+    Hook,
     Help,
     Unknown(String),
 }
@@ -40,6 +44,7 @@ fn classify(sub: Option<&str>) -> Sub {
         Some("psyche") => Sub::Psyche,
         Some("post-update") => Sub::PostUpdate,
         Some("translate") => Sub::Translate,
+        Some("hook") => Sub::Hook,
         None | Some("-h") | Some("--help") => Sub::Help,
         Some(other) => Sub::Unknown(other.to_string()),
     }
@@ -53,7 +58,8 @@ fn usage() {
          \x20 digest       map a Claude Code JSONL transcript to digest NDJSON ([digest] extractor)\n\
          \x20 psyche       run the LiveAgent Psyche companion ([session.psyche_init] runner)\n\
          \x20 post-update  reconcile the cplugs plugin after `spt adapter update`\n\
-         \x20 translate    idle-message translation filter (stdin->stdout JSON lines)"
+         \x20 translate    idle-message translation filter (stdin->stdout JSON lines)\n\
+         \x20 hook <event> handle a Claude Code hook event (stdin = the CC hook payload)"
     );
 }
 
@@ -64,6 +70,7 @@ fn main() -> ExitCode {
         Sub::Psyche => psyche::run(),
         Sub::PostUpdate => post_update::run(),
         Sub::Translate => translate::run(),
+        Sub::Hook => hook::run(),
         Sub::Help => {
             usage();
             ExitCode::SUCCESS
@@ -87,6 +94,7 @@ mod tests {
         assert_eq!(classify(Some("psyche")), Sub::Psyche);
         assert_eq!(classify(Some("post-update")), Sub::PostUpdate);
         assert_eq!(classify(Some("translate")), Sub::Translate);
+        assert_eq!(classify(Some("hook")), Sub::Hook);
     }
 
     #[test]

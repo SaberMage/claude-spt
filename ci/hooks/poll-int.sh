@@ -49,10 +49,27 @@ expected='<EVENT type="msg" from="probe-int">hello from probe<br>second &lt;line
 case "$raw" in *"$expected"*) ok "api poll emits canonical <EVENT> msg envelope (escaped body)" ;; *) bad "envelope mismatch; raw=[$raw]" ;; esac
 case "$raw" in *__REPLY_TO__*) bad "raw drain still carries the __REPLY_TO__ relic" ;; *) ok "no __REPLY_TO__ relic (canonical poll envelope shipped)" ;; esac
 
-# 2. Hook parser confirm-match: render_frames decodes the drain to our additionalContext shape.
-rendered=$( . "$ROOT/plugin/sptc/hooks/_common.sh"; render_frames "$raw" )
-want=$(printf '<sptc_messages from="probe-int">\nhello from probe\nsecond <line> & "stuff"\n</sptc_messages>')
-case "$rendered" in *"$want"*) ok "render_frames confirm-match: drain -> <sptc_messages>" ;; *) bad "render mismatch; got=[$rendered]" ;; esac
+# 2. Hook BINARY confirm-match (D1): the real `claude-spt hook UserPromptSubmit` drains the live perch
+#    and renders the canonical <EVENT> drain to our <sptc_messages> additionalContext shape — the same
+#    parser, now in the binary (was render_frames in _common.sh). Send a fresh message with body
+#    specials, run the hook (it resolves the perch via whoami off OWL_SESSION_ID, marks busy, polls
+#    --include-deferred, renders), then re-idle + drain residue so step 3's plain poll stays clean.
+#    [int->REQ-DIST-HOOK-BINARY] [int->REQ-UPS-INJECTION]
+HOOKBIN="$ROOT/tools/claude-spt/target/release/claude-spt.exe"
+[ -x "$HOOKBIN" ] || HOOKBIN="$ROOT/tools/claude-spt/target/release/claude-spt"
+if [ -x "$HOOKBIN" ]; then
+  printf 'hello from probe<NL>second <line> & "stuff"' | sed 's/<NL>/\
+/' | spt send "$BID" --from probe-int >/dev/null 2>&1
+  # The binary resolves the perch via `spt whoami` with OWL_SESSION_ID set from the stdin session_id.
+  rendered=$(printf '%s' "{\"session_id\":\"$BSID\",\"prompt\":\"\"}" | "$HOOKBIN" hook UserPromptSubmit --host-pid $$ 2>/dev/null)
+  want=$(printf '<sptc_messages from="probe-int">\nhello from probe\nsecond <line> & "stuff"\n</sptc_messages>')
+  case "$rendered" in *"$want"*) ok "binary hook confirm-match: live drain -> <sptc_messages>" ;; *) bad "binary render mismatch; got=[$rendered]" ;; esac
+  # Re-idle the perch (the hook marked it busy) and drain any residue so step 3 is unaffected.
+  spt api --adapter "$ADAPTER" state idle "$BID" --session-id "$BSID" >/dev/null 2>&1
+  spt api --adapter "$ADAPTER" poll "$BID" --session-id "$BSID" --include-deferred >/dev/null 2>&1
+else
+  echo "SKIP: claude-spt binary not built (cargo build --release) — binary hook confirm-match needs it"
+fi
 
 # 3. Multi-message: two sends drain as two whole envelopes (self-delimiting; F-002 dissolved).
 printf 'one' | spt send "$BID" --from alice >/dev/null 2>&1
