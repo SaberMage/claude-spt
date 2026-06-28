@@ -63,7 +63,17 @@ CHANGELOG `## [0.9.0]` · build win + linux (zigbuild) · `package-adapter.sh --
 v0.9.0 on SaberMage/claude-spt with `dist/adapter.spt` · cplugs sptc 0.1.8 push. gh = SaberMage
 (repo+workflow scopes) — publish is doable from this node.
 
-## Status: BUILT + GATES GREEN (2026-06-28, perri) — releasing
+## Status: SHIPPED (2026-06-28, perri)
+
+**PUBLISHED both targets.** GitHub release **v0.9.0** on SaberMage/claude-spt (commit d7fb440) with
+the fat `adapter.spt` (win+linux, manifest 0.9.0 + hook_cmd verified from the downloaded asset) +
+cplugs **sptc 0.1.8** (static hooks.json + dispatch.sh; 8 wrappers + _common.sh removed). main pushed.
+No GitHub Actions workflow in this repo — local gates ARE the CI (all green). On-node update verify
+(`spt adapter update claude-spt` ×2 for [update.post]) DEFERRED — would mutate this live node's
+registration mid-session; safe to do on a non-live node.
+
+### Build log
+
 
 - hook.rs (8 events + _common.sh ported), main.rs `hook` dispatch, dispatch.sh, static hooks.json,
   [strings].hook_cmd, 8 wrappers + _common.sh deleted. All default gates PASS (89 cargo tests,
