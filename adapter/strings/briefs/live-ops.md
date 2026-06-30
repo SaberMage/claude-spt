@@ -1,4 +1,4 @@
-Live-agent upkeep — commune across resets, sign off cleanly (you `spt whoami` for your `<id>`):
+Live-agent upkeep — commune across resets, sign off cleanly (`<id>` = your own id, which you already know — no need to run `spt whoami`):
 
 - **Commune** after a significant body of work, before a `/clear` or `/compact`: write
   `.claude/<id>-commune.md` in ONE atomic write — a concise context DELTA (current task + status,

@@ -39,6 +39,16 @@ grep -q 'get-string claude-spt hook_cmd' "$HK/dispatch.sh" && r=yes || r=no
 check "dispatch resolves the binary via [strings].hook_cmd" "yes" "$r"
 grep -q 'SPTC_HOOK_BIN' "$HK/dispatch.sh" && r=yes || r=no
 check "dispatch caches the resolved bin (SPTC_HOOK_BIN)" "yes" "$r"
+# v0.9.1 env-file fix: the cache value is QUOTED (CC sources $CLAUDE_ENV_FILE per Bash call; an
+# unquoted value with a space → `VAR=val cmd` → `hook: command not found` + lost value).
+grep -q 'SPTC_HOOK_BIN="%s"' "$HK/dispatch.sh" && r=yes || r=no
+check "dispatch quotes the cached value (env-file space-safe)" "yes" "$r"
+# `hook` is appended as a LITERAL subcommand (not embedded in the cached path).
+grep -q 'exec "\$bin" hook "\$event"' "$HK/dispatch.sh" && r=yes || r=no
+check "dispatch execs \"\$bin\" hook <event> (literal subcommand)" "yes" "$r"
+# Defensive: a trailing ` hook` from an older manifest value is stripped.
+grep -q 'bin="\${bin% hook}"' "$HK/dispatch.sh" && r=yes || r=no
+check "dispatch strips a legacy trailing ' hook' (cross-version safe)" "yes" "$r"
 grep -q 'bootstrap.sh' "$HK/dispatch.sh" && r=yes || r=no
 check "dispatch runs the SessionStart bootstrap (invisible installer)" "yes" "$r"
 # bootstrap only on SessionStart (the binary cannot exist before spt-core + the adapter install).
@@ -51,8 +61,13 @@ grep -q '\[ -z "\$bin" \] && exit 0' "$HK/dispatch.sh" && r=yes || r=no
 check "dispatch no-ops when the adapter is not yet registered" "yes" "$r"
 
 # --- manifest: the declarations the wiring depends on ---
-grep -q 'hook_cmd = "{adapter_dir}/claude-spt hook"' "$MAN" && r=yes || r=no
-check "manifest [strings].hook_cmd = {adapter_dir}/claude-spt hook" "yes" "$r"
+# v0.9.1: hook_cmd is the bare binary PATH (no trailing ` hook`); dispatch appends the subcommand.
+grep -q 'hook_cmd = "{adapter_dir}/claude-spt"' "$MAN" && r=yes || r=no
+check "manifest [strings].hook_cmd = {adapter_dir}/claude-spt (bare path)" "yes" "$r"
+# And the ASSIGNMENT line (anchored at col 0, not the explanatory comment) must not carry the old
+# space-before-hook value (the env-file regression).
+grep -qE '^hook_cmd = "\{adapter_dir\}/claude-spt hook"' "$MAN" && r=present || r=absent
+check "manifest hook_cmd assignment has no embedded ' hook' (env-file fix)" "absent" "$r"
 grep -q '^\[hooks\.PreToolUse\]' "$MAN" && r=yes || r=no
 check "manifest declares [hooks.PreToolUse]" "yes" "$r"
 grep -q 'live-ops = { file' "$MAN" && r=yes || r=no

@@ -6,8 +6,10 @@ via commune deltas). This makes the session you are in right now live.
 
 ## Bringup — do this
 
-1. **Pick the perch id.** Use a short lowercase id from the user, or reuse this session's id from
-   `spt whoami`. Call it `<id>`. SessionStart already seeded this session's perch — do not re-seed.
+1. **Pick the perch id.** Use a short lowercase id from the user, or the id you already know for this
+   session (from your SessionStart identity brief, if present). Call it `<id>`. Only fall back to
+   `spt whoami` if you genuinely have no id yet. SessionStart already seeded this session's perch — do
+   not re-seed. Once you go live as `<id>`, that IS your id — do not look it up again later.
 2. **Run the relay as a single PERSISTENT background task** via the **Monitor** tool. One resident
    process IS the live delivery pipe. The body is one bare command:
 
@@ -23,8 +25,10 @@ via commune deltas). This makes the session you are in right now live.
    - It **blocks for the session's life**: backlog drains first, then each delivery streams to stdout.
 3. **Readiness.** The relay output will show `BOUND:<id>`, then `READY:<id>`. Check it only if
    connectivity complications are encountered.
-4. **Reply.** Inbound messages arrive as `<EVENT type="msg" from="<sender>">body</EVENT>` (body
-   HTML-escaped, newlines `<br>`). To reply, pipe the message body as stdin to `spt send <sender-id>`.
+4. **Reply.** Inbound messages — including replies to messages YOU send — arrive as
+   `<EVENT type="msg" from="<sender>">body</EVENT>` (body HTML-escaped, newlines `<br>`) on THIS ONE
+   relay you started in step 2. To reply, pipe the message body as stdin to `spt send <sender-id>`,
+   then continue. Do NOT arm a SECOND Monitor/poll to wait for a reply — your relay already delivers it.
 5. **Across boundaries — commune + signoff (you are live now, so these apply to you).** Going live in
    this session does NOT re-fire your SessionStart brief, so here are the mechanics:
    - **Commune** after a significant body of work, before a `/clear`/`/compact`: write

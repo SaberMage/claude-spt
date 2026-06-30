@@ -70,7 +70,8 @@ kind = "harness"
 # resolve-not-execute; both the {adapter_dir} subst + lazy [strings] read-time subst are spt-core
 # v0.16.0 primitives, already on the current floor). Behaviour-preserving refactor — same `api …`
 # command lines, same per-event additionalContext contract. min_spt_core stays 0.16.0 (no new seam).
-version = "0.9.0"
+# 0.9.1 (2026-06-28): bugfix patch — see the version-history note below for the three fixes.
+version = "0.9.1"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
@@ -87,6 +88,13 @@ version = "0.9.0"
 # D3's [message-idle-translation-binary].command, and the {adapter_dir}/{adapter_name} substitution +
 # lazy [strings] subst ALL land in spt-core v0.16.0 (counter 35, Latest; ADR-0029). An older node can't
 # read update.post or the command seam, so declaring 0.16.0 is the honest floor.
+# 0.9.1 (2026-06-28): BUGFIX patch. (1) hook_cmd → bare binary path + dispatch caches it QUOTED, fixing
+# the `hook: command not found` env-file regression that polluted every Bash call + killed the hook
+# cache. (2) post-update now refreshes the cplugs marketplace cache (`plugin marketplace update`)
+# before install — fixes "Plugin sptc not found in marketplace cplugs" on a stale cache — and prints a
+# reworded, cleaner update notice without leaking CC's output onto the [update.post] arbiter channel.
+# (3) the ccs profile carries the U6 -n/RC flags (session.self + session.resume), which its v0.8.0
+# command override had dropped. All bugfix; no new seam → floor stays 0.16.0.
 min_spt_core_version = "0.16.0"
 hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # host_binaries — STAGED ahead of spt-core v0.9.0 (doyle 2026-06-16). The pid→binary match-key for
@@ -428,8 +436,20 @@ sprint_collapse = true
 # owl-validated owlery::claude_projects_root pattern), so the base [digest] config serves both base
 # and ccs sessions transparently. That env-aware resolver is REQ-CCS-PROFILES's impl evidence.
 # (REQ-CCS-PROFILES doc evidence lives in docs/PARITY.md; int = registration-int :ccs assertions.)
+#
+# v0.9.1 FIX: the overlay MUST carry the SAME {id}-threading flags the base now has — a leaf-replace
+# of `command` REPLACES it wholesale, so the bare v0.8.0 override (`ccs --dangerously-skip-permissions`)
+# silently DROPPED the U6 `-n {id}` display name + `--remote-control {id}` RC channel a ccs endpoint
+# needs to be idle/checkpoint-injectable. ccs is a drop-in for `claude` and forwards these flags, so
+# both bringup paths (self + resume) mirror base, only swapping the launch binary. keys=["id"] (and
+# resume +session_id) are redeclared so {id}/{session_id} substitute under the overlay.
 [profiles.ccs.session.self]
-command = "ccs --dangerously-skip-permissions"
+command = "ccs -n {id} --remote-control {id} --dangerously-skip-permissions"
+keys = ["id"]
+
+[profiles.ccs.session.resume]
+command = "ccs -r {session_id} -n {id} --remote-control {id} --dangerously-skip-permissions"
+keys = ["session_id", "id"]
 
 # Observability leaf: makes the overlay visible via `spt adapter get-string
 # claude-spt:ccs adapter_label` (differs from base) — the registration-int resolve proof.
@@ -450,7 +470,14 @@ adapter_label = "Claude Code (spt)"
 # $SPTC_HOOK_BIN), then runs `<resolved> <CCEventName> --host-pid <pid>` per hook, piping the CC hook
 # payload on stdin. Session-scoped keys are NOT available here (get-string is adapter-static) — the
 # binary reads session_id/prompt/tool_input from stdin. [impl->REQ-DIST-HOOK-BINARY]
-hook_cmd = "{adapter_dir}/claude-spt hook"
+#
+# v0.9.1 FIX: the value is the bare binary PATH (no trailing ` hook`). dispatch.sh appends the `hook`
+# subcommand as a literal and caches this path QUOTED in $CLAUDE_ENV_FILE. The v0.9.0 value
+# ("{adapter_dir}/claude-spt hook", a space before `hook`) was cached unquoted → CC sources the env
+# file per Bash call → `SPTC_HOOK_BIN=/path/claude-spt hook` parsed as `VAR=val cmd` → ran `hook`
+# (`hook: command not found` on every Bash command) AND dropped the value. dispatch.sh also strips a
+# trailing ` hook` defensively, so it stays compatible with an older manifest mid-update.
+hook_cmd = "{adapter_dir}/claude-spt"
 
 [strings.notice]
 not_installed = "spt-core not found on PATH — run /sptc:setup to install it."

@@ -23,16 +23,16 @@ n=$(grep -Ec '^[[:space:]]*shortcut_basename[[:space:]]*=' "$MANIFEST")
 if [ "$n" -eq 1 ]; then echo "ok   single shortcut_basename assignment"; else echo "FAIL $n shortcut_basename assignments (want 1)"; fail=1; fi
 
 # [unit->REQ-HAZARD-PSYCHE-PERMS-DEADLOCK]
-# Non-interactive bringup: ALL THREE CC spawn commands — the two [session.self] (base `claude`, the
-# `ccs` profile) AND [session.resume] (`claude -r … --remote-control …`) — MUST carry
-# --dangerously-skip-permissions. The broker spawns CC into a PTY with no operator, so an interactive
-# permission prompt would deadlock the launch (docs/KNOWN-HAZARDS.md §2.2). Match the active
+# Non-interactive bringup: ALL FOUR CC spawn commands — the two [session.self] (base `claude`, the
+# `ccs` profile) AND the two [session.resume] (base `claude -r …`, the `ccs -r …` profile, v0.9.1) —
+# MUST carry --dangerously-skip-permissions. The broker spawns CC into a PTY with no operator, so an
+# interactive permission prompt would deadlock the launch (docs/KNOWN-HAZARDS.md §2.2). Match the active
 # `command =` lines whose value is a bare claude/ccs CC spawn — NOT `claude-spt psyche` (the runner;
 # `claude-spt` has `-`/no-space after `claude`, so the (claude|ccs)(space|") match correctly excludes
 # it — its turns are asserted in the tools/claude-spt crate's psyche unit tests).
 spawn=$(grep -E '^[[:space:]]*command[[:space:]]*=[[:space:]]*"(claude|ccs)([[:space:]]|")' "$MANIFEST")
 nspawn=$(printf '%s' "$spawn" | grep -c .)
-if [ "$nspawn" -eq 3 ]; then echo "ok   3 CC spawn commands ([session.self] base claude + ccs, [session.resume])"; else echo "FAIL expected 3 CC spawn commands, found $nspawn"; fail=1; fi
+if [ "$nspawn" -eq 4 ]; then echo "ok   4 CC spawn commands ([session.self] base+ccs, [session.resume] base+ccs)"; else echo "FAIL expected 4 CC spawn commands, found $nspawn"; fail=1; fi
 nomiss=$(printf '%s\n' "$spawn" | grep -c -v -- '--dangerously-skip-permissions')
 if [ "$nspawn" -gt 0 ] && [ "$nomiss" -eq 0 ]; then echo "ok   every CC spawn command carries --dangerously-skip-permissions"; else echo "FAIL a CC spawn command lacks --dangerously-skip-permissions ($nomiss without it)"; fail=1; fi
 
@@ -92,6 +92,19 @@ case "$resume" in
   *'-n {id}'*) echo "ok   [session.resume] sets {id} as the display name (-n, U6 parity)";;
   *) echo "FAIL [session.resume] missing -n {id} (U6 display-name parity): $resume"; fail=1;;
 esac
+
+# [unit->REQ-CCS-PROFILES]
+# v0.9.1 FIX (bug #6): the ccs profile leaf-replaces session.self/.resume `command`, so its overrides
+# MUST carry the SAME U6 {id} display + RC flags base has — else a ccs endpoint loses its name + RC
+# channel. Match the `ccs …` spawn lines and assert -n {id} + --remote-control {id} on each.
+ccs_self=$(grep -E '^[[:space:]]*command[[:space:]]*=[[:space:]]*"ccs -n ' "$MANIFEST")
+ccs_resume=$(grep -E '^[[:space:]]*command[[:space:]]*=[[:space:]]*"ccs -r ' "$MANIFEST")
+if [ -z "$ccs_self" ]; then echo 'FAIL ccs profile [session.self] not "ccs -n {id} …"'; fail=1; else
+  case "$ccs_self" in *'-n {id}'*'--remote-control {id}'*) echo "ok   ccs [session.self] carries -n {id} + --remote-control {id}";; *) echo "FAIL ccs [session.self] missing -n/--remote-control {id}: $ccs_self"; fail=1;; esac
+fi
+if [ -z "$ccs_resume" ]; then echo 'FAIL ccs profile [session.resume] not "ccs -r {session_id} …"'; fail=1; else
+  case "$ccs_resume" in *'-r {session_id}'*'-n {id}'*'--remote-control {id}'*) echo "ok   ccs [session.resume] carries -r {session_id} + -n {id} + --remote-control {id}";; *) echo "FAIL ccs [session.resume] missing native-resume/-n/RC flags: $ccs_resume"; fail=1;; esac
+fi
 
 # [unit->REQ-DIST-IDLE-TRANSLATE]
 # [message-idle-translation-binary] declares the idle-delivery filter via `command` (spt-core v0.16.0

@@ -38,7 +38,7 @@ if [ "$event" = "SessionStart" ]; then
   sh "$CLAUDE_PLUGIN_ROOT/bootstrap.sh" </dev/null >/dev/null 2>&1 || true
 fi
 
-# Resolve the hook command: cached env first, else the lazily-substituted adapter string.
+# Resolve the binary PATH: cached env first, else the lazily-substituted adapter string.
 bin="${SPTC_HOOK_BIN:-}"
 if [ -z "$bin" ]; then
   bin=$("$(spt_bin)" adapter get-string claude-spt hook_cmd </dev/null 2>/dev/null) || true
@@ -47,13 +47,20 @@ fi
 # Adapter not registered yet (pre-/sptc:setup) → no perch to serve → no-op.
 [ -z "$bin" ] && exit 0
 
-# Cache the resolved command for the rest of the session so later per-prompt hooks skip get-string.
+# Normalize to the bare binary PATH: tolerate a manifest value that still carries a trailing ` hook`
+# token (older v0.9.0 hook_cmd = "{adapter_dir}/claude-spt hook"); the `hook` subcommand is appended
+# below as a literal, so the cached value is JUST the binary path — no embedded space.
+bin="${bin% hook}"
+
+# Cache the resolved binary path for later per-prompt hooks (skip get-string). QUOTED — CC sources
+# $CLAUDE_ENV_FILE per Bash/hook invocation, so an unquoted value with a space (a path with a space,
+# OR the old ` hook` suffix) would be parsed as `VAR=val cmd` → run `cmd` (the v0.9.0 `hook: command
+# not found` regression) AND lose the value. Quoting makes it one assignment, space-safe.
 if [ "$event" = "SessionStart" ] && [ -n "${CLAUDE_ENV_FILE:-}" ] && [ -z "${SPTC_HOOK_BIN:-}" ]; then
-  printf 'SPTC_HOOK_BIN=%s\n' "$bin" >> "$CLAUDE_ENV_FILE"
+  printf 'SPTC_HOOK_BIN="%s"\n' "$bin" >> "$CLAUDE_ENV_FILE"
 fi
 
-# Exec the binary: `$bin` is "<install_dir>/claude-spt hook" (word-split into the program + the `hook`
-# subcommand), then the CC event + the seed pid. CC stdin (the hook payload) is inherited untouched —
-# the binary reads it directly. $PPID is the seed pid (Rust std has no portable getppid on Windows).
-# shellcheck disable=SC2086
-exec $bin "$event" --host-pid "$PPID"
+# Exec the binary: `"$bin"` is the program (quoted → space-safe), `hook` the subcommand (literal),
+# then the CC event + the seed pid. CC stdin (the hook payload) is inherited untouched — the binary
+# reads it directly. $PPID is the seed pid (Rust std has no portable getppid on Windows).
+exec "$bin" hook "$event" --host-pid "$PPID"

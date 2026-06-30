@@ -8,6 +8,29 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.9.1] - 2026-06-30
+
+> Requires spt-core **v0.16.0 or newer** (unchanged). A bugfix patch over 0.9.0. After updating, run
+> `/reload-plugins` (or restart Claude Code) once.
+
+### Fixed
+- **`hook: command not found` on every Bash command is gone.** A 0.9.0 regression left a malformed
+  entry in the per-session environment, so every shell command printed a spurious
+  `hook: command not found` and the message-delivery hooks could misfire. Fixed — the environment
+  entry is now written safely (and tolerates paths with spaces).
+- **`spt adapter update claude-spt` no longer fails to update the plugin.** It now refreshes the
+  Claude Code marketplace before installing, fixing
+  `Plugin "sptc" not found in marketplace "cplugs"` on a stale local marketplace copy.
+- **Clearer update message.** After an update you now see
+  `✔ Claude Code plugin "sptc" updated from <old> to <new>. Active sessions need to run the
+  /reload-plugins command.` instead of the generic "Restart to apply changes."
+- **Agents know their own id.** A live/perched agent is now told its id up front and no longer runs
+  `spt whoami` to look it up.
+- **No more redundant message watchers.** Agents are now told that replies arrive automatically on
+  their existing perch, so they stop arming an extra watcher to wait for a response.
+- **ccs profile parity.** Sessions launched through the `claude-spt:ccs` profile now carry the same
+  session name and remote-control settings as the base profile (they were dropped in 0.8.0).
+
 ## [0.9.0] - 2026-06-28
 
 > Requires spt-core **v0.16.0 or newer** (unchanged from 0.8.0). This release is an internal
