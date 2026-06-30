@@ -77,5 +77,15 @@ the #3 noise, and the delivery half of #4.
   {id} --dangerously-skip-permissions` + new `[profiles.ccs.session.resume]`; keys redeclared. Unit:
   manifest-shortcut.sh ccs -n/RC assertions.
 
-**Gate:** all default gates PASS (91 crate tests). Shipping as **v0.9.1** (adapter) + cplugs **0.1.9**.
+**Gate:** all default gates PASS (91 crate tests). **SHIPPED v0.9.1** (adapter release + `adapter.spt`,
+asset-verified: bare hook_cmd + ccs -n/RC self+resume) + cplugs **0.1.9**. main @ 252763d, tag v0.9.1.
+
+## Post-mortem — what would have prevented the shared root cause
+The v0.9.0 `tests/hooks-dispatch.sh` only grepped that dispatch *mentions* `SPTC_HOOK_BIN` — it never
+SOURCED a cached line the way CC actually does, so a value-with-a-space sailed through every gate.
+Closed by a regression at the real seam (`tests/hooks-dispatch.sh`): emulate the cached env line, source
+it in-shell, and assert the v0.9.0 unquoted form breaks (`hook: command not found`) while the v0.9.1
+quoted form sources clean + preserves the value (space-safe). No architectural change needed — a
+test-coverage gap (assert-on-structure, not on-behaviour), now covered on-behaviour.
+
 

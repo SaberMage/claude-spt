@@ -49,6 +49,27 @@ check "dispatch execs \"\$bin\" hook <event> (literal subcommand)" "yes" "$r"
 # Defensive: a trailing ` hook` from an older manifest value is stripped.
 grep -q 'bin="\${bin% hook}"' "$HK/dispatch.sh" && r=yes || r=no
 check "dispatch strips a legacy trailing ' hook' (cross-version safe)" "yes" "$r"
+
+# REGRESSION (v0.9.1, the env-file bug at its real seam): CC SOURCES $CLAUDE_ENV_FILE per Bash/hook
+# invocation. Emulate the exact line dispatch caches and source it in THIS shell — the v0.9.0 unquoted
+# value (a trailing ` hook`) must be shown to break (`hook: command not found`), and the v0.9.1 quoted
+# value must source clean AND preserve the value verbatim even with a space in the path.
+_ef=$(mktemp); _errf=$(mktemp)
+_old="/opt/spt/adapters/x/claude-spt hook"          # the exact v0.9.0 cached value (space before hook)
+_p="/c/Program Files/spt dir/claude-spt"            # worst case: a path WITH spaces
+# v0.9.0 (unquoted) — sourcing runs the bare `hook` token.
+unset SPTC_HOOK_BIN; printf 'SPTC_HOOK_BIN=%s\n' "$_old" > "$_ef"; : > "$_errf"
+. "$_ef" 2>"$_errf" || true
+grep -q 'hook: command not found' "$_errf" && r=yes || r=no
+check "unquoted v0.9.0 value DOES break when sourced (documents the bug)" "yes" "$r"
+# v0.9.1 (quoted) — clean source, value intact.
+unset SPTC_HOOK_BIN; printf 'SPTC_HOOK_BIN="%s"\n' "$_p" > "$_ef"; : > "$_errf"
+. "$_ef" 2>"$_errf" || true
+[ -s "$_errf" ] && r=dirty || r=clean
+check "quoted cache sources CLEAN (no stray command)" "clean" "$r"
+[ "${SPTC_HOOK_BIN:-}" = "$_p" ] && r=intact || r=lost
+check "quoted cache preserves the value verbatim (space-safe)" "intact" "$r"
+unset SPTC_HOOK_BIN; rm -f "$_ef" "$_errf"
 grep -q 'bootstrap.sh' "$HK/dispatch.sh" && r=yes || r=no
 check "dispatch runs the SessionStart bootstrap (invisible installer)" "yes" "$r"
 # bootstrap only on SessionStart (the binary cannot exist before spt-core + the adapter install).
