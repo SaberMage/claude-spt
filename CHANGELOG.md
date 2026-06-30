@@ -8,6 +8,18 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.9.2] - 2026-06-30
+
+> Requires spt-core **v0.16.0 or newer** (unchanged). A wording-only fix in the agent briefing
+> (adapter strings — no binary or plugin change). `spt adapter update claude-spt` picks it up; no
+> `/reload-plugins` needed for this one.
+
+### Fixed
+- **More accurate guidance about receiving replies.** The 0.9.1 note "replies arrive automatically —
+  don't set up a watcher" was only true for broker-hosted sessions. A live agent you start yourself
+  (`/sptc:live`) relies on its own running relay to receive messages, so the briefing now says: don't
+  arm an *extra* watcher for a single reply, and don't tear down the relay you're already running.
+
 ## [0.9.1] - 2026-06-30
 
 > Requires spt-core **v0.16.0 or newer** (unchanged). A bugfix patch over 0.9.0. After updating, run

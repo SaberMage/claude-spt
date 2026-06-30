@@ -71,7 +71,11 @@ kind = "harness"
 # v0.16.0 primitives, already on the current floor). Behaviour-preserving refactor — same `api …`
 # command lines, same per-event additionalContext contract. min_spt_core stays 0.16.0 (no new seam).
 # 0.9.1 (2026-06-28): bugfix patch — see the version-history note below for the three fixes.
-version = "0.9.1"
+# 0.9.2 (2026-06-30): brief-prose fix only (adapter strings, no binary/plugin change) — the v0.9.1
+# "replies arrive automatically; never arm a Monitor" wording was spt-hosted-only; for a HARNESS-hosted
+# live agent the agent's OWN `spt api listen` relay IS the delivery pipe. messaging-perch.md now
+# distinguishes the hosting modes and says "do not arm an EXTRA Monitor" (preserving the primary relay).
+version = "0.9.2"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
