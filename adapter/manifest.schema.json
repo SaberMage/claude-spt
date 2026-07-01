@@ -421,12 +421,17 @@
       "description": "`[digest]` — the session-digest extractor seam (ADR-0019). Reverses M9's\n\"no manifest seam\" stance: the digest gets its **own** adapter-declared\nextractor, distinct from `[history]` (which stays opaque + single-session and\nfeeds the echo-commune verbatim). The extractor maps the harness's **native**\nlog → the published `{role, text, tool, ts}` digest-record contract\n([`spt_term::DigestRecord`]).\n\n**Imperative, not a DSL** (ADR-0019 §Decision): real harness logs are nested\n(one line → many entries, mixed block lists, types to filter) — a flat\ndeclarative map cannot express them, and a map powerful enough is a reinvented\nlanguage. So the extractor is an opaque command spt-core never parses, exactly\nlike every other manifest template.\n\n**Source.** By default the extractor reads the **same files as `[history]`**\n(the `locate_template`; DRY). An adapter may override with `source` (the\nown-source escape hatch). `api digest-entry` push remains the always-available\nfallback for a log-less adapter (which declares no `[digest]` at all).\n\n**Presentation.** `window_turns`, `arg_truncation`, and `sprint_collapse` are\nadapter-declared **defaults** any consumer may override at pull/subscribe;\nspt-core ships fallback defaults ([`spt_term::DigestConfig`]) when absent. The\nfixed \"~3 turns\" is no longer an spt-core requirement (ADR-0019).",
       "type": "object",
       "properties": {
+        "strategy": {
+          "description": "Which side locates the transcript (REQ-DIGEST-FETCHER-STRATEGY). Absent ⇒\n`locate_normalize` (spt-core locates + pre-reads `source`) — the original\nbehavior, so every pre-strategy manifest parses unchanged.",
+          "$ref": "#/$defs/DigestStrategy",
+          "default": "locate_normalize"
+        },
         "extractor": {
-          "description": "Opaque extractor command: native harness log → the `{role,text,tool,ts}`\ncontract (one JSON record per output line). `{key}` substitution applies\n(e.g. `{session_id}`, and `{source}` for the resolved log path).",
+          "description": "Opaque extractor command: native harness log → the `{role,text,tool,ts}`\ncontract (one JSON record per output line). `{key}` substitution applies\n(`{session_id}`, the perch-bound `{cwd}`, captured `[env] direction=\"read\"`\nvars, and — in `locate_normalize` mode — `{source}` for the resolved path).",
           "type": "string"
         },
         "source": {
-          "description": "Own-source escape hatch: a `locate_template` for the log file(s) the\nextractor reads. Absent ⇒ reuse `[history].locate_template` (DRY).",
+          "description": "Own-source escape hatch (`locate_normalize` only): a `locate_template` for\nthe log file the extractor reads. Absent ⇒ reuse `[history].locate_template`\n(DRY). Ignored under `fetcher` (the extractor locates itself).",
           "type": [
             "string",
             "null"
@@ -460,6 +465,21 @@
       },
       "required": [
         "extractor"
+      ]
+    },
+    "DigestStrategy": {
+      "description": "`[digest]` locate-ownership strategy (REQ-DIGEST-FETCHER-STRATEGY) — mirrors\n[`HistoryStrategy`]'s locate/normalize split, applied to the digest extractor.\nWhich side LOCATES the transcript:\n- `locate_normalize` (default, back-compat): **spt-core** resolves the single\n  `source` template to one file, reads it, and pipes the bytes to the extractor\n  on stdin. Correct for a trivial single-file, fully-templatable layout.\n- `fetcher`: the **adapter's** extractor locates + reads + emits normalized\n  records itself; spt-core only runs it bounded and consumes stdout (no locate,\n  no pre-read). Required for a PARTITIONED layout spt-core cannot express as one\n  template — e.g. Claude Code's `projects/<munge(cwd)>/<session_id>.jsonl` or a\n  date-globbed rollout tree — the CONTEXT §history \"the adapter owns the locate\"\n  case. spt-core feeds the extractor only the harness-NEUTRAL inputs it owns\n  (`{session_id}`, the perch-bound `{cwd}`, and captured `[env] direction=\"read\"`\n  vars), never a harness-specific project slug.",
+      "oneOf": [
+        {
+          "description": "spt-core locates the single `source` file and pipes its bytes to the\nextractor (the original ADR-0019 behavior — the default for back-compat).",
+          "type": "string",
+          "const": "locate_normalize"
+        },
+        {
+          "description": "The adapter's extractor locates + reads + emits; spt-core runs it bounded\nand consumes stdout (no `source`, no pre-read).",
+          "type": "string",
+          "const": "fetcher"
+        }
       ]
     },
     "Inject": {

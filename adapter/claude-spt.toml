@@ -75,7 +75,14 @@ kind = "harness"
 # "replies arrive automatically; never arm a Monitor" wording was spt-hosted-only; for a HARNESS-hosted
 # live agent the agent's OWN `spt api listen` relay IS the delivery pipe. messaging-perch.md now
 # distinguishes the hosting modes and says "do not arm an EXTRA Monitor" (preserving the primary relay).
-version = "0.9.2"
+# 0.10.0 (2026-07-01): the DIGEST-FETCHER cut — consumes spt-core v0.19.0 (counter 38, #17). [digest]
+# flips to strategy="fetcher": the extractor now LOCATES + reads + emits itself (spt-core runs it
+# bounded, no pre-read, no `source` pre-resolve), fed only harness-NEUTRAL fills ({session_id} + the
+# captured {CLAUDE_CONFIG_DIR} read-var). The NEW [env.CLAUDE_CONFIG_DIR] direction="read" seam
+# (capture-at-bind → info.json.read_env → fill → ~expand) finally delivers the ccs-relocated tree to
+# the on-demand extractor in the DAEMON'S context — the gap that made the old env-preference branch
+# session-context-only. `source` dropped (ignored under fetcher). Floor BUMPS to 0.19.0 below.
+version = "0.10.0"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
@@ -99,7 +106,12 @@ version = "0.9.2"
 # reworded, cleaner update notice without leaking CC's output onto the [update.post] arbiter channel.
 # (3) the ccs profile carries the U6 -n/RC flags (session.self + session.resume), which its v0.8.0
 # command override had dropped. All bugfix; no new seam → floor stays 0.16.0.
-min_spt_core_version = "0.16.0"
+# Floor BUMPED to 0.19.0 (2026-07-01, the digest-fetcher cut / v0.10.0): [digest] strategy="fetcher"
+# (REQ-DIGEST-FETCHER-STRATEGY, spt-core side) + the [env] direction="read" capture/fill seam BOTH land
+# in spt-core v0.19.0 (counter 38). An older node can't parse strategy="fetcher" nor fill the
+# {CLAUDE_CONFIG_DIR} read-var, so declaring 0.19.0 is the honest floor (todlando GO, cluster-A
+# consumable; doyle gate-verified).
+min_spt_core_version = "0.19.0"
 hostable_types = ["LiveAgent", "ReadyAgent", "Worker"]
 # host_binaries — STAGED ahead of spt-core v0.9.0 (doyle 2026-06-16). The pid→binary match-key for
 # adapter-agnostic resolution: `spt api listen <id>` resolves the owning adapter/profile by walking
@@ -391,23 +403,39 @@ command = "{adapter_dir}/claude-spt translate"
 # one JSON record per output line. (CC has a rich log, so the extractor seam fits — a defensible
 # divergence from the deliberately log-less mock adapter, which declares no [digest].)
 #
-# spt-core's registration cross-field rule requires [digest] to name where it reads from (`source`
-# or a [history] `locate_template`) — verified against the live v0.7.0 `spt adapter add`. CC stores
-# transcripts at `~/.claude/projects/<cwd-slug>/<session_id>.jsonl`; the cwd-slug subdir is a
-# CC-internal encoding with NO published key (doyle 2026-06-15: spt-core stays harness-agnostic and
-# must not bake a harness's directory scheme into the catalog — by design there is no {cwd_slug}).
-# So `source` names the per-project ROOT dir (`~` for home expansion — {home} is NOT a catalog key)
-# and the extractor receives `{session_id}` on the COMMAND and resolves `<slug>/<session_id>.jsonl`
-# within the root itself (the slug is the harness's own business). This matches the published example
-# shape and what `spt endpoint digest` fills at runtime. The extractor (`claude-spt digest`, the
-# digest subcommand of the consolidated tools/claude-spt Rust crate — ADR-0006/U2) ships in the
-# spt-core-conducted layer; this is its declaration.
+# FETCHER strategy (spt-core v0.19.0, REQ-DIGEST-FETCHER-STRATEGY): the extractor LOCATES + reads +
+# emits itself; spt-core only runs it bounded and consumes stdout — no locate, no pre-read, no
+# `source` (ignored under fetcher, so it is dropped). This is the designed home for CC's PARTITIONED
+# layout: transcripts live at `<config-root>/projects/<cwd-slug>/<session_id>.jsonl` where the
+# cwd-slug is a CC-internal encoding with NO published key (doyle 2026-06-15: spt-core stays
+# harness-agnostic — by design there is no {cwd_slug}), so the adapter owns the locate
+# (owlery::claude_projects_root pattern — search the projects root for `<session_id>.jsonl`).
+# spt-core feeds only harness-NEUTRAL fills: {session_id} + the captured {CLAUDE_CONFIG_DIR}
+# read-var (below). `--config-dir` receives the CAPTURED per-session value — ccs sessions resolve
+# their relocated `~/.ccs/instances/<account>/.claude` tree, base sessions the `~/.claude` fallback —
+# closing the "not expressible as a static catalog path" gap in the daemon's own context (the old
+# env-preference branch only worked when the extractor inherited the session's env). The extractor
+# (`claude-spt digest`, ADR-0006/U2) ships in the spt-core-conducted layer; this is its declaration.
+# [impl->REQ-DIST-DIGEST-FETCHER]
 [digest]
-extractor = "claude-spt digest --session {session_id} --in {source}"
-source = "~/.claude/projects"
+strategy = "fetcher"
+extractor = "claude-spt digest --session {session_id} --config-dir {CLAUDE_CONFIG_DIR}"
 window_turns = 6
 arg_truncation = 240
 sprint_collapse = true
+
+# ── [env.CLAUDE_CONFIG_DIR] — the read-direction capture (spt-core v0.19.0) ─────────────────────
+# direction="read": spt-core CAPTURES this var from the session's environment at bind time into
+# info.json.read_env, then offers it as a fill_template key ({CLAUDE_CONFIG_DIR}) to on-demand
+# commands — the [digest] fetcher extractor above. `value` is the FALLBACK when the session env
+# lacks it (a plain `claude` launch), tilde-expanded spt-core-side: `~/.claude` = CC's default
+# state root. A ccs-launched session carries CLAUDE_CONFIG_DIR=~/.ccs/instances/<account>/.claude
+# in its env → captured → the extractor locates the relocated projects tree with zero profile
+# overlay (the NO-[profiles.ccs.digest]-leaf design, now daemon-context-correct).
+# [impl->REQ-DIST-DIGEST-FETCHER]
+[env.CLAUDE_CONFIG_DIR]
+direction = "read"
+value = "~/.claude"
 
 # ── [profiles.<name>] ────────────────────────────────────────────────────────────────────────
 # Shipped profile overlays (sparse leaf-replace; selected as the composite `claude-spt:<name>`).
@@ -434,11 +462,13 @@ sprint_collapse = true
 #
 # NO `[profiles.ccs.digest]` leaf by design: ccs relocates Claude Code's transcript tree via the
 # CLAUDE_CONFIG_DIR env var (e.g. ~/.ccs/instances/<account>/.claude), whose value is set by ccs at
-# runtime per-account and is NOT expressible as a static catalog path. The "per-profile ~/.ccs log
-# dir" SCOPE requirement is therefore honored IN THE EXTRACTOR (`claude-spt digest` prefers
-# $CLAUDE_CONFIG_DIR/projects over the base ~/.claude/projects on its dir-locate branch — the
-# owl-validated owlery::claude_projects_root pattern), so the base [digest] config serves both base
-# and ccs sessions transparently. That env-aware resolver is REQ-CCS-PROFILES's impl evidence.
+# runtime per-account and is NOT expressible as a static catalog path. Since v0.10.0 the "per-profile
+# ~/.ccs log dir" SCOPE requirement is honored by the [env.CLAUDE_CONFIG_DIR] direction="read"
+# capture (above) feeding the fetcher extractor's `--config-dir` — the captured per-session value
+# reaches the extractor even in the daemon's context (the pre-0.19.0 env-preference branch, kept as
+# the extractor's fallback, only worked when the extractor inherited the session env). So the base
+# [digest] config serves both base and ccs sessions transparently. That resolver chain is
+# REQ-CCS-PROFILES's impl evidence.
 # (REQ-CCS-PROFILES doc evidence lives in docs/PARITY.md; int = registration-int :ccs assertions.)
 #
 # v0.9.1 FIX: the overlay MUST carry the SAME {id}-threading flags the base now has — a leaf-replace

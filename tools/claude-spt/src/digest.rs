@@ -9,19 +9,24 @@
 //! `/clear`; this reads exactly ONE session's log (the watch-item doyle flagged 2026-06-15 —
 //! single-session slice is correct here, the spanning is ledger-side).
 //!
-//! Invoked by spt-core:  `claude-spt digest --session <session_id> --in <source>`
-//!   `<source>` is CC's per-project ROOT (`~/.claude/projects`); the session file lives at
-//!   `<source>/<cwd-slug>/<session_id>.jsonl`. The cwd-slug subdir is a CC-internal encoding not
-//!   expressible as a flat template, so we LOCATE `<session_id>.jsonl` by search under `<source>`.
-//!   `spt adapter digest-proof --sample <file>` points `--in` straight at a log file; both shapes
-//!   are handled (file -> read directly; dir -> locate the session within).
+//! Invoked by spt-core (FETCHER strategy, v0.10.0 / spt-core v0.19.0, REQ-DIST-DIGEST-FETCHER):
+//!   `claude-spt digest --session <session_id> --config-dir <claude-config-root>`
+//!   The extractor IS the locator: the session file lives at
+//!   `<config-root>/projects/<cwd-slug>/<session_id>.jsonl` and the cwd-slug subdir is a CC-internal
+//!   encoding not expressible as a flat template, so we LOCATE `<session_id>.jsonl` by search under
+//!   the projects root. `<claude-config-root>` is the spt-core-captured {CLAUDE_CONFIG_DIR} read-var
+//!   ([env] direction="read") — the session's own value, or the manifest fallback `~/.claude`.
+//!   Legacy `--in` stays accepted: `spt adapter digest-proof --sample <file>` points it straight at
+//!   a log file (read as-is, never overridden), and an old locate_normalize manifest mid-update may
+//!   still pass a projects-root dir (used only when no config-dir source resolves).
 //!
 //! ccs profile (REQ-CCS-PROFILES): a ccs-launched session relocates CC's whole state tree —
 //! including `projects/` — under `$CLAUDE_CONFIG_DIR` (e.g. `~/.ccs/instances/<account>/.claude`).
 //! That value is set by ccs at runtime per-account and is NOT expressible as a static manifest path,
-//! so the `claude-spt:ccs` overlay carries no `[digest]` leaf — instead the dir-locate branch here
-//! prefers `$CLAUDE_CONFIG_DIR/projects` over the `--in` root. Mirrors the known-good sister project
-//! claude_skill_owl (owlery::claude_projects_root). The `--sample` file path is never overridden.
+//! so the `claude-spt:ccs` overlay carries no `[digest]` leaf — the captured read-var reaches this
+//! extractor via `--config-dir` even in the daemon's context. The inherited-env preference
+//! ($CLAUDE_CONFIG_DIR/projects, the pre-0.19.0 branch mirroring owlery::claude_projects_root) is
+//! kept as the next rung of the precedence chain (see resolve_projects_root).
 //!
 //! Mapping (CC event -> digest record):
 //!   type=user,  message.content str         -> {role:input, text}              (a real user prompt)
@@ -203,26 +208,31 @@ fn find_recursive(dir: &Path, target: &str, depth: usize) -> Option<PathBuf> {
 struct Args {
     session: Option<String>,
     source: Option<String>,
+    config_dir: Option<String>,
 }
 
-/// Parse `--session <id> --in <source>` from the subcommand's argv (main already skipped the binary
-/// name + the `digest` token). Order-independent single-value flags.
+/// Parse `--session <id> [--config-dir <dir>] [--in <source>]` from the subcommand's argv (main
+/// already skipped the binary name + the `digest` token). Order-independent single-value flags.
+/// `--config-dir` is the v0.10.0 fetcher-strategy fill (`{CLAUDE_CONFIG_DIR}`, spt-core v0.19.0
+/// read-var capture); `--in` stays for digest-proof `--sample` files + legacy manifests mid-update.
 fn parse_args<I: IntoIterator<Item = String>>(argv: I) -> Result<Args, String> {
     let mut session = None;
     let mut source = None;
+    let mut config_dir = None;
     let mut it = argv.into_iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "--session" => session = it.next(),
             "--in" => source = it.next(),
+            "--config-dir" => config_dir = it.next(),
             "-h" | "--help" => {
-                println!("claude-spt digest --session <id> --in <projects-root-or-logfile>");
+                println!("claude-spt digest --session <id> [--config-dir <claude-config-root>] [--in <projects-root-or-logfile>]");
                 std::process::exit(0);
             }
             other => return Err(format!("unknown arg: {other}")),
         }
     }
-    Ok(Args { session, source })
+    Ok(Args { session, source, config_dir })
 }
 
 /// Expand a leading `~/` (or bare `~`) to the user's home. spt-core resolves `~` in the `source`
@@ -250,24 +260,48 @@ fn ccs_projects_root_from(cfg: Option<&str>) -> Option<PathBuf> {
     }
 }
 
+/// Resolve the projects ROOT for the dir-locate branch (the fetcher strategy's locator half).
+/// Precedence: `--config-dir` (the spt-core-captured {CLAUDE_CONFIG_DIR} read-var — authoritative,
+/// it IS the session's value or the manifest's ~/.claude fallback) → $CLAUDE_CONFIG_DIR env (an
+/// in-session invocation that inherited the harness env; the pre-0.19.0 branch, kept) → a legacy
+/// `--in` root (old manifest mid-update / digest-proof pointing at a dir) → `~/.claude/projects`.
+/// Pure over its inputs so the precedence is unit-testable without env races.
+/// [impl->REQ-DIST-DIGEST-FETCHER]
+fn resolve_projects_root(
+    config_dir: Option<&str>,
+    env_cfg: Option<&str>,
+    in_root: Option<PathBuf>,
+) -> PathBuf {
+    ccs_projects_root_from(config_dir)
+        .or_else(|| ccs_projects_root_from(env_cfg))
+        .or(in_root)
+        .unwrap_or_else(|| expand_tilde("~/.claude").join("projects"))
+}
+
 fn execute<I: IntoIterator<Item = String>>(argv: I) -> Result<(), String> {
     let args = parse_args(argv)?;
-    let source = args.source.ok_or("missing required --in")?;
-    let src = expand_tilde(&source);
+    if args.source.is_none() && args.config_dir.is_none() {
+        return Err("missing --config-dir (or legacy --in)".into());
+    }
+    let src: Option<PathBuf> = args.source.as_deref().map(expand_tilde);
 
-    // --in may be a direct log FILE (digest-proof --sample) -> read it as-is, no env override.
-    let path: Option<PathBuf> = if src.is_file() {
-        Some(src)
-    } else {
-        // Directory ("projects root") branch. Honor a ccs-relocated config tree: prefer
-        // $CLAUDE_CONFIG_DIR/projects over the manifest `--in` root (REQ-CCS-PROFILES).
-        let env_cfg = std::env::var("CLAUDE_CONFIG_DIR").ok();
-        let root = ccs_projects_root_from(env_cfg.as_deref()).unwrap_or(src);
-        if root.is_dir() {
-            let session = args.session.ok_or("--in is a directory but no --session to locate")?;
-            locate(&root, &session)
-        } else {
-            None
+    // A legacy --in may be a direct log FILE (digest-proof --sample) -> read it as-is, no override.
+    let path: Option<PathBuf> = match src {
+        Some(f) if f.is_file() => Some(f),
+        src_dir => {
+            // Directory ("projects root") branch — the fetcher locate (the adapter owns the slug).
+            let cfg = args.config_dir.as_deref().map(expand_tilde);
+            let cfg_str = cfg.as_ref().map(|p| p.to_string_lossy().into_owned());
+            let env_cfg = std::env::var("CLAUDE_CONFIG_DIR").ok();
+            let root =
+                resolve_projects_root(cfg_str.as_deref(), env_cfg.as_deref(), src_dir);
+            if root.is_dir() {
+                let session =
+                    args.session.ok_or("locating in a projects root needs --session")?;
+                locate(&root, &session)
+            } else {
+                None
+            }
         }
     };
 
@@ -422,6 +456,49 @@ mod tests {
         .unwrap();
         assert_eq!(a.session.as_deref(), Some("sess-1"));
         assert_eq!(a.source.as_deref(), Some("/p/root"));
+    }
+
+    // [unit->REQ-DIST-DIGEST-FETCHER] the v0.10.0 fetcher fill: --config-dir parses beside the
+    // legacy flags (the manifest extractor line threads {CLAUDE_CONFIG_DIR} through it).
+    #[test]
+    fn parse_args_reads_config_dir() {
+        let a = parse_args(
+            ["--session", "s", "--config-dir", "/u/.ccs/acct/.claude"]
+                .iter()
+                .map(|s| s.to_string()),
+        )
+        .unwrap();
+        assert_eq!(a.config_dir.as_deref(), Some("/u/.ccs/acct/.claude"));
+        assert_eq!(a.source, None);
+    }
+
+    // [unit->REQ-DIST-DIGEST-FETCHER] projects-root precedence: the spt-core-captured --config-dir
+    // fill is authoritative; the inherited env is next (pre-0.19.0 branch, kept); a legacy --in
+    // root third; the ~/.claude default last. Pure helper — no env mutation in the test.
+    #[test]
+    fn projects_root_precedence_config_dir_wins() {
+        let root = resolve_projects_root(
+            Some("/cap/.claude"),
+            Some("/env/.claude"),
+            Some(PathBuf::from("/in/projects")),
+        );
+        assert_eq!(root, Path::new("/cap/.claude").join("projects"));
+    }
+
+    #[test]
+    fn projects_root_precedence_env_then_in() {
+        let env_next =
+            resolve_projects_root(None, Some("/env/.claude"), Some(PathBuf::from("/in/p")));
+        assert_eq!(env_next, Path::new("/env/.claude").join("projects"));
+        let in_third = resolve_projects_root(None, None, Some(PathBuf::from("/in/p")));
+        assert_eq!(in_third, Path::new("/in/p"));
+    }
+
+    #[test]
+    fn projects_root_defaults_to_home_claude() {
+        // Empty captured value must not shadow the chain (mirrors ccs_root_ignores_empty).
+        let root = resolve_projects_root(Some(""), None, None);
+        assert!(root.ends_with(Path::new(".claude").join("projects")), "got {root:?}");
     }
 
     #[test]
