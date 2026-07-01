@@ -8,6 +8,22 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.10.0] - 2026-07-01
+
+> Requires spt-core **v0.19.0 or newer** (floor bumped: this cut consumes the new `[digest]`
+> fetcher strategy and the `[env] direction="read"` capture, both v0.19.0 seams). Update spt-core
+> first (`spt update fetch && spt update apply`), then `spt adapter update claude-spt`.
+
+### Changed
+- **The session digest now locates the transcript itself** (`[digest] strategy = "fetcher"`). spt-core
+  no longer pre-reads a declared source path; the extractor receives the session id plus the
+  captured `CLAUDE_CONFIG_DIR` and resolves Claude Code's partitioned
+  `projects/<project>/<session>.jsonl` layout on its own.
+- **Relocated installs digest correctly from the daemon.** `CLAUDE_CONFIG_DIR` is now captured from
+  the session's environment at bind time (`[env.CLAUDE_CONFIG_DIR] direction="read"`, fallback
+  `~/.claude`), so a ccs-profile endpoint's digest works even when the daemon — not your shell —
+  invokes the extractor. Previously `spt endpoint digest` on a ccs session could return `NO_DIGEST`.
+
 ## [0.9.2] - 2026-06-30
 
 > Requires spt-core **v0.16.0 or newer** (unchanged). A wording-only fix in the agent briefing
