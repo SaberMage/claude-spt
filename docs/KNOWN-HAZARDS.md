@@ -111,3 +111,38 @@ required_stages = []   # activate (["unit"] or ["unit","int"]) when you cover it
 - **cite:** `claude_skill_owl/src/live/wrapper/claude.rs` (init/resume/final all pass
   `--dangerously-skip-permissions`); identified 2026-06-18 while reaching psyche parity. Reference
   only — binding evidence is the tagged tests under `REQ-HAZARD-PSYCHE-PERMS-DEADLOCK`.
+
+---
+
+## 3. Distribution split (adapter × plugin version skew)
+
+### 3.1 A hook_cmd shape change with a stale dispatch.sh bricks the whole CC session
+
+<!-- [doc->REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP] -->
+
+- **Failure:** `spt adapter update` refreshes the adapter (manifest + binary) **immediately**, but
+  the cplugs plugin's `dispatch.sh` on disk only refreshes after a plugin reconcile + CC
+  `/reload-plugins`. Observed live 2026-07-01 (perri, the v0.9.0→0.9.2 on-node update): the stale
+  0.1.8 `dispatch.sh` execs `"$bin" <event>` (expecting the legacy ` hook`-suffixed hook_cmd) while
+  the new manifest's `[strings].hook_cmd` is a **bare** binary path → it ran `claude-spt PreToolUse`
+  → `unknown subcommand` → **nonzero exit on every hook event** → CC blocked EVERY tool call
+  (Bash/Read/Write/Glob/AskUserQuestion) **and looped the Stop hook** (the agent could not even end
+  its turn). Zero self-repair is possible from inside the session — every repair lever is itself a
+  blocked tool call; only the operator's `/reload-plugins` recovered it. The v0.9.1 dispatch fix
+  (strip legacy ` hook` suffix) protects the OTHER direction only (new dispatch × old manifest).
+- **Invariant:** a `hook_cmd` SHAPE change in either layer with the other layer stale MUST
+  **degrade, never brick**: (a) `dispatch.sh` tolerates BOTH shapes in BOTH directions (append the
+  `hook` token iff missing, strip iff doubled), and (b) `claude-spt` exits **0** (pass-through with
+  a stderr note) on an unrecognized event/subcommand token so a stale dispatch produces a noisy
+  no-op instead of a tool-blocking failure. Equivalently: pin the dispatch↔binary contract so the
+  shape can never change unilaterally.
+- **Mapping / notes:** the two halves live in `plugin/sptc/hooks/dispatch.sh` (cplugs-shipped,
+  slow channel) and `tools/claude-spt/src/{main,hook}.rs` (adapter-shipped, fast channel) — the
+  asymmetric ship cadence IS the hazard. A `claude-spt post-update` reconcile of the LIVE plugin
+  cache dir (including ccs instance roots `~/.ccs/instances/<x>/plugins/…`, suspected missed today —
+  unconfirmed) closes the window but cannot cover a mid-session CC that has already snapshotted its
+  hooks; the degrade-not-brick exit-0 half covers that remainder.
+- **cite:** live incident 2026-07-01 (perri session, this node; todlando concurs adapter-side —
+  off the spt-core triage doc). Memory: `v092-onnode-update-skew-brick.md`. Reference only —
+  binding evidence lands with the tagged tests under `REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP`
+  (registry entry present, stages `[]` until the guard slice activates).
