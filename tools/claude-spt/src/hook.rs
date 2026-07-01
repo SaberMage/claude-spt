@@ -308,17 +308,34 @@ fn emit_capped(env: &mut dyn HookEnv, text: &str, spill_path: &str) {
 
 // ─────────────────────────── impure resolvers (use HookEnv) ───────────────────────────
 
-/// Resolve this session's perch id via `spt whoami` (off $OWL_SESSION_ID / $SPT_AGENT_ID). Empty ⇒
-/// no perch yet (session never readied) ⇒ caller no-ops. The whoami call is given $OWL_SESSION_ID set
-/// to the env value if present, else the stdin session id (mirrors the shell `${OWL_SESSION_ID:-$sid}`).
+/// Resolve this session's perch id via `spt whoami --json` (off $OWL_SESSION_ID / $SPT_AGENT_ID).
+/// Empty ⇒ no perch yet (session never readied) ⇒ caller no-ops. The whoami call is given
+/// $OWL_SESSION_ID set to the env value if present, else the stdin session id (mirrors the shell
+/// `${OWL_SESSION_ID:-$sid}`).
+///
+/// `--json` is REQUIRED here (global read/status flag, spt-core v0.16.0 — always on our floor):
+/// the identity is `.self.id`, `null` when the session has no perch. NEVER take a line of the
+/// human view — it is a grouped roster whose first line is a `SUBNET <name>` header on any node
+/// with subnet membership (and `SELF: <id> …` when perched), so first-line parsing crowned an
+/// agent "SUBNET SPT_DEV" and told it not to run whoami (doyle bug report 2026-07-01; the wrong
+/// identity self-reinforced through a whole orchestration round).
+/// [impl->REQ-DIST-WHOAMI-JSON]
 fn self_id(env: &mut dyn HookEnv, sid: &str) -> String {
     let owl = env.env("OWL_SESSION_ID").filter(|s| !s.is_empty()).unwrap_or_else(|| sid.to_string());
-    env.spt(&["whoami"], None, &[("OWL_SESSION_ID", &owl)])
+    let out = env
+        .spt(&["whoami", "--json"], None, &[("OWL_SESSION_ID", &owl)])
+        .unwrap_or_default();
+    parse_whoami_self(&out)
+}
+
+/// Extract `.self.id` from `spt whoami --json` output. Pure over the string so the contract is
+/// unit-testable: JSON with `self:null` (or any parse failure, e.g. a pre-JSON binary's human
+/// roster) resolves to "" — no-perch, NEVER a roster header. [impl->REQ-DIST-WHOAMI-JSON]
+fn parse_whoami_self(out: &str) -> String {
+    serde_json::from_str::<serde_json::Value>(out.trim())
+        .ok()
+        .and_then(|v| v.get("self").and_then(|s| s.get("id")).and_then(|i| i.as_str()).map(String::from))
         .unwrap_or_default()
-        .lines()
-        .next()
-        .unwrap_or("")
-        .to_string()
 }
 
 /// Resolve a `[strings]` value by dot-path on the registered adapter (file-backed values resolve to
@@ -977,11 +994,38 @@ mod tests {
         }
     }
 
+    // [unit->REQ-DIST-WHOAMI-JSON] the doyle bug (2026-07-01): a node with subnet membership makes
+    // the HUMAN whoami/list view start with a "SUBNET <name>" header — first-line parsing crowned
+    // the agent "SUBNET SPT_DEV" and the injected brief forbade running whoami, so the wrong
+    // identity self-reinforced. The load-bearing regression: human-roster input resolves EMPTY.
+    #[test]
+    fn whoami_human_roster_is_never_an_id() {
+        let human = "SUBNET SPT_DEV\n  hall-a  HFENDULEAM (14efb80c…)  ■ ONLINE\nSUBNET BIGNET\n  hall-a  HFENDULEAM (14efb80c…)  ■ ONLINE\nENDPOINTS:2\nThis node: HFENDULEAM (14efb80c…)\n  (no local perches)";
+        assert_eq!(parse_whoami_self(human), "", "a grouped roster header must resolve to no-perch");
+        // The perched human shape must not leak either — only --json is the contract.
+        let perched = "SELF: perri  live_agent  ready=true alive=true\nSUBNET SPT_DEV\n  …";
+        assert_eq!(parse_whoami_self(perched), "", "human SELF line is not the contract");
+    }
+
+    // [unit->REQ-DIST-WHOAMI-JSON] the --json contract: .self.id when perched, "" on self:null,
+    // "" on garbage (defensive — a pre-JSON binary or a transport error must read as no-perch).
+    #[test]
+    fn whoami_json_self_id_contract() {
+        assert_eq!(
+            parse_whoami_self(r#"{"self":{"id":"doyle","status":"live_agent","ready":true,"alive":true},"subnets":[]}"#),
+            "doyle"
+        );
+        assert_eq!(parse_whoami_self(r#"{"self":null,"subnets":[{"name":"SPT_DEV"}]}"#), "");
+        assert_eq!(parse_whoami_self(""), "");
+        assert_eq!(parse_whoami_self("ERROR: daemon unreachable"), "");
+        assert_eq!(parse_whoami_self(r#"{"subnets":[]}"#), "", "missing self key reads as no-perch");
+    }
+
     // [unit->REQ-DIST-PRETOOL-POLL]
     #[test]
     fn ups_marks_busy_before_drain_and_includes_deferred() {
         let mut env = Recorder::new(|args| match args {
-            ["whoami"] => Some("perri".into()),
+            ["whoami", "--json"] => Some(r#"{"self":{"id":"perri","status":"live_agent","ready":true,"alive":true}}"#.into()),
             a if a.contains(&"poll") => Some("<EVENT type=\"msg\" from=\"doyle\">hi</EVENT>".into()),
             _ => Some(String::new()),
         });
@@ -998,7 +1042,7 @@ mod tests {
     fn ups_skill_injection_without_perch() {
         // No perch (whoami empty) → no busy/poll, but the skill body still injects.
         let mut env = Recorder::new(|args| match args {
-            ["whoami"] => Some(String::new()),
+            ["whoami", "--json"] => Some(r#"{"self":null,"subnets":[]}"#.into()),
             ["adapter", "get-string", _, key] if *key == "skills.ready" => Some("# /sptc:ready\nbody".into()),
             _ => Some(String::new()),
         });
@@ -1010,7 +1054,7 @@ mod tests {
     #[test]
     fn pre_tool_use_noop_without_perch() {
         let mut env = Recorder::new(|args| match args {
-            ["whoami"] => Some(String::new()),
+            ["whoami", "--json"] => Some(r#"{"self":null,"subnets":[]}"#.into()),
             _ => Some(String::new()),
         });
         handle_pre_tool_use(&mut env, &json!({"session_id":"s1"}));
@@ -1022,7 +1066,7 @@ mod tests {
     #[test]
     fn pre_tool_use_busy_before_drain() {
         let mut env = Recorder::new(|args| match args {
-            ["whoami"] => Some("perri".into()),
+            ["whoami", "--json"] => Some(r#"{"self":{"id":"perri","status":"live_agent","ready":true,"alive":true}}"#.into()),
             a if a.contains(&"poll") => Some("<EVENT type=\"msg\" from=\"a\">m</EVENT>".into()),
             _ => Some(String::new()),
         });
@@ -1037,7 +1081,7 @@ mod tests {
     #[test]
     fn stop_marks_idle_when_perched_else_noop() {
         let mut env = Recorder::new(|args| match args {
-            ["whoami"] => Some("perri".into()),
+            ["whoami", "--json"] => Some(r#"{"self":{"id":"perri","status":"live_agent","ready":true,"alive":true}}"#.into()),
             _ => Some(String::new()),
         });
         handle_stop(&mut env, &json!({"session_id":"s1"}));
@@ -1124,7 +1168,7 @@ mod tests {
     #[test]
     fn subagent_start_and_stop() {
         let mut env = Recorder::new(|args| match args {
-            ["whoami"] => Some("parent".into()),
+            ["whoami", "--json"] => Some(r#"{"self":{"id":"parent","status":"live_agent","ready":true,"alive":true}}"#.into()),
             _ => Some(String::new()),
         });
         handle_subagent_start(&mut env, &json!({"session_id":"s1","agent_id":"w7"}));
@@ -1159,7 +1203,7 @@ mod tests {
         // Every CC event the static hooks.json wires routes to a handler; an event the binary does
         // not yet know is a silent no-op (forward-compat with a newer plugin wiring).
         let mut env = Recorder::new(|args| match args {
-            ["whoami"] => Some("perri".into()),
+            ["whoami", "--json"] => Some(r#"{"self":{"id":"perri","status":"live_agent","ready":true,"alive":true}}"#.into()),
             _ => Some(String::new()),
         });
         dispatch(&mut env, "Stop", &json!({"session_id":"s"}));

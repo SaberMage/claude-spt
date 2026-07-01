@@ -8,6 +8,18 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.10.1] - 2026-07-01
+
+> Requires spt-core **v0.19.0 or newer** (unchanged). A bugfix patch over 0.10.0. Binary-only
+> change — `spt adapter update claude-spt` picks it up; run `/reload-plugins` once after.
+
+### Fixed
+- **Agents no longer get crowned with a subnet name.** On any node with subnet membership, a
+  session resuming across `/clear`/`/compact` could be told its agent id was `SUBNET <name>` — the
+  header line of the endpoint roster — and the injected briefing forbade running `spt whoami`, so
+  the wrong identity stuck. The hook now resolves its identity from `spt whoami --json` (`self.id`)
+  and treats anything unparseable as "no perch", never a roster line.
+
 ## [0.10.0] - 2026-07-01
 
 > Requires spt-core **v0.19.0 or newer** (floor bumped: this cut consumes the new `[digest]`

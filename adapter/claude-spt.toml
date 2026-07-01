@@ -82,7 +82,14 @@ kind = "harness"
 # (capture-at-bind → info.json.read_env → fill → ~expand) finally delivers the ccs-relocated tree to
 # the on-demand extractor in the DAEMON'S context — the gap that made the old env-preference branch
 # session-context-only. `source` dropped (ignored under fetcher). Floor BUMPS to 0.19.0 below.
-version = "0.10.0"
+# 0.10.1 (2026-07-01): BUGFIX — perch-id mis-parse (doyle report, REQ-DIST-WHOAMI-JSON). The hook's
+# self_id took the FIRST LINE of `spt whoami` HUMAN output; the current human view is a grouped
+# roster ("SUBNET <name>" header first on any subnet-member node, "SELF: <id> …" when perched), so
+# SessionStart crowned an agent "SUBNET SPT_DEV" and the brief's don't-run-whoami instruction made
+# the wrong identity self-reinforce. Fix: `spt whoami --json` → .self.id (null ⇒ no-perch; parse
+# failure ⇒ empty, NEVER a roster line). --json is a v0.16.0 global flag, under the 0.19.0 floor —
+# no new seam, floor unchanged.
+version = "0.10.1"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
