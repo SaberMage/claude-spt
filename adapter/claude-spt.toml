@@ -97,7 +97,16 @@ kind = "harness"
 # bare subcommand) is now handled AS a hook (perch keeps working) with a non-blocking stderr note that
 # the plugin is stale (advise /reload-plugins); a genuine typo still exits loud. Rides `spt adapter
 # update` (binary channel) so it reaches even a node with the stale plugin. Binary-only, floor unchanged.
-version = "0.10.2"
+# 0.10.3 (2026-07-01): NODE-NAMED SESSIONS — the REQ-DIST-RC-STARTUP stretch (doyle ask #4), shipped
+# adapter-side. All FOUR CC spawn commands ([session.self]+[session.resume], base + ccs profile) now
+# route through `{adapter_dir}/claude-spt launch`, which computes the node name ON-NODE and spawns the
+# harness CLI with -n "<id> @ <node>" (display) + --remote-control <id>--<node> (RC names are tokeny;
+# space-safety unverifiable from the public surface). Shim needed twice over: the published fill
+# catalog (v0.19.1) has NO {node} key (reported gap), and tokenize-then-fill can't produce a
+# space-carrying argv element anyway. Unknown node ⇒ both names degrade to bare <id> (the pre-0.10.3
+# shape). `spt rc <id>` unaffected (broker attaches by ENDPOINT id, not CC's RC name). No new
+# spt-core seam ({adapter_dir} subst is pre-0.16.0 for command templates) → floor unchanged.
+version = "0.10.3"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify
@@ -318,23 +327,28 @@ keys = ["id", "session_id", "psyche_dir", "psyche_prompt"]
 # post-spawn (`api bind <id>`, the spt-hosted path — NOT the seed→listen path /sptc:ready|live uses).
 # This is what the `cc-<id>` shortcut (shortcut_basename="cc") bakes into a non-interactive launch.
 #
-# command is `claude` (+ `--dangerously-skip-permissions`): CC mints its OWN session id internally
-# (identity.session_id_source = post_spawn), so spt's {session_id} is not threaded on argv. The
-# endpoint {id} is threaded THREE ways now (U6, REQ-DIST-RC-STARTUP): it rides the ENV for the BIND
-# (CC has no id flag, so SessionStart reads $SPT_ENDPOINT_ID and binds — see [env.SPT_ENDPOINT_ID]
-# below, the sanctioned flagless-harness pattern), AND it sets the DISPLAY name (`-n {id}`, shown in
-# the prompt box / `/resume`) AND the REMOTE-CONTROL channel (`--remote-control {id}`) — so a FRESH
-# spt-hosted endpoint is `spt rc <id>`-attachable + idle/checkpoint-injectable identically to a
-# RESUMED one ([session.resume]). The env-bind and the -n/RC flags are non-conflicting: env names the
-# bind id at SessionStart, -n/RC name the display + control channel (distinct CC mechanisms).
-# `--dangerously-skip-permissions` is required for the spt-hosted bringup: the broker spawns CC
-# non-interactively into a PTY, so the permission-prompt gate would deadlock the launch with no
-# operator to approve it. spt tokenizes the command on whitespace then fills {id} as a clean argv
-# element each (tokenize-then-fill, v0.8.2+). STRETCH (doyle ask #4, operator-raised): -n/RC upgrade
-# to `{id}@{node}` (cross-node-distinguishable) once a `{node}` fill key lands; ships `{id}`-only now.
+# command is the `claude-spt launch` SHIM (0.10.3, the delivered doyle-ask-#4 stretch): it spawns
+# `claude -n "<id> @ <node>" --remote-control <id>--<node> --dangerously-skip-permissions` (unix:
+# exec — claude IS the PTY leader; windows: spawn+wait, stdio inherited). CC mints its OWN session id
+# internally (identity.session_id_source = post_spawn), so spt's {session_id} is not threaded on
+# argv. The endpoint {id} is threaded THREE ways (U6, REQ-DIST-RC-STARTUP): it rides the ENV for the
+# BIND (CC has no id flag, so SessionStart reads $SPT_ENDPOINT_ID and binds — see
+# [env.SPT_ENDPOINT_ID] below, the sanctioned flagless-harness pattern), AND it sets the DISPLAY
+# name (`-n "<id> @ <node>"`, shown in the prompt box / `/resume`) AND the REMOTE-CONTROL channel
+# (`--remote-control <id>--<node>`) — so a FRESH spt-hosted endpoint is `spt rc <id>`-attachable +
+# idle/checkpoint-injectable identically to a RESUMED one ([session.resume]). WHY A SHIM: the
+# published fill catalog has NO {node} key (reported spt-core gap), and tokenize-then-fill
+# (v0.8.2+) can never yield a space-carrying single argv element — the shim runs on the node,
+# computes the hostname itself, and passes each name as one clean argv element. RC gets the tokeny
+# `<id>--<node>` form (CC's auto-generated RC names are hostname-prefixed tokens; space-safety of
+# an explicit RC name is unverifiable from the public surface). Unknown node ⇒ bare `<id>` for
+# both (the pre-0.10.3 shape); `spt rc <id>` attaches by ENDPOINT id either way (broker-internal,
+# not CC's RC name). `--dangerously-skip-permissions` stays required for the spt-hosted bringup:
+# the broker spawns CC non-interactively into a PTY, so the permission-prompt gate would deadlock
+# the launch with no operator to approve it (the shim passes it through).
 # [impl->REQ-DIST-SHORTCUT-BASENAME]
 [session.self]
-command = "claude -n {id} --remote-control {id} --dangerously-skip-permissions"
+command = "{adapter_dir}/claude-spt launch --id {id}"
 keys = ["id"]
 
 # ── [session.resume] — native-resume sibling of [session.self] (harness-contract v0.13.0+) ─────
@@ -344,21 +358,21 @@ keys = ["id"]
 # footgun). The PTY lands in the resumed session's recorded project cwd; CC resolves the transcript by
 # {session_id} + cwd.
 #
-# Command = Claude Code's NATIVE-RESUME verb: `claude -r {session_id}` (-r/--resume reloads the real
-# transcript by id). The endpoint {id} is threaded TWO ways: as the DISPLAY name (`-n {id}`, U6 —
-# shown in the prompt box / `/resume`, matching [session.self] so a fresh and a resumed endpoint
-# present identically) AND as the REMOTE-CONTROL name (`--remote-control {id}`, a real CC flag):
-# native-resume drives the resumed PTY over Remote Control, the same channel a live `spt rc`
-# controller / the [message-idle-translation-binary] use, so the endpoint id IS the RC session name.
-# (A resumed session has no $SPT_ENDPOINT_ID env-bind path — -n/RC are how {id} attaches here.)
+# Command = the same `claude-spt launch` shim with `--resume {session_id}` (0.10.3): it spawns
+# Claude Code's NATIVE-RESUME verb `claude -r <session_id> -n "<id> @ <node>" --remote-control
+# <id>--<node> --dangerously-skip-permissions` (-r/--resume reloads the real transcript by id).
+# The endpoint {id} is threaded TWO ways: as the DISPLAY name (U6 — shown in the prompt box /
+# `/resume`, matching [session.self] so a fresh and a resumed endpoint present identically) AND as
+# the REMOTE-CONTROL name — both node-suffixed by the shim, same shapes + degrade rule as
+# [session.self]. (A resumed session has no $SPT_ENDPOINT_ID env-bind path — -n/RC are how {id}
+# attaches here; `spt rc <id>` still addresses the broker PTY by ENDPOINT id.)
 # `--dangerously-skip-permissions` for the same non-interactive broker-PTY reason as [session.self]
 # (REQ-HAZARD-PSYCHE-PERMS-DEADLOCK). keys = the two fills spt-core substitutes: {session_id} (the
-# resumed id) + {id} (the endpoint). spt tokenizes on whitespace then fills (tokenize-then-fill,
-# v0.8.2+), so each flag is a clean argv element. Satisfies REQ-DIST-SESSION-RESUME (native-resume
-# seam) + REQ-DIST-RC-STARTUP (the {id} display+RC parity with [session.self]); declaration-only
-# (.toml is unscanned, so the formal evidence is the unit assertions in tests/manifest-shortcut.sh).
+# resumed id) + {id} (the endpoint). Satisfies REQ-DIST-SESSION-RESUME (native-resume seam) +
+# REQ-DIST-RC-STARTUP (display+RC parity with [session.self]); the shim's command shape is unit-
+# tested in tools/claude-spt (launch.rs) and the manifest shape in tests/manifest-shortcut.sh.
 [session.resume]
-command = "claude -r {session_id} -n {id} --remote-control {id} --dangerously-skip-permissions"
+command = "{adapter_dir}/claude-spt launch --id {id} --resume {session_id}"
 keys = ["session_id", "id"]
 
 # ── [env.<VAR>] ────────────────────────────────────────────────────────────────────────────
@@ -486,18 +500,21 @@ value = "~/.claude"
 # REQ-CCS-PROFILES's impl evidence.
 # (REQ-CCS-PROFILES doc evidence lives in docs/PARITY.md; int = registration-int :ccs assertions.)
 #
-# v0.9.1 FIX: the overlay MUST carry the SAME {id}-threading flags the base now has — a leaf-replace
-# of `command` REPLACES it wholesale, so the bare v0.8.0 override (`ccs --dangerously-skip-permissions`)
-# silently DROPPED the U6 `-n {id}` display name + `--remote-control {id}` RC channel a ccs endpoint
-# needs to be idle/checkpoint-injectable. ccs is a drop-in for `claude` and forwards these flags, so
-# both bringup paths (self + resume) mirror base, only swapping the launch binary. keys=["id"] (and
-# resume +session_id) are redeclared so {id}/{session_id} substitute under the overlay.
+# v0.9.1 FIX (still binding): the overlay MUST mirror base's full command shape — a leaf-replace of
+# `command` REPLACES it wholesale, so the bare v0.8.0 override (`ccs --dangerously-skip-permissions`)
+# silently DROPPED the U6 display-name + RC flags a ccs endpoint needs to be idle/checkpoint-
+# injectable. 0.10.3: both overlays route through the SAME `claude-spt launch` shim as base, only
+# adding `--cli ccs` (the shim swaps the launch binary; ccs is a drop-in for `claude` and forwards
+# CC's flags, so the node-named -n/RC + skip-perms apply identically). The shim also PATH-resolves
+# ccs's npm `.cmd` shim on Windows — which a bare `ccs …` command line could not spawn reliably.
+# keys=["id"] (and resume +session_id) are redeclared so {id}/{session_id} substitute under the
+# overlay.
 [profiles.ccs.session.self]
-command = "ccs -n {id} --remote-control {id} --dangerously-skip-permissions"
+command = "{adapter_dir}/claude-spt launch --cli ccs --id {id}"
 keys = ["id"]
 
 [profiles.ccs.session.resume]
-command = "ccs -r {session_id} -n {id} --remote-control {id} --dangerously-skip-permissions"
+command = "{adapter_dir}/claude-spt launch --cli ccs --id {id} --resume {session_id}"
 keys = ["session_id", "id"]
 
 # Observability leaf: makes the overlay visible via `spt adapter get-string

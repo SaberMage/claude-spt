@@ -7,6 +7,8 @@
 //!   claude-spt translate   — the [message-idle-translation-binary] idle filter (was cc-spt-idle-translate)
 //!   claude-spt hook <ev>   — the CC hook handler (D1: hook logic moved off the plugin shell so it
 //!                            rides `spt adapter update`; was the eight plugin hook .sh wrappers)
+//!   claude-spt launch      — the [session.self]/[session.resume] CC spawn shim (node-named
+//!                            sessions: -n "<id> @ <node>" + --remote-control <id>--<node>)
 //!
 //! Dispatch is a bare `argv[1]` match (no clap — keep the dependency-light ethos the predecessor
 //! crates were built on). Each subcommand owns its remaining argv via `std::env::args().skip(2)`
@@ -19,6 +21,7 @@
 
 mod digest;
 mod hook;
+mod launch;
 mod post_update;
 mod psyche;
 mod translate;
@@ -34,6 +37,7 @@ enum Sub {
     PostUpdate,
     Translate,
     Hook,
+    Launch,
     Help,
     Unknown(String),
 }
@@ -45,6 +49,7 @@ fn classify(sub: Option<&str>) -> Sub {
         Some("post-update") => Sub::PostUpdate,
         Some("translate") => Sub::Translate,
         Some("hook") => Sub::Hook,
+        Some("launch") => Sub::Launch,
         None | Some("-h") | Some("--help") => Sub::Help,
         Some(other) => Sub::Unknown(other.to_string()),
     }
@@ -59,7 +64,8 @@ fn usage() {
          \x20 psyche       run the LiveAgent Psyche companion ([session.psyche_init] runner)\n\
          \x20 post-update  reconcile the cplugs plugin after `spt adapter update`\n\
          \x20 translate    idle-message translation filter (stdin->stdout JSON lines)\n\
-         \x20 hook <event> handle a Claude Code hook event (stdin = the CC hook payload)"
+         \x20 hook <event> handle a Claude Code hook event (stdin = the CC hook payload)\n\
+         \x20 launch       spawn the CC session with node-named display/RC ([session.self]/[session.resume])"
     );
 }
 
@@ -71,6 +77,7 @@ fn main() -> ExitCode {
         Sub::PostUpdate => post_update::run(),
         Sub::Translate => translate::run(),
         Sub::Hook => hook::run(),
+        Sub::Launch => launch::run(),
         Sub::Help => {
             usage();
             ExitCode::SUCCESS
@@ -111,6 +118,7 @@ mod tests {
         assert_eq!(classify(Some("post-update")), Sub::PostUpdate);
         assert_eq!(classify(Some("translate")), Sub::Translate);
         assert_eq!(classify(Some("hook")), Sub::Hook);
+        assert_eq!(classify(Some("launch")), Sub::Launch);
     }
 
     #[test]

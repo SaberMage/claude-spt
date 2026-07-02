@@ -4,7 +4,10 @@
 //! surface) but it CANNOT touch the cplugs plugin (the thin skeleton: hooks.json + skill stubs +
 //! plugin.json), which lives in Claude Code's marketplace registry. This subcommand closes that gap:
 //! detect the host CLI (`claude`, or `ccs` — a drop-in), ensure the `cplugs` marketplace is
-//! registered, then install/update the plugin. It then PRINTS a notice — it CANNOT run
+//! registered, then install/update the plugin. When ccs is installed ALONGSIDE claude, it ALSO runs
+//! `ccs plugin update sptc@cplugs` (best-effort) — ccs sessions read their own per-account plugin
+//! tree, which the claude-side reconcile never touches (v0.10.3, REQ-DIST-CCS-PLUGIN-FOLLOWUP).
+//! It then PRINTS a notice — it CANNOT run
 //! `/reload-plugins` (a TUI-only action), so the manual residual is the user's `/reload-plugins`.
 //!
 //! WIRED (spt-core v0.16.0, D2): the manifest `[update.post] = {command = "{adapter_dir}/claude-spt
@@ -75,6 +78,27 @@ fn marketplace_update_cmd() -> Vec<String> {
 fn plugin_sync_cmd(installed: bool) -> Vec<String> {
     let verb = if installed { "update" } else { "install" };
     ["plugin", verb, PLUGIN_REF]
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect()
+}
+
+/// Does the ccs FOLLOW-UP apply? (operator ask, v0.10.3): when BOTH CLIs are on PATH the primary
+/// reconcile drives `claude` — but ccs-launched sessions read their own per-account plugin tree
+/// (the CLAUDE_CONFIG_DIR relocation, ~/.ccs/instances/<account>/.claude), which the claude-side
+/// reconcile never touches. So the update ALSO runs `ccs plugin update sptc@cplugs` (ccs applies
+/// it in its own account context). Not needed when ccs is absent, nor when ccs IS the primary
+/// (already reconciled). Pure. [impl->REQ-DIST-CCS-PLUGIN-FOLLOWUP]
+fn ccs_followup_needed(primary: &str, has_ccs: bool) -> bool {
+    has_ccs && primary != "ccs"
+}
+
+/// The follow-up argv: `plugin update sptc@cplugs` — always `update` (never `install`): if a ccs
+/// account never installed the plugin, force-installing it is not this reconcile's call; the
+/// follow-up refreshes what exists and its failure is best-effort noise, never a post-update fail.
+/// [impl->REQ-DIST-CCS-PLUGIN-FOLLOWUP]
+fn ccs_followup_cmd() -> Vec<String> {
+    ["plugin", "update", PLUGIN_REF]
         .iter()
         .map(|s| (*s).to_string())
         .collect()
@@ -228,7 +252,8 @@ pub fn run() -> ExitCode {
         adapter_applied = update_applied_in(buf.trim());
     }
 
-    let cli = match choose_cli(which("claude"), which("ccs")) {
+    let (has_claude, has_ccs) = (which("claude"), which("ccs"));
+    let cli = match choose_cli(has_claude, has_ccs) {
         Some(c) => c,
         None => {
             // fail-isolated: spt-core never rolls back the pull on our exit code. stderr, not stdout.
@@ -236,6 +261,14 @@ pub fn run() -> ExitCode {
             return ExitCode::from(3);
         }
     };
+    // Spawn via the PATH-resolved program: `ccs` is an npm `.cmd` shim on Windows, which a bare
+    // Command::new cannot start (same wall the launch shim hits — resolver shared from launch.rs).
+    let path_env = std::env::var_os("PATH");
+    let resolve = |name: &str| {
+        crate::launch::resolve_program_from(name, path_env.as_deref())
+            .unwrap_or_else(|| PathBuf::from(name))
+    };
+    let cli_program = resolve(cli);
 
     let plugins_dir = claude_config_dir().map(|d| d.join("plugins"));
     let read = |name: &str| -> String {
@@ -271,7 +304,7 @@ pub fn run() -> ExitCode {
         // CAPTURE the subprocess output — it must NOT inherit our stdout. In [update.post] mode our
         // stdout is the arbiter channel; CC's verbose `plugin update` line leaking there would be read
         // by spt-core as a CUSTOM update message (superseding [update].message) — the v0.9.0 wording bug.
-        let output = match Command::new(cli).args(argv).stdin(Stdio::null()).output() {
+        let output = match Command::new(&cli_program).args(argv).stdin(Stdio::null()).output() {
             Ok(o) => o,
             Err(e) => {
                 eprintln!("claude-spt post-update: failed to spawn `{shown}`: {e}");
@@ -306,6 +339,41 @@ pub fn run() -> ExitCode {
         }
     }
 
+    // ccs FOLLOW-UP (operator ask, v0.10.3): the primary reconcile above only touched the primary
+    // CLI's plugin tree; when ccs is ALSO installed, refresh its per-account plugin tree too.
+    // BEST-EFFORT by design: a ccs account without the plugin makes `plugin update` fail — that is
+    // noise (stderr), never a post-update failure and never the arbiter channel.
+    // [impl->REQ-DIST-CCS-PLUGIN-FOLLOWUP]
+    if ccs_followup_needed(cli, has_ccs) {
+        let argv = ccs_followup_cmd();
+        let shown = format!("ccs {}", argv.join(" "));
+        if dry_run {
+            println!("would run: {shown}");
+        } else {
+            eprintln!("claude-spt post-update: {shown} (ccs follow-up)");
+            match Command::new(resolve("ccs")).args(&argv).stdin(Stdio::null()).output() {
+                Ok(out) => {
+                    let se = String::from_utf8_lossy(&out.stderr);
+                    let so = String::from_utf8_lossy(&out.stdout);
+                    if out.status.success() {
+                        if !so.trim().is_empty() {
+                            eprintln!("{}", so.trim_end());
+                        }
+                    } else {
+                        eprintln!(
+                            "claude-spt post-update: `{shown}` exited {} (best-effort follow-up — continuing)",
+                            out.status
+                        );
+                        if !se.trim().is_empty() {
+                            eprintln!("{}", se.trim_end());
+                        }
+                    }
+                }
+                Err(e) => eprintln!("claude-spt post-update: failed to spawn `{shown}`: {e} (best-effort follow-up — continuing)"),
+            }
+        }
+    }
+
     if dry_run {
         return ExitCode::SUCCESS; // diagnostics already printed; no arbiter output
     }
@@ -321,6 +389,15 @@ pub fn run() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // [unit->REQ-DIST-CCS-PLUGIN-FOLLOWUP]
+    #[test]
+    fn ccs_followup_only_when_ccs_present_and_not_primary() {
+        assert!(ccs_followup_needed("claude", true)); // both installed → claude primary + ccs follow-up
+        assert!(!ccs_followup_needed("claude", false)); // no ccs → nothing to follow up
+        assert!(!ccs_followup_needed("ccs", true)); // ccs IS the primary → already reconciled
+        assert_eq!(ccs_followup_cmd(), vec!["plugin", "update", "sptc@cplugs"]); // update, never install
+    }
 
     #[test]
     fn cli_prefers_claude_then_ccs_then_none() {

@@ -8,6 +8,30 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.10.3] - 2026-07-01
+
+> Requires spt-core **v0.19.0 or newer** (unchanged). Manifest + binary change —
+> `spt adapter update claude-spt` picks it up; run `/reload-plugins` once after.
+
+### Added
+- **Sessions are named after their machine.** Every spt-hosted Claude Code session — fresh or
+  resumed, `claude` or `ccs` — now launches with the display name **`<id> @ <node>`** (shown in the
+  prompt box, the `/resume` picker, and the terminal title) and the Remote Control name
+  **`<id>--<node>`**, so a fleet of agents across machines is distinguishable at a glance. The node
+  name is computed on the machine at launch by the new `claude-spt launch` spawn shim (spt-core's
+  fill catalog has no `{node}` key — reported upstream). If the machine name can't be determined,
+  both names fall back to the plain `<id>`, exactly as before. `spt rc <id>` is unaffected — it
+  addresses the endpoint by id, not by the session's Remote Control name.
+
+- **Updates now reach `ccs` accounts too.** If `ccs` is installed alongside `claude`, the update's
+  plugin reconcile also runs `ccs plugin update` so ccs-launched sessions (which keep their own
+  per-account plugin tree) pick up the new plugin instead of staying stale. Best-effort: if a ccs
+  account never installed the plugin, the follow-up just logs and moves on.
+
+### Fixed
+- **`ccs` sessions launch reliably on Windows.** The launch shim and the update follow-up resolve
+  the npm `ccs.cmd` shim explicitly (a bare `ccs` spawn could not find it on Windows).
+
 ## [0.10.2] - 2026-07-01
 
 > Requires spt-core **v0.19.0 or newer** (unchanged). An emergency bugfix patch over 0.10.1.
