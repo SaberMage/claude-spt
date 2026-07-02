@@ -89,7 +89,15 @@ kind = "harness"
 # the wrong identity self-reinforce. Fix: `spt whoami --json` → .self.id (null ⇒ no-perch; parse
 # failure ⇒ empty, NEVER a roster line). --json is a v0.16.0 global flag, under the 0.19.0 floor —
 # no new seam, floor unchanged.
-version = "0.10.1"
+# 0.10.2 (2026-07-01): EMERGENCY BUGFIX — the hook binary now DEGRADES instead of BRICKING on the
+# dispatch×hook_cmd LOCKSTEP skew (REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP). A stale plugin dispatch.sh
+# (old 0.1.8 shape) execs `claude-spt <CCEvent>` WITHOUT the `hook` token against a bare-path hook_cmd
+# → `claude-spt UserPromptSubmit` → old main.rs exited nonzero on EVERY hook → CC blocked all tools +
+# looped the Stop hook, zero self-repair. Fix: `claude-spt <CCEvent>` (a recognised CC hook event as a
+# bare subcommand) is now handled AS a hook (perch keeps working) with a non-blocking stderr note that
+# the plugin is stale (advise /reload-plugins); a genuine typo still exits loud. Rides `spt adapter
+# update` (binary channel) so it reaches even a node with the stale plugin. Binary-only, floor unchanged.
+version = "0.10.2"
 # Floor BUMPED to 0.13.2 (2026-06-22, C / F-014 drop): the release packaging moved from the per-OS
 # stopgap (`adapter.spt` = a windows-binary copy — F-014; broke on a linux host) to ONE fat .spt that
 # bundles both x86_64 triples beside a shared manifest. spt-core extracts a fat archive (classify

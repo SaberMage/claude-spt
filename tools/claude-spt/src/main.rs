@@ -76,9 +76,25 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         Sub::Unknown(other) => {
-            eprintln!("claude-spt: unknown subcommand: {other}");
-            usage();
-            ExitCode::from(2)
+            // DEGRADE, NEVER BRICK (REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP). A stale plugin
+            // dispatch.sh (old 0.1.8 shape) execs `claude-spt <CCEvent>` WITHOUT the `hook` token —
+            // e.g. `claude-spt UserPromptSubmit`. Exiting nonzero here made CC treat every hook as a
+            // blocking failure (all tools blocked + a looping Stop hook) with zero self-repair. So
+            // when the unknown subcommand is actually a CC hook event, route it through as a hook
+            // (the perch keeps working) and emit a NON-blocking stderr note about the skew. A genuine
+            // typo (not a hook event) still exits loud so real misinvocations are not masked.
+            if hook::is_cc_hook_event(&other) {
+                eprintln!(
+                    "claude-spt: received CC hook event '{other}' as a bare subcommand — the sptc \
+                     plugin dispatch is stale (dropped the `hook` token). Handling it anyway; run \
+                     /reload-plugins to refresh the plugin. [REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP]"
+                );
+                hook::run_event(&other)
+            } else {
+                eprintln!("claude-spt: unknown subcommand: {other}");
+                usage();
+                ExitCode::from(2)
+            }
         }
     }
 }
@@ -108,5 +124,19 @@ mod tests {
     fn unrecognized_subcommand_is_unknown_not_misrouted() {
         // A typo must NOT silently fall through to a real subcommand (it exits 2 in main).
         assert_eq!(classify(Some("digset")), Sub::Unknown("digset".into()));
+    }
+
+    // [unit->REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP]
+    #[test]
+    fn stale_dispatch_cc_event_degrades_typo_stays_loud() {
+        // The stale-dispatch signature: `claude-spt <CCEvent>` (the `hook` token dropped) classifies
+        // as Unknown, but main routes it through hook::run_event (exit 0, pass-through) BECAUSE the
+        // token is a CC hook event. A genuine typo is NOT a hook event → stays the loud exit-2 path.
+        for ev in hook::CC_HOOK_EVENTS {
+            assert_eq!(classify(Some(ev)), Sub::Unknown((*ev).to_string()));
+            assert!(hook::is_cc_hook_event(ev), "{ev} must be recognised as a CC hook event");
+        }
+        assert!(!hook::is_cc_hook_event("digset")); // typo → loud exit-2 branch, not degrade
+        assert!(!hook::is_cc_hook_event("digest")); // a real subcommand is never a hook event
     }
 }

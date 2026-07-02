@@ -8,6 +8,20 @@ public release body verbatim.
 > `/sptc:version` and the GitHub release tag). The cplugs *plugin skeleton* version (`plugin.json`)
 > moves on its own slower schedule and may differ.
 
+## [0.10.2] - 2026-07-01
+
+> Requires spt-core **v0.19.0 or newer** (unchanged). An emergency bugfix patch over 0.10.1.
+> Binary-only change — `spt adapter update claude-spt` picks it up; run `/reload-plugins` once after.
+
+### Fixed
+- **A stale plugin no longer blocks every tool in your Claude Code session.** If the sptc plugin got
+  out of step with the adapter, a hook could run the tool with the event name in the wrong position —
+  and the tool answered by failing, which Claude Code read as "block this action." The result was a
+  session where no tool could run and the Stop hook looped, with no way to recover except reloading
+  the plugin. The tool now recognizes that case, still does the right thing for the event, and prints
+  a one-line note asking you to run `/reload-plugins` to clear the mismatch — instead of blocking
+  anything. A genuine mistyped command still fails loudly, as before.
+
 ## [0.10.1] - 2026-07-01
 
 > Requires spt-core **v0.19.0 or newer** (unchanged). A bugfix patch over 0.10.0. Binary-only

@@ -732,19 +732,53 @@ impl HookEnv for SysEnv {
     }
 }
 
+/// The CC hook event names this binary handles — the SINGLE source of truth, shared by [`dispatch`]
+/// and the stale-dispatch pass-through recognizer [`is_cc_hook_event`] that `main` uses to DEGRADE
+/// (not brick) when a stale plugin dispatch.sh execs `claude-spt <Event>` without the `hook` token.
+/// [impl->REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP]
+pub const CC_HOOK_EVENTS: &[&str] = &[
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "Stop",
+    "SessionEnd",
+    "SubagentStart",
+    "SubagentStop",
+    "PostToolUse",
+];
+
+/// True if `name` is a CC hook event this binary handles. `main` uses this to recognise the
+/// stale-dispatch skew (a bare `claude-spt UserPromptSubmit` — the `hook` token dropped by an old
+/// plugin dispatch.sh) and route it through as a hook instead of exiting nonzero → blocking CC.
+/// [impl->REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP]
+pub fn is_cc_hook_event(name: &str) -> bool {
+    CC_HOOK_EVENTS.contains(&name)
+}
+
 /// `claude-spt hook <event> [--host-pid <pid>]` entry. Reads the CC hook payload from stdin, parses
 /// it once, and dispatches to the event handler. A missing event or unparseable stdin is a silent
 /// no-op exit 0 (a hook must never break the CC session). [impl->REQ-DIST-HOOK-BINARY]
 pub fn run() -> ExitCode {
-    let mut argv = std::env::args().skip(2); // skip "claude-spt" + "hook"
-    let Some(event) = argv.next() else {
+    let Some(event) = std::env::args().nth(2) else {
+        // skip "claude-spt" + "hook"
         eprintln!("claude-spt hook: missing <event>");
         return ExitCode::SUCCESS;
     };
+    run_event(&event)
+}
+
+/// Handle a CC hook `event` given the event name explicitly. Scans argv for `--host-pid`
+/// POSITION-INDEPENDENTLY so it serves both the normal `claude-spt hook <event> --host-pid <pid>`
+/// path and the stale-dispatch pass-through `claude-spt <event> --host-pid <pid>` (where the `hook`
+/// token is missing, so a fixed `skip(2)` would mis-read the event). Reads the CC hook payload from
+/// stdin; always exits 0 — a hook must never break the CC session.
+/// [impl->REQ-DIST-HOOK-BINARY] [impl->REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP]
+pub fn run_event(event: &str) -> ExitCode {
     let mut host_pid: Option<String> = None;
-    while let Some(a) = argv.next() {
+    let mut it = std::env::args();
+    while let Some(a) = it.next() {
         if a == "--host-pid" {
-            host_pid = argv.next();
+            host_pid = it.next();
         }
     }
 
@@ -753,7 +787,7 @@ pub fn run() -> ExitCode {
     let v: Value = serde_json::from_str(input.trim()).unwrap_or(Value::Null);
 
     let mut env = SysEnv { host_pid };
-    dispatch(&mut env, &event, &v);
+    dispatch(&mut env, event, &v);
     ExitCode::SUCCESS
 }
 
@@ -1216,5 +1250,25 @@ mod tests {
         dispatch(&mut env, "FutureEvent", &json!({"session_id":"s"}));
         assert!(env.calls.is_empty());
         assert!(env.out().is_empty());
+    }
+
+    // [unit->REQ-HAZARD-HOOKCMD-DISPATCH-LOCKSTEP]
+    #[test]
+    fn cc_hook_events_recognizer_matches_the_dispatch_arms() {
+        // `is_cc_hook_event` is what `main` uses to tell a stale-dispatch skew (`claude-spt <CCEvent>`,
+        // degrade + pass-through) from a genuine typo (loud exit 2). Every event `dispatch` has a real
+        // arm for MUST be recognised (else a real event misjudged as a typo → brick), and a name with
+        // NO dispatch arm must NOT be (else a typo silently swallowed). We assert both directions
+        // against the exact set `dispatch` routes — the two lists move in lockstep or this fails.
+        let dispatched: &[&str] = &[
+            "SessionStart", "UserPromptSubmit", "PreToolUse", "Stop", "SessionEnd", "SubagentStart",
+            "SubagentStop", "PostToolUse",
+        ];
+        assert_eq!(CC_HOOK_EVENTS, dispatched, "CC_HOOK_EVENTS drifted from dispatch's arms");
+        for ev in dispatched {
+            assert!(is_cc_hook_event(ev), "{ev} has a dispatch arm but is not recognised");
+        }
+        assert!(!is_cc_hook_event("FutureEvent")); // no arm (dispatch `_ => {}`) → typo branch
+        assert!(!is_cc_hook_event("digest")); // a real subcommand is never a hook event
     }
 }
